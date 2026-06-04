@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { DataRow } from '../types';
+import { readAsTextWithAutoEncoding } from './encodingUtils';
 
 /**
  * 解析CSV行，正确处理引号内的逗号
@@ -64,60 +65,60 @@ export function parseExcelFile(file: File): Promise<{ headers: string[]; data: D
 
 export function parseCSVFile(file: File): Promise<{ headers: string[]; data: DataRow[] }> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const lines = text.split('\n').filter((line) => line.trim());
+    readAsTextWithAutoEncoding(
+      file,
+      (text) => {
+        try {
+          const lines = text.split('\n').filter((line) => line.trim());
 
-        if (lines.length === 0) {
-          reject(new Error('文件为空'));
-          return;
-        }
+          if (lines.length === 0) {
+            reject(new Error('文件为空'));
+            return;
+          }
 
-        const headers = parseCSVLine(lines[0]);
-        const rows = lines.slice(1).map((line) => {
-          const values = parseCSVLine(line);
-          const obj: DataRow = {};
-          headers.forEach((header, index) => {
-            const val = values[index] ?? '';
-            obj[header] = isNaN(Number(val)) ? val : Number(val);
+          const headers = parseCSVLine(lines[0]);
+          const rows = lines.slice(1).map((line) => {
+            const values = parseCSVLine(line);
+            const obj: DataRow = {};
+            headers.forEach((header, index) => {
+              const val = values[index] ?? '';
+              obj[header] = isNaN(Number(val)) ? val : Number(val);
+            });
+            return obj;
           });
-          return obj;
-        });
 
-        resolve({ headers, data: rows });
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = () => reject(new Error('文件读取失败'));
-    reader.readAsText(file);
+          resolve({ headers, data: rows });
+        } catch (error) {
+          reject(error);
+        }
+      },
+      (error) => reject(error)
+    );
   });
 }
 
 export function parseMappingCSV(file: File): Promise<{ headers: string[]; rows: string[][] }> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const lines = text.split('\n').filter((line) => line.trim());
+    readAsTextWithAutoEncoding(
+      file,
+      (text) => {
+        try {
+          const lines = text.split('\n').filter((line) => line.trim());
 
-        if (lines.length < 2) {
-          reject(new Error('映射表至少需要包含表头和一行数据'));
-          return;
+          if (lines.length < 2) {
+            reject(new Error('映射表至少需要包含表头和一行数据'));
+            return;
+          }
+
+          const headers = parseCSVLine(lines[0]);
+          const rows = lines.slice(1).map((line) => parseCSVLine(line));
+
+          resolve({ headers, rows });
+        } catch (error) {
+          reject(error);
         }
-
-        const headers = parseCSVLine(lines[0]);
-        const rows = lines.slice(1).map((line) => parseCSVLine(line));
-
-        resolve({ headers, rows });
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = () => reject(new Error('文件读取失败'));
-    reader.readAsText(file);
+      },
+      (error) => reject(error)
+    );
   });
 }

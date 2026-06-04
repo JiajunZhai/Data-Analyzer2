@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { storageService } from '../services/storage';
 import type { DataRow, ScenarioMapping } from '../types';
 import type { ScenarioConfig, StoredMapping } from '../types/storage';
+import { readFileWithAutoEncoding } from '../utils/encodingUtils';
 import { applyScenarioMapping } from '../utils/scenarioMapper';
 import { generateId } from '../utils/storageUtils';
 
-export function useMappings() {
+export function useMappings(isStorageReady: boolean) {
   const [mappings, setMappings] = useState<StoredMapping[]>([]);
   const [activeMappingId, setActiveMappingId] = useState<string | undefined>();
 
@@ -28,8 +29,10 @@ export function useMappings() {
 
   // 初始化时加载映射
   useEffect(() => {
-    loadMappingsRef.current();
-  }, []);
+    if (isStorageReady) {
+      loadMappingsRef.current();
+    }
+  }, [isStorageReady]);
 
   // 映射选择
   const handleMappingSelect = useCallback(
@@ -77,7 +80,7 @@ export function useMappings() {
   const handleMappingUpload = useCallback(
     async (file: File) => {
       try {
-        const text = await file.text();
+        const text = await readFileWithAutoEncoding(file);
         const lines = text.split('\n').filter((line) => line.trim());
 
         if (lines.length < 2) {

@@ -61,7 +61,7 @@ function App() {
   // 使用自定义 hooks
   const pivotState = usePivotState();
   const datasetManager = useDatasetManager();
-  const mappingsManager = useMappings();
+  const mappingsManager = useMappings(datasetManager.isStorageReady);
   const configsManager = useConfigs();
 
   const {
