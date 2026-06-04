@@ -1,0 +1,102 @@
+[
+  {
+    "id": "app_overview_2d",
+    "category": "应用维度",
+    "categoryIcon": "smartphone",
+    "name": "多应用大盘交叉对比",
+    "description": "【横:应用 纵:实际国家】快速对比各国家在不同 App 下的综合变现水位",
+    "rows": ["实际国家"],
+    "cols": ["应用"],
+    "values": ["广告收益", "ARPU", "渗透率"]
+  },
+  {
+    "id": "app_trend_2d",
+    "category": "应用维度",
+    "categoryIcon": "smartphone",
+    "name": "各应用日变现趋势对比",
+    "description": "【横:应用 纵:日期】监控多款应用每日的收益与 ARPU 走势",
+    "rows": ["日期"],
+    "cols": ["应用"],
+    "values": ["广告收益", "ARPU"]
+  },
+  {
+    "id": "version_compare_2d",
+    "category": "版本维度",
+    "categoryIcon": "settings",
+    "name": "跨应用版本分布与变现对比",
+    "description": "【横:应用 纵:版本】对比各个应用在不同版本下的 eCPM 与用户分布",
+    "rows": ["版本"],
+    "cols": ["应用"],
+    "values": ["eCPM", "注册用户"]
+  },
+  {
+    "id": "version_country_2d",
+    "category": "版本维度",
+    "categoryIcon": "settings",
+    "name": "核心国家版本更新情况",
+    "description": "【横:实际国家 纵:版本】监控各国家用户向新版本的迁移进度",
+    "rows": ["版本"],
+    "cols": ["实际国家"],
+    "values": ["注册用户", "ARPU"]
+  },
+  {
+    "id": "country_compare_2d",
+    "category": "国家维度",
+    "categoryIcon": "globe",
+    "name": "多国家变现大盘交叉对比",
+    "description": "【横:应用 纵:实际国家】查看多国用户在不同 App 上的活跃与变现贡献",
+    "rows": ["实际国家"],
+    "cols": ["应用"],
+    "values": ["广告收益", "ARPU", "渗透率"]
+  },
+  {
+    "id": "channel_compare_2d",
+    "category": "渠道维度",
+    "categoryIcon": "megaphone",
+    "name": "买量渠道质量横向对比",
+    "description": "【横:应用 纵:买量渠道】评估各买量渠道在不同应用上的 ROI 与变现表现",
+    "rows": ["买量渠道"],
+    "cols": ["应用"],
+    "values": ["ARPU", "渗透率"]
+  },
+  {
+    "id": "channel_country_2d",
+    "category": "渠道维度",
+    "categoryIcon": "megaphone",
+    "name": "特定国家买量渠道对比",
+    "description": "【横:实际国家 纵:买量渠道】对比各买量渠道在核心国家的用户价值",
+    "rows": ["买量渠道"],
+    "cols": ["实际国家"],
+    "values": ["ARPU", "渗透率"]
+  },
+  {
+    "id": "scenario_compare_2d",
+    "category": "广告场景维度",
+    "categoryIcon": "film",
+    "name": "多场景变现效率交叉对比",
+    "description": "【横:实际场景 纵:应用】横向直观对比各应用中开屏、插屏、视频等场景的变现大盘",
+    "rows": ["应用"],
+    "cols": ["实际场景"],
+    "values": ["广告收益", "eCPM", "CTR"]
+  },
+  {
+    "id": "scenario_version_2d",
+    "category": "广告场景维度",
+    "categoryIcon": "film",
+    "name": "各场景版本变现波动对比",
+    "description": "【横:实际场景 纵:版本】排查随着版本迭代，哪些广告场景变现效率发生了异常波动",
+    "rows": ["版本"],
+    "cols": ["实际场景"],
+    "values": ["eCPM", "IPU", "CTR"]
+  },
+  {
+    "id": "scenario_country_2d",
+    "category": "广告场景维度",
+    "categoryIcon": "film",
+    "name": "核心场景国家大盘对比",
+    "description": "【横:实际场景 纵:实际国家】观察各广告场景在各国家的受众喜好与变现单价",
+    "rows": ["实际国家"],
+    "cols": ["实际场景"],
+    "values": ["eCPM", "ARPU", "渗透率"]
+  }
+]

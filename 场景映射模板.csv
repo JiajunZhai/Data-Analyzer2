@@ -1,0 +1,5 @@
+目标场景,RM06B,RM08,RM10
+ads1,open1,open2|open_v2,splash_ad
+ads2,rv_double,rv_triple,reward_video
+ads3,interstitial_home,interstitial_feed,inter_main
+ads4,banner1|banner_sdk,banner_home,
