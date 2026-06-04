@@ -121,7 +121,8 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
 
   return (
     <div className="datasource-manager-wrapper" ref={dropdownRef}>
-      <div
+      <button
+        type="button"
         className={`file-capsule datasource-trigger ${isOpen ? 'capsule-dragging' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -130,10 +131,14 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
         </span>
         <span className="capsule-name">{currentDataset ? currentDataset.name : '数据源管理'}</span>
         <span className="capsule-action">{isOpen ? '▲' : '▼'}</span>
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="datasource-dropdown" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="datasource-dropdown"
+          role="presentation"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* 存储容量 */}
           <div className="datasource-quota">
             <div className="quota-bar">
@@ -184,7 +189,11 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   )}
                 </div>
                 <div className="dataset-actions">
-                  <button onClick={() => handleRenameStart(currentDataset)} title="重命名">
+                  <button
+                    type="button"
+                    onClick={() => handleRenameStart(currentDataset)}
+                    title="重命名"
+                  >
                     <Pencil size={14} />
                   </button>
                 </div>
@@ -194,7 +203,8 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
               <div className="mapping-section">
                 <div className="section-title">场景映射</div>
                 <div className="mapping-selector">
-                  <div
+                  <button
+                    type="button"
                     className="mapping-selector-trigger"
                     onClick={() => setShowMappingSelector(!showMappingSelector)}
                   >
@@ -205,11 +215,12 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                       {activeMapping ? activeMapping.name : '未选择映射'}
                     </span>
                     <span className="mapping-arrow">{showMappingSelector ? '▲' : '▼'}</span>
-                  </div>
+                  </button>
 
                   {showMappingSelector && (
                     <div className="mapping-selector-dropdown">
-                      <div
+                      <button
+                        type="button"
                         className={`mapping-option ${!activeMappingId ? 'active' : ''}`}
                         onClick={() => handleMappingSelect(null)}
                       >
@@ -217,9 +228,10 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                           <X size={14} />
                         </span>
                         <span className="mapping-option-name">不使用映射</span>
-                      </div>
+                      </button>
                       {mappings.map((mapping) => (
-                        <div
+                        <button
+                          type="button"
                           key={mapping.id}
                           className={`mapping-option ${mapping.id === activeMappingId ? 'active' : ''}`}
                           onClick={() => handleMappingSelect(mapping.id)}
@@ -231,7 +243,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                           <span className="mapping-option-meta">
                             {mapping.scenarioCount} 个场景
                           </span>
-                        </div>
+                        </button>
                       ))}
                       {mappings.length === 0 && (
                         <div className="mapping-option-empty">
@@ -257,24 +269,28 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                     <div className="switch-confirm">
                       <div className="confirm-text">切换到此数据源？当前未保存的配置将丢失。</div>
                       <div className="confirm-actions">
-                        <button className="btn-confirm" onClick={handleSwitchConfirm}>
+                        <button type="button" className="btn-confirm" onClick={handleSwitchConfirm}>
                           确认切换
                         </button>
-                        <button className="btn-cancel" onClick={handleSwitchCancel}>
+                        <button type="button" className="btn-cancel" onClick={handleSwitchCancel}>
                           取消
                         </button>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="dataset-info" onClick={() => handleDatasetClick(ds.id)}>
+                      <button
+                        type="button"
+                        className="dataset-info"
+                        onClick={() => handleDatasetClick(ds.id)}
+                      >
                         <div className="dataset-name">{ds.name}</div>
                         <div className="dataset-meta">
                           {ds.rowCount.toLocaleString()} 行 · 点击加载
                         </div>
-                      </div>
+                      </button>
                       <div className="dataset-actions">
-                        <button onClick={(e) => handleDelete(ds.id, e)} title="删除">
+                        <button type="button" onClick={(e) => handleDelete(ds.id, e)} title="删除">
                           <Trash2 size={14} />
                         </button>
                       </div>

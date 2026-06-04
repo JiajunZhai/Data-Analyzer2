@@ -200,7 +200,7 @@ function App() {
       // 保存用户偏好
       await storageService.saveUserPreferences({ lastDatasetId: dataset.id });
     },
-    [setFields, setData, setCurrentDatasetId, setActiveMappingId, applyDefaultConfig]
+    [setFields, setData, setCurrentDatasetId, setActiveMappingId]
   );
 
   // 更新 loadDataset ref

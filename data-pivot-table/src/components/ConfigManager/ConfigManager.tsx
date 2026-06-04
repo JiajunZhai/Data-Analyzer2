@@ -105,7 +105,7 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
     const map = new Map<string, PivotTemplate[]>();
     for (const t of templates) {
       if (!map.has(t.category)) map.set(t.category, []);
-      map.get(t.category)!.push(t);
+      map.get(t.category)?.push(t);
     }
     return map;
   }, [templates]);
@@ -197,14 +197,15 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
             <span className="template-category-name">{category}</span>
           </div>
           {items.map((template) => (
-            <div
+            <button
+              type="button"
               key={template.id}
               className="template-item"
               onClick={() => handleTemplateSelect(template)}
             >
               <div className="template-item-name">{template.name}</div>
               <div className="template-item-desc">{template.description}</div>
-            </div>
+            </button>
           ))}
         </div>
       );
@@ -213,7 +214,8 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
 
   return (
     <div className="config-manager-wrapper" ref={dropdownRef}>
-      <div
+      <button
+        type="button"
         className={`file-capsule config-trigger ${isOpen ? 'capsule-dragging' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -222,14 +224,15 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
         </span>
         <span className="capsule-name">配置管理</span>
         <span className="capsule-action">{isOpen ? '▲' : '▼'}</span>
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="config-dropdown" onClick={(e) => e.stopPropagation()}>
+        <div className="config-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
           {/* 一键保存按钮 */}
           {currentDatasetId && (
             <div className="config-save-section">
               <button
+                type="button"
                 className="btn-quick-save"
                 onClick={handleQuickSave}
                 disabled={!hasCurrentConfig}
@@ -273,15 +276,27 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
                     </div>
                   ) : (
                     <>
-                      <div className="config-info" onClick={() => onConfigLoad(config.id)}>
+                      <button
+                        type="button"
+                        className="config-info"
+                        onClick={() => onConfigLoad(config.id)}
+                      >
                         <div className="config-name">{config.name}</div>
                         <div className="config-summary">{getConfigSummary(config)}</div>
-                      </div>
+                      </button>
                       <div className="config-actions">
-                        <button onClick={() => handleRenameStart(config)} title="重命名">
+                        <button
+                          type="button"
+                          onClick={() => handleRenameStart(config)}
+                          title="重命名"
+                        >
                           <Pencil size={14} />
                         </button>
-                        <button onClick={(e) => handleDelete(config.id, e)} title="删除">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(config.id, e)}
+                          title="删除"
+                        >
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -294,12 +309,13 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
 
           {/* 快速模板 */}
           <div className="config-section">
-            <div
+            <button
+              type="button"
               className="section-title clickable"
               onClick={() => setShowTemplates(!showTemplates)}
             >
               快速模板 {showTemplates ? '▾' : '▸'}
-            </div>
+            </button>
             {showTemplates && <div className="templates-list">{templateBlocks}</div>}
           </div>
         </div>

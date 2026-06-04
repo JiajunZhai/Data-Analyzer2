@@ -13,7 +13,7 @@ function parseDate(str: string): Date | null {
   const parts = str.split('-');
   if (parts.length !== 3) return null;
   const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-  return isNaN(d.getTime()) ? null : d;
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function formatDate(d: Date): string {
@@ -323,7 +323,8 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       .join(' ');
 
     return (
-      <div
+      <button
+        type="button"
         key={`day-${day}`}
         className={classNames}
         onClick={() => isInData && handleDayClick(date)}
@@ -331,13 +332,14 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
         onMouseLeave={() => setHoverDate(null)}
       >
         {day}
-      </div>
+      </button>
     );
   };
 
   return (
     <div className="date-range-chip-wrapper" ref={dropdownRef}>
-      <div
+      <button
+        type="button"
         className={`filter-chip ${isActive ? 'active-filter' : ''} ${isOpen ? 'open' : ''}`}
         onClick={() => {
           if (!isOpen) {
@@ -354,13 +356,14 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
         <span className="chip-label">{label}：</span>
         <span className="chip-value">{displayValue}</span>
         <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="date-range-dropdown" onClick={(e) => e.stopPropagation()}>
+        <div className="date-range-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
           <div className="date-range-presets">
             {PRESETS.map((preset, i) => (
               <button
+                type="button"
                 key={preset.label}
                 className={`date-preset-item ${activePreset === i ? 'active' : ''}`}
                 onClick={() => handlePresetClick(i)}
@@ -372,6 +375,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
           <div className="date-calendar">
             <div className="calendar-header">
               <button
+                type="button"
                 className="calendar-nav-btn"
                 onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}
               >
@@ -381,6 +385,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
                 {year}年{MONTH_NAMES[month]}
               </span>
               <button
+                type="button"
                 className="calendar-nav-btn"
                 onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
               >
@@ -401,12 +406,14 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
               </span>
               <div className="calendar-footer-buttons">
                 <button
+                  type="button"
                   className="filter-dropdown-btn filter-dropdown-btn-cancel"
                   onClick={handleCancel}
                 >
                   取消
                 </button>
                 <button
+                  type="button"
                   className="filter-dropdown-btn filter-dropdown-btn-confirm"
                   onClick={handleConfirm}
                 >

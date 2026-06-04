@@ -95,7 +95,8 @@ const FilterChip: React.FC<FilterChipProps> = ({
 
   return (
     <div className="filter-chip-wrapper" ref={dropdownRef}>
-      <div
+      <button
+        type="button"
         className={`filter-chip ${isActive ? 'active-filter' : ''} ${isOpen ? 'open' : ''}`}
         onClick={() => {
           if (!isOpen) {
@@ -114,22 +115,25 @@ const FilterChip: React.FC<FilterChipProps> = ({
           </span>
         )}
         <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="filter-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="filter-dropdown-menu"
+          role="presentation"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="filter-dropdown-search">
             <input
               type="text"
               placeholder={`搜索${config.label}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
             />
           </div>
 
           <div className="filter-dropdown-actions">
-            <button className="filter-dropdown-action-btn" onClick={handleSelectAll}>
+            <button type="button" className="filter-dropdown-action-btn" onClick={handleSelectAll}>
               {isAllSelected ? '取消全选' : '全选'}
             </button>
           </div>
@@ -154,12 +158,14 @@ const FilterChip: React.FC<FilterChipProps> = ({
             </span>
             <div className="filter-dropdown-buttons">
               <button
+                type="button"
                 className="filter-dropdown-btn filter-dropdown-btn-cancel"
                 onClick={handleCancel}
               >
                 取消
               </button>
               <button
+                type="button"
                 className="filter-dropdown-btn filter-dropdown-btn-confirm"
                 onClick={handleConfirm}
               >
