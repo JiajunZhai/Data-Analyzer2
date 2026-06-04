@@ -17,6 +17,8 @@ export function usePivotState() {
   const [colFields, setColFields] = useState<PivotField[]>([]);
   const [valueFields, setValueFields] = useState<PivotField[]>([]);
   const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>([]);
+  const [showRowTotal, setShowRowTotal] = useState(true);
+  const [showColumnTotal, setShowColumnTotal] = useState(true);
 
   const dimensions = useMemo(() => fields.filter((field) => field.type === 'dimension'), [fields]);
   const measures = useMemo(() => fields.filter((field) => field.type === 'measure'), [fields]);
@@ -262,6 +264,10 @@ export function usePivotState() {
     activeDimensionNames,
     pivotResult,
     emptyMessage,
+    showRowTotal,
+    setShowRowTotal,
+    showColumnTotal,
+    setShowColumnTotal,
     toggleValueField,
     toggleRowField,
     toggleColField,

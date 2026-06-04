@@ -23,6 +23,10 @@ interface SpatialFieldZoneProps {
   orientation: 'vertical' | 'horizontal';
   disabledFieldNames?: Set<string>;
   disabledReason?: string;
+  showRowTotal?: boolean;
+  onToggleRowTotal?: () => void;
+  showColumnTotal?: boolean;
+  onToggleColumnTotal?: () => void;
   onToggle: (field: Field) => void;
 }
 
@@ -158,6 +162,10 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   orientation,
   disabledFieldNames = new Set(),
   disabledReason,
+  showRowTotal = true,
+  onToggleRowTotal,
+  showColumnTotal = true,
+  onToggleColumnTotal,
   onToggle,
 }) => {
   const [isInactiveExpanded, setIsInactiveExpanded] = useState(true);
@@ -239,6 +247,26 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
       <div className="spatial-zone-header">
         <span className="spatial-zone-title">{title}</span>
         <span className="spatial-zone-count">{activeFields.length}</span>
+        {id === 'rows' && onToggleRowTotal && (
+          <label className="spatial-zone-toggle-label">
+            <input
+              type="checkbox"
+              checked={showRowTotal}
+              onChange={onToggleRowTotal}
+            />
+            <span>行总计</span>
+          </label>
+        )}
+        {id === 'columns' && onToggleColumnTotal && (
+          <label className="spatial-zone-toggle-label">
+            <input
+              type="checkbox"
+              checked={showColumnTotal}
+              onChange={onToggleColumnTotal}
+            />
+            <span>列总计</span>
+          </label>
+        )}
       </div>
       <div className="spatial-zone-body">
         {fields.length === 0 ? (

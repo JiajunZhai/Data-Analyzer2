@@ -97,6 +97,10 @@ function App() {
     activeDimensionNames,
     pivotResult,
     emptyMessage,
+    showRowTotal,
+    setShowRowTotal,
+    showColumnTotal,
+    setShowColumnTotal,
     toggleValueField,
     toggleRowField,
     toggleColField,
@@ -569,6 +573,8 @@ function App() {
                   orientation="vertical"
                   disabledFieldNames={colFieldNames}
                   disabledReason="该维度已在列区域启用"
+                  showRowTotal={showRowTotal}
+                  onToggleRowTotal={() => setShowRowTotal(!showRowTotal)}
                   onToggle={toggleRowField}
                 />
               </div>
@@ -585,6 +591,8 @@ function App() {
                   orientation="horizontal"
                   disabledFieldNames={rowFieldNames}
                   disabledReason="该维度已在行区域启用"
+                  showColumnTotal={showColumnTotal}
+                  onToggleColumnTotal={() => setShowColumnTotal(!showColumnTotal)}
                   onToggle={toggleColField}
                 />
               </div>
@@ -594,6 +602,8 @@ function App() {
                   result={pivotResult}
                   valueFieldName={valueFields[0]?.field.name}
                   emptyMessage={emptyMessage}
+                  showRowTotal={showRowTotal}
+                  showColumnTotal={showColumnTotal}
                 />
               </div>
             </div>

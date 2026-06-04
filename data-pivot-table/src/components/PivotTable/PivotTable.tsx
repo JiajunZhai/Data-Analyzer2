@@ -13,6 +13,8 @@ interface PivotTableProps {
   result: PivotResult | null;
   valueFieldName?: string;
   emptyMessage?: string;
+  showRowTotal?: boolean;
+  showColumnTotal?: boolean;
 }
 
 interface VisibleTreeRow {
@@ -31,6 +33,8 @@ const PivotTable: React.FC<PivotTableProps> = ({
   result,
   valueFieldName,
   emptyMessage = '请配置透视表字段以查看结果',
+  showRowTotal = true,
+  showColumnTotal = true,
 }) => {
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
@@ -247,7 +251,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
   const dataColumnCount = columnHeaders.length;
 
   const renderTotalHeaderCells = (levelIndex: number, depth: number) => {
-    if (totalColumnHeaders.length === 0) return null;
+    if (totalColumnHeaders.length === 0 || !showRowTotal) return null;
 
     const stickyRight = 'total-header-sticky';
 
@@ -421,7 +425,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
             );
           })}
 
-          {totalValues.map((val, ti) => {
+          {showRowTotal && totalValues.map((val, ti) => {
             if (isExpandedGroup) {
               return (
                 <td key={ti} className="total-cell total-cell-sticky tree-group-placeholder">
@@ -491,7 +495,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
             );
           })}
 
-          {(rowTotalValues[ri] || []).map((val, ti) => {
+          {showRowTotal && (rowTotalValues[ri] || []).map((val, ti) => {
             const { text, isEmpty } = formatValue(val, getRowTotalMetricName(ri, ti));
             return (
               <td
@@ -548,7 +552,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
                   {formatHeader(col)}
                 </th>
               ))}
-              {totalColumnHeaders.length > 0 &&
+              {showRowTotal && totalColumnHeaders.length > 0 &&
                 (hasMultipleTotalColumns ? (
                   totalColumnHeaders.map((header, idx) => (
                     <th key={idx} className="total-header total-header-leaf total-header-sticky">
@@ -564,7 +568,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
         <tbody>
           {canUseRowTree ? renderTreeRows() : renderFlatRows()}
 
-          {totalRows.map((totalRow, totalRowIdx) => {
+          {showColumnTotal && totalRows.map((totalRow, totalRowIdx) => {
             return (
               <tr
                 key={totalRow.label}
