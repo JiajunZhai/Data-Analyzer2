@@ -49,8 +49,8 @@ export function aggregateData(
 ): PivotResult {
   let filteredData = data;
 
-  filterConfigs.forEach(filter => {
-    filteredData = filteredData.filter(row =>
+  filterConfigs.forEach((filter) => {
+    filteredData = filteredData.filter((row) =>
       filter.selectedValues.includes(String(row[filter.fieldName]))
     );
   });
@@ -63,7 +63,7 @@ export function aggregateData(
   if (filteredData.length > 0) {
     // 动态计算筛选后的总广告收益，确保收益占比逻辑正确
     const filteredTotalRevenue = filteredData.reduce(
-      (sum, row) => sum + (Number(row['广告收益']) || 0), 
+      (sum, row) => sum + (Number(row['广告收益']) || 0),
       0
     );
     constants['总广告收益'] = filteredTotalRevenue;
@@ -75,7 +75,7 @@ export function aggregateData(
   const colKeys = new Set<string>();
   const baseDataMap = new Map<string, Map<string, MetricSeriesMap>>();
 
-  filteredData.forEach(row => {
+  filteredData.forEach((row) => {
     const rowInfo = getKeyInfo(row, rowFields);
     const colInfo = getKeyInfo(row, colFields);
 
@@ -85,7 +85,7 @@ export function aggregateData(
     colKeyParts.set(colInfo.key, colInfo.parts);
 
     const cellData = ensureCellData(baseDataMap, rowInfo.key, colInfo.key, metricNames);
-    metricNames.forEach(metric => {
+    metricNames.forEach((metric) => {
       const value = Number(row[metric]);
       if (!isNaN(value)) {
         cellData[metric].push(value);
@@ -97,7 +97,12 @@ export function aggregateData(
   const sortedColKeys = sortKeys(Array.from(colKeys));
 
   const rowTotalsByKey = buildRowTotals(sortedRowKeys, sortedColKeys, baseDataMap, metricNames);
-  const columnTotalsByKey = buildColumnTotals(sortedRowKeys, sortedColKeys, baseDataMap, metricNames);
+  const columnTotalsByKey = buildColumnTotals(
+    sortedRowKeys,
+    sortedColKeys,
+    baseDataMap,
+    metricNames
+  );
   const grandTotalData = mergeMany(Array.from(columnTotalsByKey.values()), metricNames);
 
   if (valueAxis === 'rows') {
@@ -143,29 +148,35 @@ function normalizeScenarioRows(
   colFields: PivotField[],
   filterConfigs: FilterConfig[]
 ): DataRow[] {
-  if (data.length === 0 || !data.some(row => isAllScenarioRow(row))) {
+  if (data.length === 0 || !data.some((row) => isAllScenarioRow(row))) {
     return data;
   }
 
   const scenarioFieldNames = new Set([RAW_SCENARIO_FIELD, MAPPED_SCENARIO_FIELD]);
-  const hasScenarioDimension = [...rowFields, ...colFields]
-    .some(field => scenarioFieldNames.has(field.field.name));
-  const hasScenarioFilter = filterConfigs
-    .some(filter => scenarioFieldNames.has(filter.fieldName));
+  const hasScenarioDimension = [...rowFields, ...colFields].some((field) =>
+    scenarioFieldNames.has(field.field.name)
+  );
+  const hasScenarioFilter = filterConfigs.some((filter) =>
+    scenarioFieldNames.has(filter.fieldName)
+  );
 
   if (hasScenarioDimension) {
-    return data.filter(row => !isAllScenarioRow(row));
+    return data.filter((row) => !isAllScenarioRow(row));
   }
 
   if (!hasScenarioFilter) {
-    return data.filter(row => isAllScenarioRow(row));
+    return data.filter((row) => isAllScenarioRow(row));
   }
 
   return data;
 }
 
 function isAllScenarioRow(row: DataRow): boolean {
-  return String(row[RAW_SCENARIO_FIELD] ?? '').trim().toUpperCase() === ALL_SCENARIO_VALUE;
+  return (
+    String(row[RAW_SCENARIO_FIELD] ?? '')
+      .trim()
+      .toUpperCase() === ALL_SCENARIO_VALUE
+  );
 }
 
 interface BuildResultOptions {
@@ -203,15 +214,20 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     constants,
   } = options;
 
-  const displayColumns = buildDisplayColumns(sortedColKeys, colKeyParts, colFields.length, valueFields);
-  const columnHeaders = displayColumns.map(column => column.key);
-  const valueFieldNames = valueFields.map(field => field.field.name);
+  const displayColumns = buildDisplayColumns(
+    sortedColKeys,
+    colKeyParts,
+    colFields.length,
+    valueFields
+  );
+  const columnHeaders = displayColumns.map((column) => column.key);
+  const valueFieldNames = valueFields.map((field) => field.field.name);
   const hasValueLevel = valueFields.length > 1 || colFields.length === 0;
   const columnDepth = colFields.length + (hasValueLevel ? 1 : 0);
   const columnLevels = generateColumnLevels(columnHeaders, columnDepth);
 
-  const data = sortedRowKeys.map(rowKey =>
-    displayColumns.map(column =>
+  const data = sortedRowKeys.map((rowKey) =>
+    displayColumns.map((column) =>
       getMetricValue(
         column.valueField,
         getCellData(baseDataMap, rowKey, column.sourceColumnKey, metricNames),
@@ -220,9 +236,9 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     )
   );
 
-  const rowTotalValues = sortedRowKeys.map(rowKey => {
+  const rowTotalValues = sortedRowKeys.map((rowKey) => {
     const totalData = rowTotalsByKey.get(rowKey) || createMetricSeries(metricNames);
-    return valueFields.map(valueField => getMetricValue(valueField, totalData, constants));
+    return valueFields.map((valueField) => getMetricValue(valueField, totalData, constants));
   });
 
   const totalColumnHeaders = valueFieldNames.length > 1 ? valueFieldNames : ['行总计'];
@@ -230,15 +246,17 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
   const totalRows: PivotTotalRow[] = [
     {
       label: '列总计',
-      values: displayColumns.map(column =>
+      values: displayColumns.map((column) =>
         getMetricValue(
           column.valueField,
           columnTotalsByKey.get(column.sourceColumnKey) || createMetricSeries(metricNames),
           constants
         )
       ),
-      valueFieldNames: displayColumns.map(column => column.valueField.field.name),
-      totalValues: valueFields.map(valueField => getMetricValue(valueField, grandTotalData, constants)),
+      valueFieldNames: displayColumns.map((column) => column.valueField.field.name),
+      totalValues: valueFields.map((valueField) =>
+        getMetricValue(valueField, grandTotalData, constants)
+      ),
       totalValueFieldNames: valueFieldNames,
     },
   ];
@@ -259,20 +277,20 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
   });
 
   return {
-    rowHeaders: sortedRowKeys.map(key => rowKeyParts.get(key) || [TOTAL_LABEL]),
-    rowDimensions: options.rowFields.map(f => f.field.name),
+    rowHeaders: sortedRowKeys.map((key) => rowKeyParts.get(key) || [TOTAL_LABEL]),
+    rowDimensions: options.rowFields.map((f) => f.field.name),
     rowTree,
     columnHeaders,
     columnLevels,
     data,
-    rowTotals: rowTotalValues.map(values => values[0] || 0),
+    rowTotals: rowTotalValues.map((values) => values[0] || 0),
     columnTotals: totalRows[0]?.values || [],
     grandTotal: totalRows[0]?.totalValues[0] || 0,
-    colFieldNames: colFields.map(field => field.field.name),
+    colFieldNames: colFields.map((field) => field.field.name),
     valueFieldNames,
     valueAxis,
     rowValueFieldNames: sortedRowKeys.map(() => valueFieldNames[0] || ''),
-    columnValueFieldNames: displayColumns.map(column => column.valueField.field.name),
+    columnValueFieldNames: displayColumns.map((column) => column.valueField.field.name),
     rowTotalValues,
     totalColumnHeaders,
     totalColumnValueFieldNames,
@@ -296,13 +314,7 @@ interface BuildRowTreeOptions {
 }
 
 function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
-  const {
-    sortedRowKeys,
-    rowKeyParts,
-    rowFields,
-    data,
-    rowTotalValues,
-  } = options;
+  const { sortedRowKeys, rowKeyParts, rowFields, data, rowTotalValues } = options;
   const rowDepth = rowFields.length;
   const rowIndexByKey = new Map(sortedRowKeys.map((key, index) => [key, index]));
 
@@ -324,13 +336,13 @@ function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
   };
 
   if (rowDepth <= 1) {
-    return sortedRowKeys.map(rowKey => buildLeafNode(rowKey, 0));
+    return sortedRowKeys.map((rowKey) => buildLeafNode(rowKey, 0));
   }
 
   const buildLevel = (depth: number, parentPath: string[], rowKeys: string[]): PivotTreeNode[] => {
     const groups = new Map<string, string[]>();
 
-    rowKeys.forEach(rowKey => {
+    rowKeys.forEach((rowKey) => {
       const parts = rowKeyParts.get(rowKey) || [TOTAL_LABEL];
       const value = parts[depth] || TOTAL_LABEL;
       const group = groups.get(value) || [];
@@ -361,17 +373,12 @@ function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
 }
 
 function getDisplayValuesForRows(rowKeys: string[], options: BuildRowTreeOptions): number[] {
-  const {
-    displayColumns,
-    baseDataMap,
-    metricNames,
-    constants,
-  } = options;
+  const { displayColumns, baseDataMap, metricNames, constants } = options;
 
-  return displayColumns.map(column => {
+  return displayColumns.map((column) => {
     const totalData = createMetricSeries(metricNames);
 
-    rowKeys.forEach(rowKey => {
+    rowKeys.forEach((rowKey) => {
       mergeInto(
         totalData,
         getCellData(baseDataMap, rowKey, column.sourceColumnKey, metricNames),
@@ -384,19 +391,18 @@ function getDisplayValuesForRows(rowKeys: string[], options: BuildRowTreeOptions
 }
 
 function getRowTotalValuesForRows(rowKeys: string[], options: BuildRowTreeOptions): number[] {
-  const {
-    rowTotalsByKey,
-    metricNames,
-    valueFields,
-    constants,
-  } = options;
+  const { rowTotalsByKey, metricNames, valueFields, constants } = options;
   const totalData = createMetricSeries(metricNames);
 
-  rowKeys.forEach(rowKey => {
-    mergeInto(totalData, rowTotalsByKey.get(rowKey) || createMetricSeries(metricNames), metricNames);
+  rowKeys.forEach((rowKey) => {
+    mergeInto(
+      totalData,
+      rowTotalsByKey.get(rowKey) || createMetricSeries(metricNames),
+      metricNames
+    );
   });
 
-  return valueFields.map(valueField => getMetricValue(valueField, totalData, constants));
+  return valueFields.map((valueField) => getMetricValue(valueField, totalData, constants));
 }
 
 function buildRowsValueResult(options: BuildResultOptions): PivotResult {
@@ -417,12 +423,12 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
   } = options;
 
   const displayRows = buildDisplayRows(sortedRowKeys, rowKeyParts, rowFields.length, valueFields);
-  const columnHeaders = sortedColKeys.map(key => key);
+  const columnHeaders = sortedColKeys.map((key) => key);
   const columnLevels = generateColumnLevels(columnHeaders, colFields.length);
-  const valueFieldNames = valueFields.map(field => field.field.name);
+  const valueFieldNames = valueFields.map((field) => field.field.name);
 
-  const data = displayRows.map(row =>
-    sortedColKeys.map(colKey =>
+  const data = displayRows.map((row) =>
+    sortedColKeys.map((colKey) =>
       getMetricValue(
         row.valueField,
         getCellData(baseDataMap, row.sourceRowKey, colKey, metricNames),
@@ -431,17 +437,17 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     )
   );
 
-  const rowTotalValues = displayRows.map(row => {
+  const rowTotalValues = displayRows.map((row) => {
     const totalData = rowTotalsByKey.get(row.sourceRowKey) || createMetricSeries(metricNames);
     return [getMetricValue(row.valueField, totalData, constants)];
   });
 
-  const totalRows = valueFields.map(valueField => {
+  const totalRows = valueFields.map((valueField) => {
     const valueFieldName = valueField.field.name;
 
     return {
       label: valueFields.length > 1 ? `列总计 - ${valueFieldName}` : '列总计',
-      values: sortedColKeys.map(colKey =>
+      values: sortedColKeys.map((colKey) =>
         getMetricValue(
           valueField,
           columnTotalsByKey.get(colKey) || createMetricSeries(metricNames),
@@ -455,16 +461,13 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
   });
 
   // 核心改动：构建二维行头，末尾追加指标名
-  const rowHeaders = displayRows.map(row => {
+  const rowHeaders = displayRows.map((row) => {
     const dimParts = rowKeyParts.get(row.sourceRowKey) || [TOTAL_LABEL];
     return [...dimParts, row.valueField.field.name]; // 追加指标名
   });
 
   // 行维度名称：原有维度 + '指标名称'
-  const rowDimensions = [
-    ...rowFields.map(f => f.field.name),
-    '指标名称'
-  ];
+  const rowDimensions = [...rowFields.map((f) => f.field.name), '指标名称'];
 
   return {
     rowHeaders,
@@ -472,13 +475,13 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     columnHeaders,
     columnLevels,
     data,
-    rowTotals: rowTotalValues.map(values => values[0] || 0),
+    rowTotals: rowTotalValues.map((values) => values[0] || 0),
     columnTotals: totalRows[0]?.values || [],
     grandTotal: totalRows[0]?.totalValues[0] || 0,
-    colFieldNames: colFields.map(field => field.field.name),
+    colFieldNames: colFields.map((field) => field.field.name),
     valueFieldNames,
     valueAxis,
-    rowValueFieldNames: displayRows.map(row => row.valueField.field.name),
+    rowValueFieldNames: displayRows.map((row) => row.valueField.field.name),
     columnValueFieldNames: sortedColKeys.map(() => ''),
     rowTotalValues,
     totalColumnHeaders: ['行总计'],
@@ -495,10 +498,10 @@ function buildDisplayColumns(
 ): DisplayColumn[] {
   const hasValueLevel = valueFields.length > 1 || colDepth === 0;
 
-  return colKeys.flatMap(colKey => {
+  return colKeys.flatMap((colKey) => {
     const dimParts = colDepth > 0 ? colKeyParts.get(colKey) || [TOTAL_LABEL] : [];
 
-    return valueFields.map(valueField => {
+    return valueFields.map((valueField) => {
       const parts = hasValueLevel ? [...dimParts, valueField.field.name] : dimParts;
       const displayParts = parts.length > 0 ? parts : [TOTAL_LABEL];
       const key = displayParts.join(KEY_SEPARATOR);
@@ -521,10 +524,10 @@ function buildDisplayRows(
 ): DisplayRow[] {
   const hasValueLevel = valueFields.length > 1 || rowDepth === 0;
 
-  return rowKeys.flatMap(rowKey => {
+  return rowKeys.flatMap((rowKey) => {
     const dimParts = rowDepth > 0 ? rowKeyParts.get(rowKey) || [TOTAL_LABEL] : [];
 
-    return valueFields.map(valueField => {
+    return valueFields.map((valueField) => {
       const parts = hasValueLevel ? [...dimParts, valueField.field.name] : dimParts;
       const displayParts = parts.length > 0 ? parts : [valueField.field.name];
       const label = formatParts(displayParts);
@@ -542,7 +545,7 @@ function buildDisplayRows(
 function getMetricNames(valueFields: PivotField[]): string[] {
   const metricNames = new Set<string>(BASE_METRICS);
 
-  valueFields.forEach(valueField => {
+  valueFields.forEach((valueField) => {
     const fieldName = valueField.field.name;
     if (!isCalculatedMetric(fieldName)) {
       metricNames.add(fieldName);
@@ -557,7 +560,7 @@ function getKeyInfo(row: DataRow, fields: PivotField[]): KeyInfo {
     return { key: TOTAL_LABEL, parts: [TOTAL_LABEL] };
   }
 
-  const parts = fields.map(field => String(row[field.field.name] ?? ''));
+  const parts = fields.map((field) => String(row[field.field.name] ?? ''));
   return { key: parts.join(KEY_SEPARATOR), parts };
 }
 
@@ -603,9 +606,9 @@ function buildRowTotals(
 ): Map<string, MetricSeriesMap> {
   const totals = new Map<string, MetricSeriesMap>();
 
-  rowKeys.forEach(rowKey => {
+  rowKeys.forEach((rowKey) => {
     const rowTotal = createMetricSeries(metricNames);
-    colKeys.forEach(colKey => {
+    colKeys.forEach((colKey) => {
       mergeInto(rowTotal, getCellData(dataMap, rowKey, colKey, metricNames), metricNames);
     });
     totals.set(rowKey, rowTotal);
@@ -622,9 +625,9 @@ function buildColumnTotals(
 ): Map<string, MetricSeriesMap> {
   const totals = new Map<string, MetricSeriesMap>();
 
-  colKeys.forEach(colKey => {
+  colKeys.forEach((colKey) => {
     const columnTotal = createMetricSeries(metricNames);
-    rowKeys.forEach(rowKey => {
+    rowKeys.forEach((rowKey) => {
       mergeInto(columnTotal, getCellData(dataMap, rowKey, colKey, metricNames), metricNames);
     });
     totals.set(colKey, columnTotal);
@@ -635,17 +638,21 @@ function buildColumnTotals(
 
 function mergeMany(seriesList: MetricSeriesMap[], metricNames: string[]): MetricSeriesMap {
   const merged = createMetricSeries(metricNames);
-  seriesList.forEach(series => mergeInto(merged, series, metricNames));
+  seriesList.forEach((series) => mergeInto(merged, series, metricNames));
   return merged;
 }
 
 function mergeInto(target: MetricSeriesMap, source: MetricSeriesMap, metricNames: string[]) {
-  metricNames.forEach(metricName => {
+  metricNames.forEach((metricName) => {
     target[metricName].push(...(source[metricName] || []));
   });
 }
 
-function getMetricValue(valueField: PivotField, metricData: MetricSeriesMap, constants: Record<string, number> = {}): number {
+function getMetricValue(
+  valueField: PivotField,
+  metricData: MetricSeriesMap,
+  constants: Record<string, number> = {}
+): number {
   const fieldName = valueField.field.name;
 
   if (isCalculatedMetric(fieldName)) {
@@ -658,7 +665,7 @@ function getMetricValue(valueField: PivotField, metricData: MetricSeriesMap, con
 function sumBaseMetrics(metricData: MetricSeriesMap): Record<string, number> {
   const aggregated: Record<string, number> = {};
 
-  BASE_METRICS.forEach(metric => {
+  BASE_METRICS.forEach((metric) => {
     aggregated[metric] = (metricData[metric] || []).reduce((sum, value) => sum + value, 0);
   });
 
@@ -740,7 +747,7 @@ function aggregateValues(values: number[], type: AggregationType): number {
 
 export function getUniqueValues(data: DataRow[], fieldName: string): string[] {
   const values = new Set<string>();
-  data.forEach(row => {
+  data.forEach((row) => {
     const val = String(row[fieldName]);
     if (val && val !== 'undefined' && val !== 'null') {
       values.add(val);

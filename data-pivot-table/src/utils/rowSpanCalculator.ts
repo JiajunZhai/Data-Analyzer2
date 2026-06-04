@@ -4,10 +4,7 @@
  * @param dimensionIndex 维度索引（0 为最外层）
  * @returns rowSpan 数组，0 表示该单元格被合并，不渲染
  */
-export function calculateRowSpans(
-  rowHeaders: string[][],
-  dimensionIndex: number
-): number[] {
+export function calculateRowSpans(rowHeaders: string[][], dimensionIndex: number): number[] {
   const spans: number[] = new Array(rowHeaders.length).fill(0);
   let groupStart = 0;
 
@@ -53,11 +50,6 @@ function isSameGroup(
 /**
  * 批量计算所有维度的 rowSpan
  */
-export function calculateAllRowSpans(
-  rowHeaders: string[][],
-  dimensionCount: number
-): number[][] {
-  return Array.from({ length: dimensionCount }, (_, idx) =>
-    calculateRowSpans(rowHeaders, idx)
-  );
+export function calculateAllRowSpans(rowHeaders: string[][], dimensionCount: number): number[][] {
+  return Array.from({ length: dimensionCount }, (_, idx) => calculateRowSpans(rowHeaders, idx));
 }

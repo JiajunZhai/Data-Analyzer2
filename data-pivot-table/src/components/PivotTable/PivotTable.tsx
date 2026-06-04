@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PivotResult, PivotTreeNode } from '../../types';
-import { calculateAllRowSpans } from '../../utils/rowSpanCalculator';
 import { animateTableRowHeaders } from '../../utils/animations';
+import { calculateAllRowSpans } from '../../utils/rowSpanCalculator';
 
 const KEY_SEPARATOR = '\u001f';
 const BASE_METRICS = ['注册用户', '曝光人数', '曝光次数', '广告收益', '点击次数'];
@@ -26,7 +27,11 @@ interface VisibleTreeRow {
   rowIndex?: number;
 }
 
-const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMessage = '请配置透视表字段以查看结果' }) => {
+const PivotTable: React.FC<PivotTableProps> = ({
+  result,
+  valueFieldName,
+  emptyMessage = '请配置透视表字段以查看结果',
+}) => {
   const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLTableElement>(null);
@@ -39,7 +44,7 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
 
     const rows: VisibleTreeRow[] = [];
     const walk = (nodes: PivotTreeNode[]) => {
-      nodes.forEach(node => {
+      nodes.forEach((node) => {
         const hasChildren = node.children.length > 0;
         const isExpanded = !collapsedNodeIds.has(node.id);
 
@@ -76,7 +81,7 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
   }, [result, collapsedNodeIds]);
 
   const handleTreeToggle = useCallback((nodeId: string) => {
-    setCollapsedNodeIds(prev => {
+    setCollapsedNodeIds((prev) => {
       const next = new Set(prev);
       if (next.has(nodeId)) {
         next.delete(nodeId);
@@ -95,39 +100,45 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
     setHoveredCell(null);
   }, []);
 
-  const isCellHighlighted = useCallback((rowIndex: number, colIndex: number): boolean => {
-    if (!hoveredCell) return false;
-    return hoveredCell.row === rowIndex || hoveredCell.col === colIndex;
-  }, [hoveredCell]);
+  const isCellHighlighted = useCallback(
+    (rowIndex: number, colIndex: number): boolean => {
+      if (!hoveredCell) return false;
+      return hoveredCell.row === rowIndex || hoveredCell.col === colIndex;
+    },
+    [hoveredCell]
+  );
 
-  const formatValue = useCallback((num: number, metricName?: string): { text: string; isEmpty: boolean } => {
-    if (num === 0) return { text: '-', isEmpty: true };
+  const formatValue = useCallback(
+    (num: number, metricName?: string): { text: string; isEmpty: boolean } => {
+      if (num === 0) return { text: '-', isEmpty: true };
 
-    const val = Number(num);
-    if (isNaN(val)) return { text: '-', isEmpty: true };
+      const val = Number(num);
+      if (isNaN(val)) return { text: '-', isEmpty: true };
 
-    let text: string;
-    if (metricName === '渗透率' || metricName === 'CTR') {
-      text = (val * 100).toFixed(2) + '%';
-    } else if (metricName === '收益占比%') {
-      text = val.toFixed(2) + '%';
-    } else if (metricName === 'ARPU') {
-      text = val.toFixed(4);
-    } else if (metricName === 'eCPM' || metricName === 'IPU') {
-      text = val.toFixed(2);
-    } else if (metricName === '广告收益') {
-      text = val.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-    } else if (BASE_METRICS.includes(metricName || '')) {
-      text = Math.round(val).toLocaleString('en-US');
-    } else {
-      text = val.toFixed(2);
-    }
+      let text: string;
+      if (metricName === '渗透率' || metricName === 'CTR') {
+        text = (val * 100).toFixed(2) + '%';
+      } else if (metricName === '收益占比%') {
+        text = val.toFixed(2) + '%';
+      } else if (metricName === 'ARPU') {
+        text = val.toFixed(4);
+      } else if (metricName === 'eCPM' || metricName === 'IPU') {
+        text = val.toFixed(2);
+      } else if (metricName === '广告收益') {
+        text = val.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      } else if (BASE_METRICS.includes(metricName || '')) {
+        text = Math.round(val).toLocaleString('en-US');
+      } else {
+        text = val.toFixed(2);
+      }
 
-    return { text, isEmpty: false };
-  }, []);
+      return { text, isEmpty: false };
+    },
+    []
+  );
 
   const rowSpans = useMemo(() => {
     if (canUseRowTree || !result?.rowHeaders || !result.rowDimensions) return [];
@@ -152,7 +163,7 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
     const timer = setTimeout(() => {
       const rows = tableRef.current?.querySelectorAll('tr');
       if (!rows) return;
-      rows.forEach(row => {
+      rows.forEach((row) => {
         const stickyCells = row.querySelectorAll('.frozen-cell-inner');
         let leftOffset = 0;
         stickyCells.forEach((cell) => {
@@ -165,14 +176,16 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
     return () => clearTimeout(timer);
   }, [result, visibleTreeRows.length]);
 
-  const isTotalRow = useCallback((rowIndex: number): boolean => {
-    if (!result?.rowHeaders) return false;
-    const row = result.rowHeaders[rowIndex];
-    const dimCount = result.valueAxis === 'rows'
-      ? result.rowDimensions.length - 1
-      : result.rowDimensions.length;
-    return row.slice(0, dimCount).every(val => val === '总计');
-  }, [result]);
+  const isTotalRow = useCallback(
+    (rowIndex: number): boolean => {
+      if (!result?.rowHeaders) return false;
+      const row = result.rowHeaders[rowIndex];
+      const dimCount =
+        result.valueAxis === 'rows' ? result.rowDimensions.length - 1 : result.rowDimensions.length;
+      return row.slice(0, dimCount).every((val) => val === '总计');
+    },
+    [result]
+  );
 
   if (!result) {
     return (
@@ -202,15 +215,29 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
   };
 
   const getDataMetricName = (rowIndex: number, colIndex: number): string => {
-    return columnValueFieldNames[colIndex] || rowValueFieldNames[rowIndex] || valueFieldNames[0] || valueFieldName || '';
+    return (
+      columnValueFieldNames[colIndex] ||
+      rowValueFieldNames[rowIndex] ||
+      valueFieldNames[0] ||
+      valueFieldName ||
+      ''
+    );
   };
 
   const getRowTotalMetricName = (rowIndex: number, totalIndex: number): string => {
-    return totalColumnValueFieldNames[totalIndex] || rowValueFieldNames[rowIndex] || valueFieldNames[totalIndex] || valueFieldName || '';
+    return (
+      totalColumnValueFieldNames[totalIndex] ||
+      rowValueFieldNames[rowIndex] ||
+      valueFieldNames[totalIndex] ||
+      valueFieldName ||
+      ''
+    );
   };
 
   const getTreeRowTotalMetricName = (totalIndex: number): string => {
-    return totalColumnValueFieldNames[totalIndex] || valueFieldNames[totalIndex] || valueFieldName || '';
+    return (
+      totalColumnValueFieldNames[totalIndex] || valueFieldNames[totalIndex] || valueFieldName || ''
+    );
   };
 
   const hasColumnLevels = columnLevels.length > 0;
@@ -257,7 +284,10 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
     }
 
     return (
-      <th className={`total-header total-header-spacer ${stickyRight}`} colSpan={totalColumnHeaders.length}>
+      <th
+        className={`total-header total-header-spacer ${stickyRight}`}
+        colSpan={totalColumnHeaders.length}
+      >
         &nbsp;
       </th>
     );
@@ -291,7 +321,11 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
     return '';
   };
 
-  const renderColumnHeader = (col: { value: string; colspan: number }, levelIdx: number, colIdx: number) => {
+  const renderColumnHeader = (
+    col: { value: string; colspan: number },
+    levelIdx: number,
+    colIdx: number
+  ) => {
     const isBoundary = isGroupBoundary(levelIdx, colIdx);
     const isSticky = levelIdx === 0 && col.colspan > 1;
 
@@ -311,7 +345,9 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
   };
 
   const renderTreeRowHeader = (treeRow: VisibleTreeRow) => (
-    <td className={`row-header frozen-row-header frozen-row-header-last dimension-col-end tree-row-header tree-row-header-${treeRow.type}`}>
+    <td
+      className={`row-header frozen-row-header frozen-row-header-last dimension-col-end tree-row-header tree-row-header-${treeRow.type}`}
+    >
       <div className="frozen-cell-inner tree-cell-inner">
         <div className="tree-label" style={{ paddingLeft: `${treeRow.depth * 18}px` }}>
           {treeRow.hasChildren ? (
@@ -335,15 +371,15 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
     </td>
   );
 
-  const renderTreeRows = () => (
+  const renderTreeRows = () =>
     visibleTreeRows.map((treeRow, ri) => {
       const isExpandedGroup = treeRow.type === 'group' && treeRow.isExpanded;
-      const dataValues = treeRow.data.length > 0
-        ? treeRow.data
-        : Array.from({ length: dataColumnCount }, () => 0);
-      const totalValues = treeRow.rowTotalValues.length > 0
-        ? treeRow.rowTotalValues
-        : Array.from({ length: totalColumnHeaders.length }, () => 0);
+      const dataValues =
+        treeRow.data.length > 0 ? treeRow.data : Array.from({ length: dataColumnCount }, () => 0);
+      const totalValues =
+        treeRow.rowTotalValues.length > 0
+          ? treeRow.rowTotalValues
+          : Array.from({ length: totalColumnHeaders.length }, () => 0);
 
       return (
         <tr
@@ -369,7 +405,10 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
               );
             }
 
-            const { text, isEmpty } = formatValue(val, getDataMetricName(treeRow.rowIndex ?? 0, ci));
+            const { text, isEmpty } = formatValue(
+              val,
+              getDataMetricName(treeRow.rowIndex ?? 0, ci)
+            );
             return (
               <td
                 key={ci}
@@ -393,17 +432,19 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
 
             const { text, isEmpty } = formatValue(val, getTreeRowTotalMetricName(ti));
             return (
-              <td key={ti} className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>
+              <td
+                key={ti}
+                className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+              >
                 {text}
               </td>
             );
           })}
         </tr>
       );
-    })
-  );
+    });
 
-  const renderFlatRows = () => (
+  const renderFlatRows = () =>
     rowHeaders.map((row, ri) => {
       const totalRow = isTotalRow(ri);
 
@@ -416,11 +457,7 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
 
             if (totalRow && ci === 0) {
               return (
-                <td
-                  key={ci}
-                  className="row-header total-label"
-                  colSpan={dimensionCount}
-                >
+                <td key={ci} className="row-header total-label" colSpan={dimensionCount}>
                   <div className="frozen-cell-inner">列总计</div>
                 </td>
               );
@@ -457,15 +494,17 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
           {(rowTotalValues[ri] || []).map((val, ti) => {
             const { text, isEmpty } = formatValue(val, getRowTotalMetricName(ri, ti));
             return (
-              <td key={ti} className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>
+              <td
+                key={ti}
+                className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+              >
                 {text}
               </td>
             );
           })}
         </tr>
       );
-    })
-  );
+    });
 
   return (
     <div className="pivot-table-container" ref={containerRef}>
@@ -474,8 +513,8 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
           {hasColumnLevels ? (
             columnLevels.map((level, levelIdx) => (
               <tr key={levelIdx}>
-                {levelIdx === 0 && (
-                  canUseRowTree ? (
+                {levelIdx === 0 &&
+                  (canUseRowTree ? (
                     <th className="corner-cell tree-corner-cell" rowSpan={columnLevels.length}>
                       {rowHeaderTitle}
                     </th>
@@ -485,8 +524,7 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
                         {dim}
                       </th>
                     ))
-                  )
-                )}
+                  ))}
                 {level.map((col, colIdx) => renderColumnHeader(col, levelIdx, colIdx))}
                 {renderTotalHeaderCells(levelIdx, columnLevels.length)}
               </tr>
@@ -497,16 +535,21 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
                 <th className="corner-cell tree-corner-cell">{rowHeaderTitle}</th>
               ) : (
                 rowDimensions.map((dim) => (
-                  <th key={dim} className="corner-cell">{dim}</th>
+                  <th key={dim} className="corner-cell">
+                    {dim}
+                  </th>
                 ))
               )}
               {columnHeaders.map((col, idx) => (
-                <th key={idx} className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}>
+                <th
+                  key={idx}
+                  className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                >
                   {formatHeader(col)}
                 </th>
               ))}
-              {totalColumnHeaders.length > 0 && (
-                hasMultipleTotalColumns ? (
+              {totalColumnHeaders.length > 0 &&
+                (hasMultipleTotalColumns ? (
                   totalColumnHeaders.map((header, idx) => (
                     <th key={idx} className="total-header total-header-leaf total-header-sticky">
                       {header}
@@ -514,8 +557,7 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
                   ))
                 ) : (
                   <th className="total-header total-header-sticky">行总计</th>
-                )
-              )}
+                ))}
             </tr>
           )}
         </thead>
@@ -524,15 +566,24 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
 
           {totalRows.map((totalRow, totalRowIdx) => {
             return (
-              <tr key={totalRow.label} className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}>
+              <tr
+                key={totalRow.label}
+                className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}
+              >
                 <td className="total-label frozen-row-header" colSpan={dimensionCount}>
                   <div className="frozen-cell-inner">{totalRow.label}</div>
                 </td>
                 {totalRow.values.map((val, idx) => {
-                  const { text, isEmpty } = formatValue(val, totalRow.valueFieldNames[idx] || columnValueFieldNames[idx]);
+                  const { text, isEmpty } = formatValue(
+                    val,
+                    totalRow.valueFieldNames[idx] || columnValueFieldNames[idx]
+                  );
                   const boundaryClass = getGroupBoundaryClass(idx);
                   return (
-                    <td key={idx} className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}>
+                    <td
+                      key={idx}
+                      className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+                    >
                       {text}
                     </td>
                   );
@@ -543,7 +594,10 @@ const PivotTable: React.FC<PivotTableProps> = ({ result, valueFieldName, emptyMe
                     totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx]
                   );
                   return (
-                    <td key={idx} className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>
+                    <td
+                      key={idx}
+                      className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                    >
                       {text}
                     </td>
                   );

@@ -1,6 +1,12 @@
-import { openDB, type IDBPDatabase } from 'idb';
-import type { StoredDataset, StoredMapping, StoredConfig, StorageQuota, UserPreferences } from '../types/storage';
-import { STORAGE_LIMITS, estimateDataSize, generateId } from '../utils/storageUtils';
+import { type IDBPDatabase, openDB } from 'idb';
+import type {
+  StorageQuota,
+  StoredConfig,
+  StoredDataset,
+  StoredMapping,
+  UserPreferences,
+} from '../types/storage';
+import { estimateDataSize, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
 
 const DB_NAME = 'data-pivot-table';
 const DB_VERSION = 2;
@@ -9,17 +15,17 @@ interface PivotTableDB {
   datasets: {
     key: string;
     value: StoredDataset;
-    indexes: { 'name': string; 'createdAt': number };
+    indexes: { name: string; createdAt: number };
   };
   mappings: {
     key: string;
     value: StoredMapping;
-    indexes: { 'name': string; 'createdAt': number; 'datasetId': string };
+    indexes: { name: string; createdAt: number; datasetId: string };
   };
   configs: {
     key: string;
     value: StoredConfig;
-    indexes: { 'datasetId': string; 'name': string };
+    indexes: { datasetId: string; name: string };
   };
   preferences: {
     key: string;
@@ -67,7 +73,9 @@ class StorageService {
 
   // ============ 数据集操作 ============
 
-  async saveDataset(dataset: Omit<StoredDataset, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async saveDataset(
+    dataset: Omit<StoredDataset, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<string> {
     const db = this.getDb();
     const count = await db.count('datasets');
     if (count >= STORAGE_LIMITS.MAX_DATASETS) {
@@ -128,7 +136,9 @@ class StorageService {
 
   // ============ 映射操作（全局） ============
 
-  async saveMapping(mapping: Omit<StoredMapping, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async saveMapping(
+    mapping: Omit<StoredMapping, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<string> {
     const db = this.getDb();
     const count = await db.count('mappings');
     if (count >= STORAGE_LIMITS.MAX_MAPPINGS) {

@@ -1,0 +1,237 @@
+/* PivotTable CSS Module */
+
+.pivotTableContainer {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.pivotTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pivotTable th,
+.pivotTable td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.pivotTable th {
+  background: var(--zone-bg);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pivotTable td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 行表头样式 */
+.rowHeader {
+  background: var(--bg-primary);
+  font-weight: 500;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+/* 冻结行表头 */
+.frozenRowHeader {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--bg-primary);
+}
+
+.frozenRowHeaderLast {
+  border-right: 2px solid var(--border-color);
+}
+
+/* 冻结单元格内部 */
+.frozenCellInner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 列表头样式 */
+.colHeader {
+  background: var(--zone-bg);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 总计行样式 */
+.totalRow {
+  background: var(--total-row-bg);
+  font-weight: 600;
+  border-top: var(--total-border-top);
+}
+
+.totalRowSticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+}
+
+/* 总计单元格 */
+.totalCell {
+  background: var(--total-row-bg);
+  font-weight: 600;
+}
+
+/* 数据单元格 */
+.dataCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 空单元格 */
+.emptyCell {
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* 高亮单元格 */
+.cellHighlight {
+  background: var(--hover-bg);
+}
+
+/* 数字格式化 */
+.numberFormatted {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* 分组边界列 */
+.groupBoundaryCol {
+  border-right: 2px solid var(--border-color);
+}
+
+/* 维度列结束 */
+.dimensionColEnd {
+  border-right: 2px solid var(--border-color);
+}
+
+/* 空状态 */
+.pivotTableEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-muted);
+  font-size: 14px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+/* 角落单元格 */
+.cornerCell {
+  background: var(--zone-bg);
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 树形结构相关 */
+.treeRowHeader {
+  font-weight: 500;
+}
+
+.treeCellInner {
+  display: flex;
+  align-items: center;
+}
+
+.treeLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treeToggle {
+  cursor: pointer;
+  user-select: none;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.treeToggle:hover {
+  color: var(--text-primary);
+}
+
+.treeToggleSpacer {
+  width: 16px;
+}
+
+.treeLabelText {
+  font-weight: 500;
+}
+
+/* 树形行样式 */
+.treeTableRow {
+  transition: background-color 0.15s ease;
+}
+
+.treeRowGroup {
+  font-weight: 500;
+}
+
+.treeRowSubtotal {
+  font-style: italic;
+  background: var(--total-row-bg);
+}
+
+.treeSubtotalCell {
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* 粘性表头标签 */
+.stickyHeaderLabel {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 总计表头 */
+.totalHeader {
+  background: var(--zone-bg);
+  font-weight: 600;
+  text-align: center;
+}
+
+.totalHeaderLeaf {
+  text-align: right;
+}
+
+.totalHeaderSpacer {
+  width: 1px;
+  padding: 0;
+}
+
+/* 总计标签 */
+.totalLabel {
+  font-weight: 600;
+  text-align: left;
+}
+
+/* 大总计 */
+.grandTotal {
+  font-weight: 700;
+  background: var(--total-row-bg);
+}

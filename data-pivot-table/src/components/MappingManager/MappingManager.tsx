@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Link2, Paperclip, Pencil, FileEdit, Upload, Trash2 } from 'lucide-react';
+import { FileEdit, Link2, Paperclip, Pencil, Trash2, Upload } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StoredMapping } from '../../types/storage';
 import MappingEditorModal from './MappingEditorModal';
 
@@ -66,25 +67,34 @@ const MappingManager: React.FC<MappingManagerProps> = ({
     setEditingName('');
   }, []);
 
-  const handleDelete = useCallback((id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('确定要删除这个映射吗？删除后无法恢复。')) {
-      onMappingDelete(id);
-    }
-  }, [onMappingDelete]);
+  const handleDelete = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (confirm('确定要删除这个映射吗？删除后无法恢复。')) {
+        onMappingDelete(id);
+      }
+    },
+    [onMappingDelete]
+  );
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onMappingUpload(file);
-      e.target.value = '';
-    }
-  }, [onMappingUpload]);
+  const handleFileUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        onMappingUpload(file);
+        e.target.value = '';
+      }
+    },
+    [onMappingUpload]
+  );
 
-  const handleEditorSave = useCallback((id: string, updates: Partial<StoredMapping>) => {
-    onMappingUpdate(id, updates);
-    setEditorMapping(null);
-  }, [onMappingUpdate]);
+  const handleEditorSave = useCallback(
+    (id: string, updates: Partial<StoredMapping>) => {
+      onMappingUpdate(id, updates);
+      setEditorMapping(null);
+    },
+    [onMappingUpdate]
+  );
 
   return (
     <>
@@ -93,7 +103,9 @@ const MappingManager: React.FC<MappingManagerProps> = ({
           className={`file-capsule mapping-trigger ${isOpen ? 'capsule-dragging' : ''}`}
           onClick={() => setIsOpen(!isOpen)}
         >
-          <span className="capsule-icon"><Link2 size={14} /></span>
+          <span className="capsule-icon">
+            <Link2 size={14} />
+          </span>
           <span className="capsule-name">场景映射</span>
           <span className="capsule-action">{isOpen ? '▲' : '▼'}</span>
         </div>
@@ -108,7 +120,7 @@ const MappingManager: React.FC<MappingManagerProps> = ({
 
             {mappings.length > 0 && (
               <div className="mapping-list">
-                {mappings.map(mapping => (
+                {mappings.map((mapping) => (
                   <div key={mapping.id} className="mapping-card">
                     {editingId === mapping.id ? (
                       <div className="mapping-rename">
@@ -127,16 +139,26 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                     ) : (
                       <>
                         <div className="mapping-info">
-                          <div className="mapping-name"><Paperclip size={13} style={{ marginRight: 4 }} /> {mapping.name}</div>
+                          <div className="mapping-name">
+                            <Paperclip size={13} style={{ marginRight: 4 }} /> {mapping.name}
+                          </div>
                           <div className="mapping-meta">
                             {mapping.scenarioCount} 个场景 · {mapping.mappedRowCount} 行已匹配
                           </div>
                         </div>
                         <div className="mapping-actions">
-                          <button onClick={() => handleRenameStart(mapping)} title="重命名"><Pencil size={14} /></button>
-                          <button onClick={() => setEditorMapping(mapping)} title="编辑映射"><FileEdit size={14} /></button>
-                          <button onClick={() => onMappingExport(mapping)} title="导出"><Upload size={14} /></button>
-                          <button onClick={(e) => handleDelete(mapping.id, e)} title="删除"><Trash2 size={14} /></button>
+                          <button onClick={() => handleRenameStart(mapping)} title="重命名">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => setEditorMapping(mapping)} title="编辑映射">
+                            <FileEdit size={14} />
+                          </button>
+                          <button onClick={() => onMappingExport(mapping)} title="导出">
+                            <Upload size={14} />
+                          </button>
+                          <button onClick={(e) => handleDelete(mapping.id, e)} title="删除">
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </>
                     )}

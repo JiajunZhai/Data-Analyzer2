@@ -33,15 +33,18 @@ export function parseExcelFile(file: File): Promise<{ headers: string[]; data: D
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as (string | number)[][];
-        
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as (
+          | string
+          | number
+        )[][];
+
         if (jsonData.length === 0) {
           reject(new Error('文件为空'));
           return;
         }
 
         const headers = jsonData[0].map(String);
-        const rows = jsonData.slice(1).map(row => {
+        const rows = jsonData.slice(1).map((row) => {
           const obj: DataRow = {};
           headers.forEach((header, index) => {
             obj[header] = row[index] ?? '';
@@ -65,15 +68,15 @@ export function parseCSVFile(file: File): Promise<{ headers: string[]; data: Dat
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split('\n').filter(line => line.trim());
-        
+        const lines = text.split('\n').filter((line) => line.trim());
+
         if (lines.length === 0) {
           reject(new Error('文件为空'));
           return;
         }
 
         const headers = parseCSVLine(lines[0]);
-        const rows = lines.slice(1).map(line => {
+        const rows = lines.slice(1).map((line) => {
           const values = parseCSVLine(line);
           const obj: DataRow = {};
           headers.forEach((header, index) => {
@@ -99,7 +102,7 @@ export function parseMappingCSV(file: File): Promise<{ headers: string[]; rows: 
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split('\n').filter(line => line.trim());
+        const lines = text.split('\n').filter((line) => line.trim());
 
         if (lines.length < 2) {
           reject(new Error('映射表至少需要包含表头和一行数据'));
@@ -107,7 +110,7 @@ export function parseMappingCSV(file: File): Promise<{ headers: string[]; rows: 
         }
 
         const headers = parseCSVLine(lines[0]);
-        const rows = lines.slice(1).map(line => parseCSVLine(line));
+        const rows = lines.slice(1).map((line) => parseCSVLine(line));
 
         resolve({ headers, rows });
       } catch (error) {

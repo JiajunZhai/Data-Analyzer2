@@ -65,7 +65,7 @@ export interface PivotTreeNode {
 }
 
 export interface PivotResult {
-  rowHeaders: string[][];  // 二维数组，每行包含多个维度值
+  rowHeaders: string[][]; // 二维数组，每行包含多个维度值
   rowDimensions: string[]; // 行维度名称，如 ['国家', '日期']
   rowTree?: PivotTreeNode[];
   columnHeaders: string[];

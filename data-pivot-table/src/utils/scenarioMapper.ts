@@ -38,26 +38,20 @@ export function buildLookupMap(headers: string[], rows: string[][]): ScenarioMap
   };
 }
 
-export function applyScenarioMapping(
-  data: DataRow[],
-  mapping: ScenarioMapping
-): DataRow[] {
+export function applyScenarioMapping(data: DataRow[], mapping: ScenarioMapping): DataRow[] {
   const { lookupMap } = mapping;
 
-  return data.map(row => {
+  return data.map((row) => {
     const app = String(row['应用'] ?? '');
     const orig = String(row['广告场景'] ?? '');
     const key = app + KEY_SEP + orig;
     const mapped = lookupMap.get(key) ?? orig;
 
-    return { ...row, '实际场景': mapped };
+    return { ...row, 实际场景: mapped };
   });
 }
 
-export function validateMappingAppCodes(
-  mappingAppCodes: string[],
-  data: DataRow[]
-): string[] {
-  const dataAppCodes = new Set(data.map(row => String(row['应用'] ?? '')));
-  return mappingAppCodes.filter(code => !dataAppCodes.has(code));
+export function validateMappingAppCodes(mappingAppCodes: string[], data: DataRow[]): string[] {
+  const dataAppCodes = new Set(data.map((row) => String(row['应用'] ?? '')));
+  return mappingAppCodes.filter((code) => !dataAppCodes.has(code));
 }

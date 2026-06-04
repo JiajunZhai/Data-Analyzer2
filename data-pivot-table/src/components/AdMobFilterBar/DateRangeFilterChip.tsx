@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface DateRangeFilterChipProps {
   icon: React.ReactNode;
@@ -23,9 +24,11 @@ function formatDate(d: Date): string {
 }
 
 function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 function isDateInRange(date: Date, start: Date, end: Date): boolean {
@@ -56,7 +59,20 @@ function addMonths(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + n, 1);
 }
 
-const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+const MONTH_NAMES = [
+  '1月',
+  '2月',
+  '3月',
+  '4月',
+  '5月',
+  '6月',
+  '7月',
+  '8月',
+  '9月',
+  '10月',
+  '11月',
+  '12月',
+];
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
 interface Preset {
@@ -110,7 +126,10 @@ const PRESETS: Preset[] = [
       const last = sorted[sorted.length - 1];
       const prevMonth = new Date(last.getFullYear(), last.getMonth() - 1, 1);
       const endOfPrev = new Date(last.getFullYear(), last.getMonth(), 0);
-      return [prevMonth < sorted[0] ? sorted[0] : prevMonth, endOfPrev > sorted[sorted.length - 1] ? sorted[sorted.length - 1] : endOfPrev];
+      return [
+        prevMonth < sorted[0] ? sorted[0] : prevMonth,
+        endOfPrev > sorted[sorted.length - 1] ? sorted[sorted.length - 1] : endOfPrev,
+      ];
     },
   },
 ];
@@ -139,7 +158,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
 
   const sortedDates = useMemo(() => {
     return allValues
-      .map(v => parseDate(v))
+      .map((v) => parseDate(v))
       .filter((d): d is Date => d !== null)
       .sort((a, b) => a.getTime() - b.getTime());
   }, [allValues]);
@@ -155,7 +174,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       return;
     }
     const dates = selectedValues
-      .map(v => parseDate(v))
+      .map((v) => parseDate(v))
       .filter((d): d is Date => d !== null)
       .sort((a, b) => a.getTime() - b.getTime());
     if (dates.length > 0) {
@@ -200,40 +219,46 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
   const effectiveStart = rangeStart ?? (hoverDate && !rangeEnd ? hoverDate : null);
   const effectiveEnd = rangeEnd ?? (hoverDate && rangeStart && !rangeEnd ? hoverDate : null);
 
-  const handleDayClick = useCallback((date: Date) => {
-    setActivePreset(null);
-    if (!rangeStart || (rangeStart && rangeEnd)) {
-      setRangeStart(date);
-      setRangeEnd(null);
-    } else {
-      if (date.getTime() < rangeStart.getTime()) {
-        setRangeEnd(rangeStart);
+  const handleDayClick = useCallback(
+    (date: Date) => {
+      setActivePreset(null);
+      if (!rangeStart || (rangeStart && rangeEnd)) {
         setRangeStart(date);
+        setRangeEnd(null);
       } else {
-        setRangeEnd(date);
+        if (date.getTime() < rangeStart.getTime()) {
+          setRangeEnd(rangeStart);
+          setRangeStart(date);
+        } else {
+          setRangeEnd(date);
+        }
       }
-    }
-    setHoverDate(null);
-  }, [rangeStart, rangeEnd]);
+      setHoverDate(null);
+    },
+    [rangeStart, rangeEnd]
+  );
 
-  const handlePresetClick = useCallback((index: number) => {
-    setActivePreset(index);
-    const preset = PRESETS[index];
-    const range = preset.getRange(sortedDates);
-    if (!range) {
-      setRangeStart(null);
-      setRangeEnd(null);
-      onSelectionChange([...allValues]);
+  const handlePresetClick = useCallback(
+    (index: number) => {
+      setActivePreset(index);
+      const preset = PRESETS[index];
+      const range = preset.getRange(sortedDates);
+      if (!range) {
+        setRangeStart(null);
+        setRangeEnd(null);
+        onSelectionChange([...allValues]);
+        setIsOpen(false);
+        return;
+      }
+      setRangeStart(range[0]);
+      setRangeEnd(range[1]);
+      const dates = generateDateRange(range[0], range[1]);
+      const validDates = dates.filter((d) => allValues.includes(d));
+      onSelectionChange(validDates);
       setIsOpen(false);
-      return;
-    }
-    setRangeStart(range[0]);
-    setRangeEnd(range[1]);
-    const dates = generateDateRange(range[0], range[1]);
-    const validDates = dates.filter(d => allValues.includes(d));
-    onSelectionChange(validDates);
-    setIsOpen(false);
-  }, [sortedDates, allValues, onSelectionChange]);
+    },
+    [sortedDates, allValues, onSelectionChange]
+  );
 
   const handleConfirm = useCallback(() => {
     if (!rangeStart) {
@@ -242,7 +267,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       onSelectionChange([formatDate(rangeStart)]);
     } else {
       const dates = generateDateRange(rangeStart, rangeEnd);
-      const validDates = dates.filter(d => allValues.includes(d));
+      const validDates = dates.filter((d) => allValues.includes(d));
       onSelectionChange(validDates);
     }
     setIsOpen(false);
@@ -293,7 +318,9 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       isStart ? 'range-start' : '',
       isEnd ? 'range-end' : '',
       isInRange ? 'in-range' : '',
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     return (
       <div
@@ -344,27 +371,47 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
           </div>
           <div className="date-calendar">
             <div className="calendar-header">
-              <button className="calendar-nav-btn" onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}>
+              <button
+                className="calendar-nav-btn"
+                onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}
+              >
                 ‹
               </button>
-              <span className="calendar-title">{year}年{MONTH_NAMES[month]}</span>
-              <button className="calendar-nav-btn" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+              <span className="calendar-title">
+                {year}年{MONTH_NAMES[month]}
+              </span>
+              <button
+                className="calendar-nav-btn"
+                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              >
                 ›
               </button>
             </div>
             <div className="calendar-weekdays">
-              {WEEKDAYS.map(w => <div key={w} className="calendar-weekday">{w}</div>)}
+              {WEEKDAYS.map((w) => (
+                <div key={w} className="calendar-weekday">
+                  {w}
+                </div>
+              ))}
             </div>
-            <div className="calendar-grid">
-              {calendarDays.map((day, i) => renderDay(day, i))}
-            </div>
+            <div className="calendar-grid">{calendarDays.map((day, i) => renderDay(day, i))}</div>
             <div className="calendar-footer">
               <span className="calendar-footer-hint">
                 {rangeStart && !rangeEnd ? '请点击结束日期' : '点击选择开始日期'}
               </span>
               <div className="calendar-footer-buttons">
-                <button className="filter-dropdown-btn filter-dropdown-btn-cancel" onClick={handleCancel}>取消</button>
-                <button className="filter-dropdown-btn filter-dropdown-btn-confirm" onClick={handleConfirm}>确认</button>
+                <button
+                  className="filter-dropdown-btn filter-dropdown-btn-cancel"
+                  onClick={handleCancel}
+                >
+                  取消
+                </button>
+                <button
+                  className="filter-dropdown-btn filter-dropdown-btn-confirm"
+                  onClick={handleConfirm}
+                >
+                  确认
+                </button>
               </div>
             </div>
           </div>

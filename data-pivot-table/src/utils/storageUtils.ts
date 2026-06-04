@@ -6,7 +6,11 @@ export const STORAGE_LIMITS = {
 };
 
 export const estimateDataSize = (data: unknown[]): number => {
-  return new Blob([JSON.stringify(data)]).size;
+  if (data.length === 0) return 0;
+  const sampleSize = Math.min(100, data.length);
+  const sample = data.slice(0, sampleSize);
+  const sampleBytes = new Blob([JSON.stringify(sample)]).size;
+  return Math.round((sampleBytes / sampleSize) * data.length);
 };
 
 export const formatBytes = (bytes: number): string => {
@@ -16,7 +20,7 @@ export const formatBytes = (bytes: number): string => {
 };
 
 export const generateId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return crypto.randomUUID();
 };
 
 export const generateDatasetName = (fileName: string): string => {

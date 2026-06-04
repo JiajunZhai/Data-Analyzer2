@@ -1,14 +1,15 @@
-import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { Link2 } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
+import { Link2 } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Field, PivotField } from '../types';
-import { animateFieldEntry, animateCollapse } from '../utils/animations';
-import { getFieldType, getSpatialSortableId } from '../utils/fieldHelpers';
+import { animateCollapse, animateFieldEntry } from '../utils/animations';
 import type { SpatialZoneId } from '../utils/fieldHelpers';
+import { getFieldType, getSpatialSortableId } from '../utils/fieldHelpers';
 
 // 注册 useGSAP 插件
 gsap.registerPlugin(useGSAP);
@@ -46,14 +47,7 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
   const innerRef = useRef<HTMLDivElement>(null);
   const prevActiveRef = useRef(active);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: getSpatialSortableId(zoneId, field.name),
     data: {
       type: 'spatial-capsule',
@@ -75,7 +69,11 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
 
   const stateClass = active ? 'active' : disabled ? 'locked' : 'inactive';
   const mappedClass = field.isMapped ? 'mapped' : '';
-  const title = disabled ? disabledReason : active ? '拖拽排序，或拖到备选区停用' : '拖拽到插槽或已启用区启用';
+  const title = disabled
+    ? disabledReason
+    : active
+      ? '拖拽排序，或拖到备选区停用'
+      : '拖拽到插槽或已启用区启用';
 
   useEffect(() => {
     if (prevActiveRef.current !== active && innerRef.current) {
@@ -96,7 +94,11 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
       <div ref={innerRef} className="field-capsule-inner">
         <span className="spatial-capsule-name">{field.name}</span>
         {field.isCalculated && <span className="spatial-capsule-badge">ƒx</span>}
-        {field.isMapped && <span className="spatial-capsule-badge mapped-badge"><Link2 size={11} /></span>}
+        {field.isMapped && (
+          <span className="spatial-capsule-badge mapped-badge">
+            <Link2 size={11} />
+          </span>
+        )}
         {sortable && (
           <span className="spatial-capsule-handle" aria-label="拖拽排序">
             ⋮⋮
@@ -114,12 +116,7 @@ interface PrioritySlotProps {
   disabledReason?: string;
 }
 
-const PrioritySlot: React.FC<PrioritySlotProps> = ({
-  zoneId,
-  index,
-  field,
-  disabledReason,
-}) => {
+const PrioritySlot: React.FC<PrioritySlotProps> = ({ zoneId, index, field, disabledReason }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `${zoneId}-slot-${index}`,
     data: {
@@ -167,18 +164,21 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   const containerRef = useRef<HTMLElement>(null);
   const inactiveContentRef = useRef<HTMLDivElement>(null);
 
-  const activeNames = useMemo(() => activeFields.map(pivotField => pivotField.field.name), [activeFields]);
+  const activeNames = useMemo(
+    () => activeFields.map((pivotField) => pivotField.field.name),
+    [activeFields]
+  );
   const activeNameSet = useMemo(() => new Set(activeNames), [activeNames]);
   const activeItems = useMemo(
-    () => activeFields.map(pivotField => pivotField.field),
+    () => activeFields.map((pivotField) => pivotField.field),
     [activeFields]
   );
   const inactiveItems = useMemo(
-    () => fields.filter(field => !activeNameSet.has(field.name)),
+    () => fields.filter((field) => !activeNameSet.has(field.name)),
     [fields, activeNameSet]
   );
 
-  const sortableIds = activeNames.map(fieldName => getSpatialSortableId(id, fieldName));
+  const sortableIds = activeNames.map((fieldName) => getSpatialSortableId(id, fieldName));
 
   // 已启用区 droppable
   const { setNodeRef: setActiveRef, isOver: isOverActive } = useDroppable({
@@ -200,9 +200,12 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   });
 
   // 使用 useGSAP 管理动画上下文
-  const { contextSafe } = useGSAP(() => {
-    // 初始化动画设置
-  }, { scope: containerRef });
+  const { contextSafe } = useGSAP(
+    () => {
+      // 初始化动画设置
+    },
+    { scope: containerRef }
+  );
 
   // 折叠切换动画 - 使用 useCallback 定义，在事件处理时调用
   const toggleInactive = useCallback(() => {
@@ -229,7 +232,10 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   const slotItems = Array.from({ length: 5 }, (_, index) => activeItems[index]);
 
   return (
-    <section ref={containerRef} className={`spatial-zone spatial-zone-${id} spatial-zone-${orientation}`}>
+    <section
+      ref={containerRef}
+      className={`spatial-zone spatial-zone-${id} spatial-zone-${orientation}`}
+    >
       <div className="spatial-zone-header">
         <span className="spatial-zone-title">{title}</span>
         <span className="spatial-zone-count">{activeFields.length}</span>
@@ -239,10 +245,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
           <div className="spatial-zone-empty">{hint}</div>
         ) : isHorizontal ? (
           <div className="column-flow-zone">
-            <div
-              ref={setActiveRef}
-              className={`column-flow-active ${activeDropClass}`}
-            >
+            <div ref={setActiveRef} className={`column-flow-active ${activeDropClass}`}>
               <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
                 <div className="priority-slots-track priority-slots-columns">
                   {slotItems.map((field, index) => (
@@ -255,18 +258,13 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                   ))}
                 </div>
               </SortableContext>
-              {activeItems.length === 0 && (
-                <div className="column-flow-placeholder">拖入维度</div>
-              )}
+              {activeItems.length === 0 && <div className="column-flow-placeholder">拖入维度</div>}
             </div>
 
             <div className="column-flow-divider" aria-hidden="true" />
 
-            <div
-              ref={setInactiveRef}
-              className={`column-flow-inactive ${inactiveDropClass}`}
-            >
-              {inactiveItems.map(field => {
+            <div ref={setInactiveRef} className={`column-flow-inactive ${inactiveDropClass}`}>
+              {inactiveItems.map((field) => {
                 const disabled = disabledFieldNames.has(field.name);
                 return (
                   <FieldCapsule
@@ -309,7 +307,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                       ))}
                     </div>
                   ) : (
-                    activeItems.map(field => (
+                    activeItems.map((field) => (
                       <FieldCapsule
                         key={field.name}
                         field={field}
@@ -323,7 +321,9 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                   )}
                 </SortableContext>
                 {activeItems.length === 0 && (
-                  <div className="zone-placeholder">{usesPrioritySlots ? '拖入插槽以启用' : '拖入字段以启用'}</div>
+                  <div className="zone-placeholder">
+                    {usesPrioritySlots ? '拖入插槽以启用' : '拖入字段以启用'}
+                  </div>
                 )}
               </div>
             </div>
@@ -342,7 +342,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                   ref={setInactiveRef}
                   className={`sub-drag-zone zone-inactive ${inactiveDropClass}`}
                 >
-                  {inactiveItems.map(field => {
+                  {inactiveItems.map((field) => {
                     const disabled = disabledFieldNames.has(field.name);
                     return (
                       <FieldCapsule

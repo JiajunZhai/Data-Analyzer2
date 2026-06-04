@@ -11,6 +11,9 @@
 - **数据聚合**: 支持求和、平均、计数、最小、最大聚合方式
 - **计算字段**: 内置 eCPM、CTR、ARPU、渗透率、IPU 五个常用指标（加权计算）
 - **双值轴**: 支持将指标放在行轴或列轴
+- **场景映射**: 支持导入场景映射 CSV，自动转换广告场景名称
+- **配置管理**: 支持保存/加载透视表配置
+- **数据持久化**: 使用 IndexedDB 本地存储数据集和配置
 
 ## 🚀 快速启动
 
@@ -97,34 +100,87 @@
 - **构建工具**: Vite 8
 - **拖拽库**: @dnd-kit
 - **Excel解析**: xlsx (SheetJS)
+- **动画库**: GSAP
+- **存储**: IndexedDB (idb)
+- **代码格式化**: Biome
+- **单元测试**: Vitest + Testing Library
+- **端到端测试**: Playwright
 
 ## 📦 项目结构
 
 ```
 src/
 ├── components/
-│   ├── AdMobFilterBar/   # 顶栏筛选器组件
-│   ├── FileUpload/       # 文件上传组件
-│   └── PivotTable/       # 透视表渲染组件
-│   └── SpatialFieldZone  # 空间字段区域组件
-├── types/                # TypeScript 类型定义
+│   ├── AdMobFilterBar/    # 顶栏筛选器组件
+│   ├── ConfigManager/     # 配置管理组件
+│   ├── DataSourceManager/ # 数据源管理组件
+│   ├── FileUpload/        # 文件上传组件
+│   ├── MappingManager/    # 映射管理组件
+│   ├── PivotTable/        # 透视表渲染组件
+│   └── SpatialFieldZone   # 空间字段区域组件
+├── hooks/                 # 自定义 Hooks
+│   ├── usePivotState.ts   # 透视表状态管理
+│   ├── useDatasetManager.ts # 数据集管理
+│   ├── useDragAndDrop.ts  # 拖拽逻辑
+│   ├── useMappings.ts     # 映射管理
+│   └── useConfigs.ts      # 配置管理
+├── services/
+│   └── storage.ts         # IndexedDB 存储服务
+├── styles/                # 样式文件
+│   ├── variables.css      # CSS 变量
+│   └── global.css         # 全局样式
+├── types/                 # TypeScript 类型定义
 ├── utils/
-│   ├── aggregator.ts     # 数据聚合引擎
+│   ├── aggregator.ts      # 数据聚合引擎
 │   ├── calculatedField.ts # 计算字段逻辑
-│   ├── fieldDetector.ts  # 字段类型自动检测
-│   └── fileParser.ts     # Excel/CSV 文件解析
-├── App.tsx               # 主应用组件
-└── App.css               # 样式文件
+│   ├── fieldDetector.ts   # 字段类型自动检测
+│   ├── fileParser.ts      # Excel/CSV 文件解析
+│   └── __tests__/         # 单元测试
+├── App.tsx                # 主应用组件
+└── App.css                # 样式文件
 ```
 
-## 🔧 构建部署
+## 🔧 可用脚本
 
+| 脚本 | 说明 |
+|------|------|
+| `npm run dev` | 启动开发服务器 |
+| `npm run build` | 构建生产版本 |
+| `npm run preview` | 预览构建结果 |
+| `npm run test` | 运行单元测试（watch 模式） |
+| `npm run test:run` | 运行单元测试一次 |
+| `npm run test:coverage` | 运行测试并生成覆盖率报告 |
+| `npm run test:e2e` | 运行 Playwright 端到端测试 |
+| `npm run test:e2e:ui` | 打开 Playwright UI |
+| `npm run format` | Biome 格式化代码 |
+| `npm run format:check` | 检查代码格式 |
+| `npm run lint:biome` | Biome lint 检查 |
+| `npm run check` | Biome 格式化 + lint |
+
+## 🧪 测试
+
+### 单元测试
 ```bash
-# 构建生产版本
-npm run build
+# 运行测试（watch 模式）
+npm run test
 
-# 预览构建结果
-npm run preview
+# 运行测试一次
+npm run test:run
+
+# 运行测试并生成覆盖率
+npm run test:coverage
+```
+
+### 端到端测试
+```bash
+# 运行 Playwright 测试
+npm run test:e2e
+
+# 打开 Playwright UI
+npm run test:e2e:ui
+
+# 调试模式
+npm run test:e2e:debug
 ```
 
 ## 📄 License

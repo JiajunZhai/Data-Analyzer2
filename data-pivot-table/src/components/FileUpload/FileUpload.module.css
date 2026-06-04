@@ -1,0 +1,182 @@
+/* FileUpload CSS Module */
+
+/* 文件上传容器 */
+.fileUpload {
+  padding: 20px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  transition: all 0.15s ease;
+}
+
+.fileUpload:hover {
+  border-color: var(--border-focus);
+  background: var(--hover-bg);
+}
+
+/* 上传头部 */
+.fileUploadHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fileUploadIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hover-bg);
+  border-radius: var(--radius-md);
+  color: var(--primary-light);
+}
+
+.fileUploadTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fileUploadSubtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* 上传区域 */
+.fileUploadArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--zone-bg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fileUploadArea:hover {
+  border-color: var(--border-focus);
+  background: var(--hover-bg);
+}
+
+.fileUploadAreaDragOver {
+  border-color: var(--primary-light);
+  background: var(--selected-bg);
+}
+
+.fileUploadAreaIcon {
+  color: var(--text-muted);
+}
+
+.fileUploadAreaText {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.fileUploadAreaHint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 文件信息 */
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--hover-bg);
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+}
+
+.fileInfoIcon {
+  color: var(--primary-light);
+}
+
+.fileInfoName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileInfoSize {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.fileInfoRemove {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.fileInfoRemove:hover {
+  background: var(--hover-bg);
+  color: var(--danger-color);
+}
+
+/* 上传进度 */
+.uploadProgress {
+  margin-top: 12px;
+}
+
+.progressBar {
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: var(--primary-light);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* 错误状态 */
+.uploadError {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--danger-color);
+  font-size: 12px;
+}
+
+/* 成功状态 */
+.uploadSuccess {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--success-color);
+  font-size: 12px;
+}

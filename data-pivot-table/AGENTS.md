@@ -3,13 +3,22 @@
 ## Commands
 
 ```bash
-npm run dev      # 开发服务器 (localhost:5173)
-npm run build    # tsc -b && vite build
-npm run lint     # eslint .
-npm run preview  # 预览构建产物
+npm run dev          # 开发服务器 (localhost:5173)
+npm run build        # tsc -b && vite build
+npm run lint         # eslint .
+npm run lint:biome   # biome lint ./src
+npm run format       # biome format --write ./src
+npm run format:check # biome format ./src
+npm run check        # biome check --write ./src
+npm run test         # vitest (watch 模式)
+npm run test:run     # vitest run
+npm run test:coverage # vitest run --coverage
+npm run test:e2e     # playwright test
+npm run test:e2e:ui  # playwright test --ui
+npm run preview      # 预览构建产物
 ```
 
-Lint 必须在提交前运行。已知的 2 个既有错误（DateRangeFilterChip.tsx:151, PivotTable.tsx:37）可忽略。
+Lint 必须在提交前运行。使用 `npm run check` 进行格式化和 lint 检查。
 
 ## Architecture
 
@@ -28,6 +37,16 @@ Lint 必须在提交前运行。已知的 2 个既有错误（DateRangeFilterChi
 - `PivotResult.rowDimensions`: 行维度名称列表
 - `PivotResult.valueAxis`: `'rows' | 'columns'`
 
+## Custom Hooks
+
+应用使用自定义 hooks 管理状态：
+
+- `usePivotState` - 透视表状态（字段、数据、行/列/值配置）
+- `useDatasetManager` - 数据集管理（存储、配额）
+- `useDragAndDrop` - 拖拽逻辑
+- `useMappings` - 映射管理
+- `useConfigs` - 配置管理
+
 ## Drag & Drop
 
 使用 `@dnd-kit/core` + `@dnd-kit/sortable`。
@@ -42,7 +61,11 @@ Lint 必须在提交前运行。已知的 2 个既有错误（DateRangeFilterChi
 
 ## CSS System
 
-**变量**: `App.css` 顶部的 `:root` 块
+**变量**: `src/styles/variables.css`
+
+**全局样式**: `src/styles/global.css`
+
+**组件样式**: 各组件目录下的 `.module.css` 文件
 
 **色彩**: OKLCH 色彩系统 + Hex 降级
 - 值配置区: `--color-values-bg/border`
@@ -74,6 +97,16 @@ Lint 必须在提交前运行。已知的 2 个既有错误（DateRangeFilterChi
 GSAP 工具: `src/utils/animations.ts`
 - `playCheckboxScale(element)` - 勾选弹性缩放
 - `animateFieldEntry(element)` - 字段落位淡入
+
+## Testing
+
+**单元测试**: Vitest + Testing Library
+- 测试文件: `src/utils/__tests__/*.test.ts`
+- 运行: `npm run test:run`
+
+**端到端测试**: Playwright
+- 测试文件: `e2e/*.spec.ts`
+- 运行: `npm run test:e2e`
 
 ## Responsive Breakpoints
 
