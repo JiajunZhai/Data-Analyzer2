@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScenarioConfig, StoredMapping } from '../../types/storage';
+import { buildLookupMapFromConfigs, scenarioMappingToRecord } from '../../utils/scenarioMapper';
 import { generateId } from '../../utils/storageUtils';
 
 interface MappingEditorModalProps {
@@ -198,22 +199,14 @@ const MappingEditorModal: React.FC<MappingEditorModalProps> = ({ mapping, onSave
       });
     });
 
-    // 生成 lookupMap (使用 appCode + \t + originalScenario 作为 key，与 scenarioMapper.ts 保持一致)
-    const KEY_SEP = '\t';
-    const lookupMap: Record<string, string> = {};
-    scenarioConfigs.forEach((config) => {
-      if (config.appCode && config.targetScenario && config.originalScenario) {
-        const key = config.appCode + KEY_SEP + config.originalScenario;
-        lookupMap[key] = config.targetScenario;
-      }
-    });
+    const scenarioMapping = buildLookupMapFromConfigs(scenarioConfigs, appCodes);
 
     onSave(mapping.id, {
       name,
       scenarioConfigs,
-      lookupMap,
-      appCodes,
-      scenarioCount: scenarioConfigs.length,
+      lookupMap: scenarioMappingToRecord(scenarioMapping),
+      appCodes: scenarioMapping.appCodes,
+      scenarioCount: scenarioMapping.scenarioCount,
     });
   }, [mapping.id, name, appCodes, gridData, onSave]);
 

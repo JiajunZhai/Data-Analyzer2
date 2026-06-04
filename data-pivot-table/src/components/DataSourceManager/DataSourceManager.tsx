@@ -1,4 +1,4 @@
-import { FileSpreadsheet, Paperclip, Pencil, Trash2, X } from 'lucide-react';
+import { FileSpreadsheet, FileText, Paperclip, Pencil, Trash2, X } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DataRow } from '../../types';
@@ -35,6 +35,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [switchConfirmId, setSwitchConfirmId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [showMappingSelector, setShowMappingSelector] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +46,8 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
         setIsOpen(false);
         setEditingId(null);
         setSwitchConfirmId(null);
+        setDeleteConfirmId(null);
+        setShowMappingSelector(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -79,19 +82,27 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
     setEditingName('');
   }, []);
 
-  const handleDelete = useCallback(
-    (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (confirm('确定要删除这个数据集吗？删除后无法恢复。')) {
-        onDatasetDelete(id);
-      }
-    },
-    [onDatasetDelete]
-  );
+  const handleDeleteClick = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSwitchConfirmId(null);
+    setDeleteConfirmId(id);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (deleteConfirmId) {
+      onDatasetDelete(deleteConfirmId);
+      setDeleteConfirmId(null);
+    }
+  }, [deleteConfirmId, onDatasetDelete]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteConfirmId(null);
+  }, []);
 
   const handleDatasetClick = useCallback(
     (id: string) => {
       if (id === currentDatasetId) return;
+      setDeleteConfirmId(null);
       setSwitchConfirmId(id);
     },
     [currentDatasetId]
@@ -160,6 +171,10 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
               <div className="section-title">当前数据源</div>
               <div className="dataset-card active">
                 <div className="dataset-info">
+                  <div className="dataset-active-badge">
+                    <span className="active-dot" />
+                    <span className="active-text">正在使用</span>
+                  </div>
                   {editingId === currentDataset.id ? (
                     <div className="dataset-rename">
                       <input
@@ -205,30 +220,36 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                 <div className="mapping-selector">
                   <button
                     type="button"
-                    className="mapping-selector-trigger"
+                    className={`mapping-selector-trigger ${activeMapping ? 'has-value' : ''}`}
                     onClick={() => setShowMappingSelector(!showMappingSelector)}
                   >
                     <span className="mapping-icon">
                       <Paperclip size={14} />
                     </span>
                     <span className="mapping-name">
-                      {activeMapping ? activeMapping.name : '未选择映射'}
+                      {activeMapping
+                        ? `${activeMapping.name} · ${activeMapping.scenarioCount} 个场景`
+                        : '请选择场景映射文件'}
                     </span>
-                    <span className="mapping-arrow">{showMappingSelector ? '▲' : '▼'}</span>
+                    {activeMapping ? (
+                      <button
+                        type="button"
+                        className="mapping-clear"
+                        title="清除映射"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMappingSelect(null);
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    ) : (
+                      <span className="mapping-arrow">{showMappingSelector ? '▲' : '▼'}</span>
+                    )}
                   </button>
 
                   {showMappingSelector && (
                     <div className="mapping-selector-dropdown">
-                      <button
-                        type="button"
-                        className={`mapping-option ${!activeMappingId ? 'active' : ''}`}
-                        onClick={() => handleMappingSelect(null)}
-                      >
-                        <span className="mapping-option-icon">
-                          <X size={14} />
-                        </span>
-                        <span className="mapping-option-name">不使用映射</span>
-                      </button>
                       {mappings.map((mapping) => (
                         <button
                           type="button"
@@ -237,7 +258,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                           onClick={() => handleMappingSelect(mapping.id)}
                         >
                           <span className="mapping-option-icon">
-                            <Paperclip size={14} />
+                            <FileText size={14} />
                           </span>
                           <span className="mapping-option-name">{mapping.name}</span>
                           <span className="mapping-option-meta">
@@ -246,9 +267,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                         </button>
                       ))}
                       {mappings.length === 0 && (
-                        <div className="mapping-option-empty">
-                          暂无可用映射，请先在场景映射中上传
-                        </div>
+                        <div className="mapping-option-empty">暂无可用映射</div>
                       )}
                     </div>
                   )}
@@ -277,6 +296,22 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                         </button>
                       </div>
                     </div>
+                  ) : deleteConfirmId === ds.id ? (
+                    <div className="delete-confirm">
+                      <div className="confirm-text">确定删除该历史数据源吗？</div>
+                      <div className="confirm-actions">
+                        <button
+                          type="button"
+                          className="btn-delete-confirm"
+                          onClick={handleDeleteConfirm}
+                        >
+                          确定删除
+                        </button>
+                        <button type="button" className="btn-cancel" onClick={handleDeleteCancel}>
+                          取消
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       <button
@@ -286,11 +321,25 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                       >
                         <div className="dataset-name">{ds.name}</div>
                         <div className="dataset-meta">
-                          {ds.rowCount.toLocaleString()} 行 · 点击加载
+                          {ds.rowCount.toLocaleString()} 行 ·{' '}
+                          {new Date(ds.createdAt)
+                            .toLocaleDateString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                            })
+                            .replace(/\//g, '-')}{' '}
+                          导入
                         </div>
+                        <span className="dataset-hover-hint">点击切换</span>
                       </button>
                       <div className="dataset-actions">
-                        <button type="button" onClick={(e) => handleDelete(ds.id, e)} title="删除">
+                        <div className="dataset-action-divider" />
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteClick(ds.id, e)}
+                          title="删除"
+                        >
                           <Trash2 size={14} />
                         </button>
                       </div>

@@ -359,7 +359,11 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       </button>
 
       {isOpen && (
-        <div className="date-range-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="date-range-dropdown"
+          role="presentation"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="date-range-presets">
             {PRESETS.map((preset, i) => (
               <button

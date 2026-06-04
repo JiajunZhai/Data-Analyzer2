@@ -23,8 +23,8 @@ import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { useMappings } from './hooks/useMappings';
 import { usePivotState } from './hooks/usePivotState';
 import { storageService } from './services/storage';
-import type { DataRow, Field, ScenarioMapping } from './types';
-import type { StoredDataset } from './types/storage';
+import type { DataRow, Field } from './types';
+import type { StoredDataset, StoredMapping } from './types/storage';
 import {
   addCalculatedFields,
   PRESET_CALCULATED_FIELDS,
@@ -32,7 +32,12 @@ import {
 } from './utils/calculatedField';
 import { applyCountryMapping } from './utils/countryMapper';
 import { detectFieldTypes } from './utils/fieldDetector';
-import { applyScenarioMapping } from './utils/scenarioMapper';
+import {
+  applyScenarioMapping,
+  buildLookupMapFromConfigs,
+  calculateScenarioMatchStats,
+  scenarioMappingToRecord,
+} from './utils/scenarioMapper';
 import { generateDatasetName } from './utils/storageUtils';
 import './styles/variables.css';
 import './styles/global.css';
@@ -56,6 +61,14 @@ const createPivotField = (field: Field) => ({
   field,
   aggregation: field.type === 'measure' ? ('sum' as const) : undefined,
 });
+
+const areLookupRecordsEqual = (a: Record<string, string>, b: Record<string, string>) => {
+  const aEntries = Object.entries(a);
+  const bEntries = Object.entries(b);
+  if (aEntries.length !== bEntries.length) return false;
+
+  return aEntries.every(([key, value]) => b[key] === value);
+};
 
 function App() {
   // 使用自定义 hooks
@@ -110,11 +123,12 @@ function App() {
     mappings,
     activeMappingId,
     setActiveMappingId,
+    loadMappings,
     handleMappingSelect: handleMappingSelectBase,
-    handleMappingUpload,
+    handleMappingUpload: handleMappingUploadBase,
     handleMappingExport,
     handleMappingDelete,
-    handleMappingUpdate,
+    handleMappingUpdate: handleMappingUpdateBase,
   } = mappingsManager;
 
   const {
@@ -171,6 +185,56 @@ function App() {
     }
   }, [shouldApplyDefault, fields, applyDefaultConfig]);
 
+  // 当前数据源变化后，刷新所有映射模板在该数据源上的真实命中数
+  useEffect(() => {
+    if (!currentDatasetId || mappings.length === 0) return;
+
+    let cancelled = false;
+
+    const refreshMappingMatchCounts = async () => {
+      const dataset = await storageService.getDataset(currentDatasetId);
+      if (!dataset || cancelled) return;
+
+      let hasUpdates = false;
+      for (const mapping of mappings) {
+        const scenarioMapping = buildLookupMapFromConfigs(
+          mapping.scenarioConfigs,
+          mapping.appCodes
+        );
+        const mappedRowCount = calculateScenarioMatchStats(
+          dataset.data,
+          scenarioMapping
+        ).mappedRowCount;
+        const lookupMap = scenarioMappingToRecord(scenarioMapping);
+
+        if (
+          mapping.scenarioCount !== scenarioMapping.scenarioCount ||
+          mapping.mappedRowCount !== mappedRowCount ||
+          !areLookupRecordsEqual(mapping.lookupMap, lookupMap)
+        ) {
+          await storageService.updateMapping(mapping.id, {
+            lookupMap,
+            scenarioCount: scenarioMapping.scenarioCount,
+            mappedRowCount,
+          });
+          hasUpdates = true;
+        }
+      }
+
+      if (hasUpdates && !cancelled) {
+        await loadMappings();
+      }
+    };
+
+    refreshMappingMatchCounts().catch((error) => {
+      console.error('刷新映射命中数失败:', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDatasetId, mappings, loadMappings]);
+
   // 加载数据集
   const loadDataset = useCallback(
     async (dataset: StoredDataset) => {
@@ -183,14 +247,23 @@ function App() {
       if (dataset.activeMappingId) {
         const mapping = await storageService.getMapping(dataset.activeMappingId);
         if (mapping) {
-          const scenarioMapping: ScenarioMapping = {
-            lookupMap: new Map(Object.entries(mapping.lookupMap)),
-            appCodes: mapping.appCodes,
-            scenarioCount: mapping.scenarioCount,
-            mappedRowCount: mapping.mappedRowCount,
-          };
+          const scenarioMapping = buildLookupMapFromConfigs(
+            mapping.scenarioConfigs,
+            mapping.appCodes
+          );
+          const mappedRowCount = calculateScenarioMatchStats(
+            dataset.data,
+            scenarioMapping
+          ).mappedRowCount;
+          await storageService.updateMapping(mapping.id, {
+            lookupMap: scenarioMappingToRecord(scenarioMapping),
+            scenarioCount: scenarioMapping.scenarioCount,
+            mappedRowCount,
+          });
           const updatedData = applyScenarioMapping(dataset.data, scenarioMapping);
           setData(updatedData);
+          await loadMappings();
+          await loadDatasets();
         }
       }
 
@@ -200,7 +273,7 @@ function App() {
       // 保存用户偏好
       await storageService.saveUserPreferences({ lastDatasetId: dataset.id });
     },
-    [setFields, setData, setCurrentDatasetId, setActiveMappingId]
+    [setFields, setData, setCurrentDatasetId, setActiveMappingId, loadMappings, loadDatasets]
   );
 
   // 更新 loadDataset ref
@@ -306,6 +379,36 @@ function App() {
       await handleMappingSelectBase(mappingId, currentDatasetId, setData, loadDatasets);
     },
     [handleMappingSelectBase, currentDatasetId, setData, loadDatasets]
+  );
+
+  // 映射上传
+  const handleMappingUpload = useCallback(
+    async (file: File) => {
+      await handleMappingUploadBase(file, currentDatasetId);
+    },
+    [handleMappingUploadBase, currentDatasetId]
+  );
+
+  // 映射更新
+  const handleMappingUpdate = useCallback(
+    async (id: string, updates: Partial<StoredMapping>) => {
+      await handleMappingUpdateBase(
+        id,
+        updates,
+        currentDatasetId,
+        activeMappingId,
+        setData,
+        loadDatasets
+      );
+    },
+    [handleMappingUpdateBase, currentDatasetId, activeMappingId, setData, loadDatasets]
+  );
+
+  const handleMappingRename = useCallback(
+    async (id: string, newName: string) => {
+      await handleMappingUpdate(id, { name: newName });
+    },
+    [handleMappingUpdate]
   );
 
   // 配置保存
@@ -431,7 +534,7 @@ function App() {
               mappings={mappings}
               storageQuota={storageQuota}
               onMappingUpload={handleMappingUpload}
-              onMappingRename={handleDatasetRename}
+              onMappingRename={handleMappingRename}
               onMappingDelete={handleMappingDelete}
               onMappingUpdate={handleMappingUpdate}
               onMappingExport={handleMappingExport}

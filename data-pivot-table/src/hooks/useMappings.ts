@@ -2,9 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { storageService } from '../services/storage';
 import type { DataRow, ScenarioMapping } from '../types';
 import type { ScenarioConfig, StoredMapping } from '../types/storage';
-import { readFileWithAutoEncoding } from '../utils/encodingUtils';
-import { applyScenarioMapping } from '../utils/scenarioMapper';
+import { parseMappingCSV } from '../utils/fileParser';
+import {
+  applyScenarioMapping,
+  buildLookupMapFromConfigs,
+  calculateScenarioMatchStats,
+  scenarioMappingToRecord,
+} from '../utils/scenarioMapper';
 import { generateId } from '../utils/storageUtils';
+
+function buildStoredScenarioMapping(mapping: StoredMapping): ScenarioMapping {
+  return buildLookupMapFromConfigs(mapping.scenarioConfigs, mapping.appCodes);
+}
+
+async function calculateMappedRowsForDataset(
+  mapping: ScenarioMapping,
+  datasetId?: string | null
+): Promise<number> {
+  if (!datasetId) return 0;
+
+  const dataset = await storageService.getDataset(datasetId);
+  if (!dataset) return 0;
+
+  return calculateScenarioMatchStats(dataset.data, mapping).mappedRowCount;
+}
 
 export function useMappings(isStorageReady: boolean) {
   const [mappings, setMappings] = useState<StoredMapping[]>([]);
@@ -57,12 +78,17 @@ export function useMappings(isStorageReady: boolean) {
       if (mappingId) {
         const mapping = await storageService.getMapping(mappingId);
         if (mapping) {
-          const scenarioMapping: ScenarioMapping = {
-            lookupMap: new Map(Object.entries(mapping.lookupMap)),
-            appCodes: mapping.appCodes,
-            scenarioCount: mapping.scenarioCount,
-            mappedRowCount: mapping.mappedRowCount,
-          };
+          const scenarioMapping = buildStoredScenarioMapping(mapping);
+          const mappedRowCount = calculateScenarioMatchStats(
+            dataset.data,
+            scenarioMapping
+          ).mappedRowCount;
+          await storageService.updateMapping(mapping.id, {
+            lookupMap: scenarioMappingToRecord(scenarioMapping),
+            scenarioCount: scenarioMapping.scenarioCount,
+            mappedRowCount,
+          });
+
           const updatedData = applyScenarioMapping(dataset.data, scenarioMapping);
           setData(updatedData);
         }
@@ -71,26 +97,21 @@ export function useMappings(isStorageReady: boolean) {
         setData(dataset.data);
       }
 
+      await loadMappings();
       await loadDatasets();
     },
-    []
+    [loadMappings]
   );
 
   // 映射上传
   const handleMappingUpload = useCallback(
-    async (file: File) => {
+    async (file: File, currentDatasetId?: string | null) => {
       try {
-        const text = await readFileWithAutoEncoding(file);
-        const lines = text.split('\n').filter((line) => line.trim());
-
-        if (lines.length < 2) {
-          alert('导入失败：CSV 文件至少需要包含表头和一行数据');
-          return;
-        }
-
-        // 解析表头：第一行第一个为空或"目标场景"，后面的是应用标识
-        const headers = lines[0].split(',').map((h) => h.trim());
-        const appCodes = headers.slice(1); // 从第2列开始是应用标识
+        const { headers, rows } = await parseMappingCSV(file);
+        const appCodes = headers
+          .slice(1)
+          .map((header) => header.trim())
+          .filter(Boolean);
 
         if (appCodes.length === 0) {
           alert('导入失败：CSV 文件格式错误，至少需要一个应用标识');
@@ -100,8 +121,8 @@ export function useMappings(isStorageReady: boolean) {
         // 解析数据行：2D格式转换为ScenarioConfig
         const scenarioConfigs: ScenarioConfig[] = [];
 
-        for (let i = 1; i < lines.length; i++) {
-          const cells = lines[i].split(',').map((c) => c.trim());
+        for (let i = 0; i < rows.length; i++) {
+          const cells = rows[i];
           const targetScenario = cells[0]; // 第一列是目标场景
 
           if (!targetScenario) continue;
@@ -120,24 +141,20 @@ export function useMappings(isStorageReady: boolean) {
           }
         }
 
-        // 生成 lookupMap (使用 appCode + \t + originalScenario 作为 key，与 scenarioMapper.ts 保持一致)
-        const KEY_SEP = '\t';
-        const lookupMap: Record<string, string> = {};
-        scenarioConfigs.forEach((config) => {
-          if (config.appCode && config.targetScenario && config.originalScenario) {
-            const key = config.appCode + KEY_SEP + config.originalScenario;
-            lookupMap[key] = config.targetScenario;
-          }
-        });
+        const scenarioMapping = buildLookupMapFromConfigs(scenarioConfigs, appCodes);
+        const mappedRowCount = await calculateMappedRowsForDataset(
+          scenarioMapping,
+          currentDatasetId
+        );
 
         // 保存映射
         await storageService.saveMapping({
           name: file.name.replace('.csv', ''),
           fileName: file.name,
-          scenarioCount: scenarioConfigs.length,
-          mappedRowCount: 0,
-          lookupMap,
-          appCodes,
+          scenarioCount: scenarioMapping.scenarioCount,
+          mappedRowCount,
+          lookupMap: scenarioMappingToRecord(scenarioMapping),
+          appCodes: scenarioMapping.appCodes,
           scenarioConfigs,
         });
 
@@ -193,8 +210,42 @@ export function useMappings(isStorageReady: boolean) {
 
   // 映射更新
   const handleMappingUpdate = useCallback(
-    async (id: string, updates: Partial<StoredMapping>) => {
-      await storageService.updateMapping(id, updates);
+    async (
+      id: string,
+      updates: Partial<StoredMapping>,
+      currentDatasetId?: string | null,
+      activeMappingIdForDataset?: string,
+      setData?: (data: DataRow[]) => void,
+      loadDatasets?: () => Promise<void>
+    ) => {
+      const existingMapping = await storageService.getMapping(id);
+      if (!existingMapping) return;
+
+      const nextMapping: StoredMapping = { ...existingMapping, ...updates };
+      const scenarioMapping = buildStoredScenarioMapping(nextMapping);
+      const mappedRowCount = currentDatasetId
+        ? await calculateMappedRowsForDataset(scenarioMapping, currentDatasetId)
+        : existingMapping.mappedRowCount;
+
+      await storageService.updateMapping(id, {
+        ...updates,
+        appCodes: scenarioMapping.appCodes,
+        scenarioCount: scenarioMapping.scenarioCount,
+        mappedRowCount,
+        lookupMap: scenarioMappingToRecord(scenarioMapping),
+      });
+
+      if (id === activeMappingIdForDataset && currentDatasetId && setData) {
+        const dataset = await storageService.getDataset(currentDatasetId);
+        if (dataset) {
+          setData(applyScenarioMapping(dataset.data, scenarioMapping));
+        }
+      }
+
+      if (loadDatasets) {
+        await loadDatasets();
+      }
+
       await loadMappings();
     },
     [loadMappings]

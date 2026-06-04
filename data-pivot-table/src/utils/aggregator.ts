@@ -51,7 +51,7 @@ export function aggregateData(
 
   filterConfigs.forEach((filter) => {
     filteredData = filteredData.filter((row) =>
-      filter.selectedValues.includes(String(row[filter.fieldName]))
+      filter.selectedValues.includes(getDimensionValue(row, filter.fieldName))
     );
   });
 
@@ -560,8 +560,19 @@ function getKeyInfo(row: DataRow, fields: PivotField[]): KeyInfo {
     return { key: TOTAL_LABEL, parts: [TOTAL_LABEL] };
   }
 
-  const parts = fields.map((field) => String(row[field.field.name] ?? ''));
+  const parts = fields.map((field) => getDimensionValue(row, field.field.name));
   return { key: parts.join(KEY_SEPARATOR), parts };
+}
+
+function getDimensionValue(row: DataRow, fieldName: string): string {
+  if (fieldName === RAW_SCENARIO_FIELD) {
+    const mappedScenario = String(row[MAPPED_SCENARIO_FIELD] ?? '').trim();
+    if (mappedScenario) {
+      return mappedScenario;
+    }
+  }
+
+  return String(row[fieldName] ?? '').trim();
 }
 
 function ensureCellData(
@@ -748,7 +759,7 @@ function aggregateValues(values: number[], type: AggregationType): number {
 export function getUniqueValues(data: DataRow[], fieldName: string): string[] {
   const values = new Set<string>();
   data.forEach((row) => {
-    const val = String(row[fieldName]);
+    const val = getDimensionValue(row, fieldName);
     if (val && val !== 'undefined' && val !== 'null') {
       values.add(val);
     }

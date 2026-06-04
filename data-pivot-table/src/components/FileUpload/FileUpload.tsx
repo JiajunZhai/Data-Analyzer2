@@ -172,7 +172,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           {isCapsuleMapping ? <Link2 size={14} /> : <Folder size={14} />}
         </span>
         <span className="capsule-name" title={fileName || (isCapsuleMapping ? '映射表' : '数据源')}>
-          {fileName ? truncateFileName(fileName, 18) : isCapsuleMapping ? '映射表' : '数据源'}
+          {fileName ? truncateFileName(fileName, 18) : isCapsuleMapping ? '映射表' : '导入新数据源'}
         </span>
         {fileSize && <span className="capsule-size">{fileSize}</span>}
         <span className="capsule-action">{fileName ? '更换' : '选择'}</span>

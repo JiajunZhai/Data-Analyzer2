@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { DataRow, ScenarioMapping } from '../../types';
-import { applyScenarioMapping, buildLookupMap, validateMappingAppCodes } from '../scenarioMapper';
+import {
+  applyScenarioMapping,
+  buildLookupMap,
+  calculateScenarioMatchStats,
+  createScenarioMappingKey,
+  validateMappingAppCodes,
+} from '../scenarioMapper';
 
 describe('scenarioMapper', () => {
   describe('applyScenarioMapping', () => {
@@ -68,10 +74,19 @@ describe('scenarioMapper', () => {
 
       const mapping = buildLookupMap(headers, rows);
 
-      expect(mapping.lookupMap.get('App1\t场景A')).toBe('目标1');
-      expect(mapping.lookupMap.get('App1\t场景B')).toBe('目标2');
-      expect(mapping.lookupMap.get('App2\t场景C')).toBe('目标1');
-      expect(mapping.lookupMap.get('App2\t场景D')).toBe('目标2');
+      expect(mapping.lookupMap.get(createScenarioMappingKey('App1', '场景A'))).toBe('目标1');
+      expect(mapping.lookupMap.get(createScenarioMappingKey('App1', '场景B'))).toBe('目标2');
+      expect(mapping.lookupMap.get(createScenarioMappingKey('App2', '场景C'))).toBe('目标1');
+      expect(mapping.lookupMap.get(createScenarioMappingKey('App2', '场景D'))).toBe('目标2');
+    });
+
+    it('应该归一化应用标识和场景编码', () => {
+      const mapping = buildLookupMap(['目标场景', ' rm06b '], [['冷启动', ' CL_OPEN ']]);
+      const data: DataRow[] = [{ 应用: 'RM06B', 广告场景: 'cl_open' }];
+
+      const result = applyScenarioMapping(data, mapping);
+
+      expect(result[0]['实际场景']).toBe('冷启动');
     });
 
     it('应该处理空行', () => {
@@ -81,6 +96,22 @@ describe('scenarioMapper', () => {
       const mapping = buildLookupMap(headers, rows);
 
       expect(mapping.lookupMap.size).toBe(0);
+    });
+  });
+
+  describe('calculateScenarioMatchStats', () => {
+    it('应该统计真实命中行数并排除 ALL 汇总行', () => {
+      const mapping = buildLookupMap(['目标场景', 'RM06B'], [['冷启动', 'cl_open']]);
+      const data: DataRow[] = [
+        { 应用: 'RM06B', 广告场景: 'ALL' },
+        { 应用: 'RM06B', 广告场景: 'cl_open' },
+        { 应用: 'RM06B', 广告场景: 'unknown' },
+      ];
+
+      const stats = calculateScenarioMatchStats(data, mapping);
+
+      expect(stats.sourceRowCount).toBe(2);
+      expect(stats.mappedRowCount).toBe(1);
     });
   });
 

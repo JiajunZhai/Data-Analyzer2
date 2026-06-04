@@ -3471,15 +3471,19 @@ td.group-boundary-col {
 .quota-bar {
   flex: 1;
   height: 6px;
-  background: var(--zone-bg);
-  border-radius: 3px;
+  background: #ebeef5;
+  border-radius: 4px;
   overflow: hidden;
+}
+
+[data-theme="dark"] .quota-bar {
+  background: #1e293b;
 }
 
 .quota-fill {
   height: 100%;
-  background: var(--primary-light);
-  border-radius: 3px;
+  background: linear-gradient(90deg, var(--primary-light), #60a5fa);
+  border-radius: 4px;
   transition: width 0.3s ease;
 }
 
@@ -3522,6 +3526,14 @@ td.group-boundary-col {
   transition: all 0.15s ease;
 }
 
+.dataset-card:not(.active) {
+  border-color: #e4e7ed;
+}
+
+[data-theme="dark"] .dataset-card:not(.active) {
+  border-color: #2d3748;
+}
+
 .dataset-card:hover {
   border-color: var(--primary-light);
   background: var(--hover-bg);
@@ -3535,6 +3547,15 @@ td.group-boundary-col {
 .dataset-info {
   flex: 1;
   min-width: 0;
+}
+
+button.dataset-info {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
 }
 
 .dataset-name {
@@ -3574,6 +3595,99 @@ td.group-boundary-col {
 
 .dataset-actions button:hover {
   background: var(--zone-bg);
+}
+
+/* 历史卡片删除按钮颜色与 hover */
+.dataset-card:not(.active) .dataset-actions button {
+  color: #909399;
+}
+
+.dataset-card:not(.active) .dataset-actions button:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--danger-color);
+}
+
+/* 历史卡片删除按钮悬停显隐 */
+.dataset-card:not(.active) .dataset-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.dataset-card:not(.active):hover .dataset-actions {
+  opacity: 1;
+}
+
+/* 当前数据源重命名按钮悬停显隐 */
+.dataset-card.active .dataset-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.dataset-card.active:hover .dataset-actions {
+  opacity: 1;
+}
+
+/* 删除按钮分割线 */
+.dataset-action-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-light);
+  margin: 0 4px;
+}
+
+/* Hover 提示文字 */
+.dataset-hover-hint {
+  display: none;
+  font-size: 11px;
+  color: var(--primary-light);
+  margin-left: 4px;
+}
+
+.dataset-card:hover .dataset-hover-hint {
+  display: inline;
+}
+
+/* Active 标签 */
+.dataset-active-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success-color);
+}
+
+.active-text {
+  font-size: 11px;
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+/* 删除确认 */
+.delete-confirm {
+  padding: 8px;
+  width: 100%;
+}
+
+.btn-delete-confirm {
+  padding: 4px 12px;
+  font-size: 12px;
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-sm);
+  background: var(--danger-color);
+  color: white;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-delete-confirm:hover {
+  background: #dc2626;
+  border-color: #dc2626;
 }
 
 /* 重命名输入 */
@@ -3676,9 +3790,8 @@ td.group-boundary-col {
 
 /* 场景映射区块 */
 .mapping-section {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-light);
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 /* 切换确认 */
@@ -3735,7 +3848,17 @@ td.group-boundary-col {
 
 .datasource-upload .file-capsule {
   width: 100%;
-  justify-content: center;
+  justify-content: flex-start;
+}
+
+.datasource-upload .capsule-name {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+.datasource-upload .capsule-action {
+  white-space: nowrap;
 }
 
 /* ========================================== */
@@ -4051,12 +4174,19 @@ td.group-boundary-col {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 8px 12px;
   background: var(--zone-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-element);
   cursor: pointer;
   transition: all 0.15s;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.mapping-selector-trigger.has-value {
+  color: var(--text-color);
 }
 
 .mapping-selector-trigger:hover {
@@ -4064,13 +4194,47 @@ td.group-boundary-col {
 }
 
 .mapping-icon {
-  font-size: 14px;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.mapping-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mapping-arrow {
   margin-left: auto;
   font-size: 10px;
   color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.mapping-clear {
+  margin-left: auto;
+  display: none;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.mapping-selector-trigger:hover .mapping-clear {
+  display: flex;
+}
+
+.mapping-selector-trigger:hover .mapping-arrow {
+  display: none;
+}
+
+.mapping-clear:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--danger-color);
 }
 
 .mapping-selector-dropdown {
@@ -4092,9 +4256,14 @@ td.group-boundary-col {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 8px 12px;
+  background: none;
+  border: none;
   cursor: pointer;
   transition: background 0.15s;
+  font-size: 12px;
+  text-align: left;
 }
 
 .mapping-option:hover {
@@ -4103,22 +4272,28 @@ td.group-boundary-col {
 
 .mapping-option.active {
   background: var(--hover-bg);
-  border-left: 2px solid var(--primary-light);
+  font-weight: 600;
 }
 
 .mapping-option-icon {
-  font-size: 14px;
+  display: flex;
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 .mapping-option-name {
   flex: 1;
-  font-size: 12px;
+  min-width: 0;
   color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mapping-option-meta {
   font-size: 11px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .mapping-option-empty {

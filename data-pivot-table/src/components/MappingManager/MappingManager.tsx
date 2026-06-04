@@ -143,7 +143,8 @@ const MappingManager: React.FC<MappingManagerProps> = ({
                             <Paperclip size={13} style={{ marginRight: 4 }} /> {mapping.name}
                           </div>
                           <div className="mapping-meta">
-                            {mapping.scenarioCount} 个场景 · {mapping.mappedRowCount} 行已匹配
+                            {mapping.scenarioCount} 个场景 · {mapping.scenarioConfigs.length} 条规则
+                            · {mapping.mappedRowCount} 行已匹配
                           </div>
                         </div>
                         <div className="mapping-actions">

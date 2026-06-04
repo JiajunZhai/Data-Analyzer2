@@ -16,30 +16,30 @@ function hasGarbledText(text: string): boolean {
   }
 
   // 统计各种字符类型的比例
-  let cjkCount = 0;        // CJK 汉字（正常中文）
-  let highByteCount = 0;   // 高位字符（可能是乱码）
-  let asciiCount = 0;      // ASCII 字符
+  let cjkCount = 0; // CJK 汉字（正常中文）
+  let highByteCount = 0; // 高位字符（可能是乱码）
+  let asciiCount = 0; // ASCII 字符
   const sampleLength = Math.min(text.length, 2000); // 检查前 2000 个字符
 
   for (let i = 0; i < sampleLength; i++) {
     const code = text.charCodeAt(i);
-    
+
     if (code < 128) {
       // ASCII 字符
       asciiCount++;
-    } else if (code >= 0x4E00 && code <= 0x9FFF) {
+    } else if (code >= 0x4e00 && code <= 0x9fff) {
       // CJK 统一汉字（正常中文）
       cjkCount++;
-    } else if (code >= 0x3400 && code <= 0x4DBF) {
+    } else if (code >= 0x3400 && code <= 0x4dbf) {
       // CJK 扩展 A（正常中文）
       cjkCount++;
-    } else if (code >= 0x3000 && code <= 0x303F) {
+    } else if (code >= 0x3000 && code <= 0x303f) {
       // CJK 标点符号（正常）
       cjkCount++;
-    } else if (code >= 0xFF00 && code <= 0xFFEF) {
+    } else if (code >= 0xff00 && code <= 0xffef) {
       // 全角字符（正常）
       cjkCount++;
-    } else if (code > 0x7F && code < 0x100) {
+    } else if (code > 0x7f && code < 0x100) {
       // 高位字符（可能是 GBK 被错误解码）
       highByteCount++;
     } else if (code >= 0x100) {
@@ -50,7 +50,7 @@ function hasGarbledText(text: string): boolean {
   }
 
   const nonAsciiLength = sampleLength - asciiCount;
-  
+
   // 如果没有非 ASCII 字符，可能是纯英文文件，不是乱码
   if (nonAsciiLength === 0) {
     return false;
@@ -79,7 +79,7 @@ export async function readFileWithAutoEncoding(file: File): Promise<string> {
   const uint8Array = new Uint8Array(arrayBuffer);
 
   // 检查 UTF-8 BOM
-  const hasUTF8BOM = uint8Array[0] === 0xEF && uint8Array[1] === 0xBB && uint8Array[2] === 0xBF;
+  const hasUTF8BOM = uint8Array[0] === 0xef && uint8Array[1] === 0xbb && uint8Array[2] === 0xbf;
 
   if (hasUTF8BOM) {
     // 有 UTF-8 BOM，直接用 UTF-8 解码
@@ -130,7 +130,7 @@ export function readAsTextWithAutoEncoding(
       const uint8Array = new Uint8Array(arrayBuffer);
 
       // 检查 UTF-8 BOM
-      const hasUTF8BOM = uint8Array[0] === 0xEF && uint8Array[1] === 0xBB && uint8Array[2] === 0xBF;
+      const hasUTF8BOM = uint8Array[0] === 0xef && uint8Array[1] === 0xbb && uint8Array[2] === 0xbf;
 
       if (hasUTF8BOM) {
         const decoder = new TextDecoder('utf-8');
