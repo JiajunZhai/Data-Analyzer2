@@ -178,10 +178,12 @@ function App() {
     setShouldApplyDefault(false);
   }, [fields, setRowFields, setColFields, setValueFields]);
 
-  // 自动应用默认配置
+  // 自动应用默认配置（使用 requestAnimationFrame 避免级联渲染）
   useEffect(() => {
     if (shouldApplyDefault && fields.length > 0) {
-      applyDefaultConfig();
+      requestAnimationFrame(() => {
+        applyDefaultConfig();
+      });
     }
   }, [shouldApplyDefault, fields, applyDefaultConfig]);
 

@@ -179,6 +179,7 @@ function isAllScenarioRow(row: DataRow): boolean {
   );
 }
 
+// 检测是否使用场景维度
 interface BuildResultOptions {
   sortedRowKeys: string[];
   sortedColKeys: string[];
