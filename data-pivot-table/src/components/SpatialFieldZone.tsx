@@ -248,24 +248,15 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
         <span className="spatial-zone-title">{title}</span>
         <span className="spatial-zone-count">{activeFields.length}</span>
         {id === 'rows' && onToggleRowTotal && (
-          <label className="spatial-zone-toggle-label">
-            <input
-              type="checkbox"
-              checked={showRowTotal}
-              onChange={onToggleRowTotal}
+          <div className="spatial-zone-total-control">
+            <span className="total-control-label">行总计</span>
+            <button
+              type="button"
+              className={`mini-switch ${showRowTotal ? 'active' : ''}`}
+              onClick={onToggleRowTotal}
+              aria-label={showRowTotal ? '隐藏行总计' : '显示行总计'}
             />
-            <span>行总计</span>
-          </label>
-        )}
-        {id === 'columns' && onToggleColumnTotal && (
-          <label className="spatial-zone-toggle-label">
-            <input
-              type="checkbox"
-              checked={showColumnTotal}
-              onChange={onToggleColumnTotal}
-            />
-            <span>列总计</span>
-          </label>
+          </div>
         )}
       </div>
       <div className="spatial-zone-body">
@@ -311,6 +302,21 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                 <div className="column-flow-placeholder">全部已启用</div>
               )}
             </div>
+
+            {id === 'columns' && onToggleColumnTotal && (
+              <>
+                <div className="column-flow-divider" aria-hidden="true" />
+                <div className="column-total-control">
+                  <span className="total-control-label">列总计</span>
+                  <button
+                    type="button"
+                    className={`mini-switch ${showColumnTotal ? 'active' : ''}`}
+                    onClick={onToggleColumnTotal}
+                    aria-label={showColumnTotal ? '隐藏列总计' : '显示列总计'}
+                  />
+                </div>
+              </>
+            )}
           </div>
         ) : (
           /* 垂直布局（值/行配置区）：显示完整结构 */

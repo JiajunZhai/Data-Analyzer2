@@ -425,25 +425,26 @@ const PivotTable: React.FC<PivotTableProps> = ({
             );
           })}
 
-          {showRowTotal && totalValues.map((val, ti) => {
-            if (isExpandedGroup) {
+          {showRowTotal &&
+            totalValues.map((val, ti) => {
+              if (isExpandedGroup) {
+                return (
+                  <td key={ti} className="total-cell total-cell-sticky tree-group-placeholder">
+                    &nbsp;
+                  </td>
+                );
+              }
+
+              const { text, isEmpty } = formatValue(val, getTreeRowTotalMetricName(ti));
               return (
-                <td key={ti} className="total-cell total-cell-sticky tree-group-placeholder">
-                  &nbsp;
+                <td
+                  key={ti}
+                  className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                >
+                  {text}
                 </td>
               );
-            }
-
-            const { text, isEmpty } = formatValue(val, getTreeRowTotalMetricName(ti));
-            return (
-              <td
-                key={ti}
-                className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
-              >
-                {text}
-              </td>
-            );
-          })}
+            })}
         </tr>
       );
     });
@@ -495,17 +496,18 @@ const PivotTable: React.FC<PivotTableProps> = ({
             );
           })}
 
-          {showRowTotal && (rowTotalValues[ri] || []).map((val, ti) => {
-            const { text, isEmpty } = formatValue(val, getRowTotalMetricName(ri, ti));
-            return (
-              <td
-                key={ti}
-                className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
-              >
-                {text}
-              </td>
-            );
-          })}
+          {showRowTotal &&
+            (rowTotalValues[ri] || []).map((val, ti) => {
+              const { text, isEmpty } = formatValue(val, getRowTotalMetricName(ri, ti));
+              return (
+                <td
+                  key={ti}
+                  className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                >
+                  {text}
+                </td>
+              );
+            })}
         </tr>
       );
     });
@@ -552,7 +554,8 @@ const PivotTable: React.FC<PivotTableProps> = ({
                   {formatHeader(col)}
                 </th>
               ))}
-              {showRowTotal && totalColumnHeaders.length > 0 &&
+              {showRowTotal &&
+                totalColumnHeaders.length > 0 &&
                 (hasMultipleTotalColumns ? (
                   totalColumnHeaders.map((header, idx) => (
                     <th key={idx} className="total-header total-header-leaf total-header-sticky">
@@ -568,47 +571,48 @@ const PivotTable: React.FC<PivotTableProps> = ({
         <tbody>
           {canUseRowTree ? renderTreeRows() : renderFlatRows()}
 
-          {showColumnTotal && totalRows.map((totalRow, totalRowIdx) => {
-            return (
-              <tr
-                key={totalRow.label}
-                className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}
-              >
-                <td className="total-label frozen-row-header" colSpan={dimensionCount}>
-                  <div className="frozen-cell-inner">{totalRow.label}</div>
-                </td>
-                {totalRow.values.map((val, idx) => {
-                  const { text, isEmpty } = formatValue(
-                    val,
-                    totalRow.valueFieldNames[idx] || columnValueFieldNames[idx]
-                  );
-                  const boundaryClass = getGroupBoundaryClass(idx);
-                  return (
-                    <td
-                      key={idx}
-                      className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
-                    >
-                      {text}
-                    </td>
-                  );
-                })}
-                {totalRow.totalValues.map((val, idx) => {
-                  const { text, isEmpty } = formatValue(
-                    val,
-                    totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx]
-                  );
-                  return (
-                    <td
-                      key={idx}
-                      className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
-                    >
-                      {text}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+          {showColumnTotal &&
+            totalRows.map((totalRow, totalRowIdx) => {
+              return (
+                <tr
+                  key={totalRow.label}
+                  className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}
+                >
+                  <td className="total-label frozen-row-header" colSpan={dimensionCount}>
+                    <div className="frozen-cell-inner">{totalRow.label}</div>
+                  </td>
+                  {totalRow.values.map((val, idx) => {
+                    const { text, isEmpty } = formatValue(
+                      val,
+                      totalRow.valueFieldNames[idx] || columnValueFieldNames[idx]
+                    );
+                    const boundaryClass = getGroupBoundaryClass(idx);
+                    return (
+                      <td
+                        key={idx}
+                        className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+                      >
+                        {text}
+                      </td>
+                    );
+                  })}
+                  {totalRow.totalValues.map((val, idx) => {
+                    const { text, isEmpty } = formatValue(
+                      val,
+                      totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx]
+                    );
+                    return (
+                      <td
+                        key={idx}
+                        className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                      >
+                        {text}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
         </tbody>
       </table>
     </div>

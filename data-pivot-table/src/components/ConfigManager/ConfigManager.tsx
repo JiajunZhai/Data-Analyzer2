@@ -10,6 +10,7 @@ interface PivotTemplate {
   category: string;
   categoryIcon: string;
   name: string;
+  formula?: string;
   description: string;
   rows: string[];
   cols: string[];
@@ -76,7 +77,6 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [showTemplates, setShowTemplates] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -85,7 +85,6 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setEditingId(null);
-        setShowTemplates(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -181,7 +180,6 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
 
       onTemplateApply(rowFields, colFields, valueFields);
       setIsOpen(false);
-      setShowTemplates(false);
     },
     [fields, onTemplateApply]
   );
@@ -203,7 +201,12 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
               className="template-item"
               onClick={() => handleTemplateSelect(template)}
             >
-              <div className="template-item-name">{template.name}</div>
+              <div className="template-item-header">
+                <span className="template-item-name">{template.name}</span>
+                {template.formula && (
+                  <span className="template-item-formula">{template.formula}</span>
+                )}
+              </div>
               <div className="template-item-desc">{template.description}</div>
             </button>
           ))}
@@ -307,16 +310,10 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
             </div>
           )}
 
-          {/* 快速模板 */}
+          {/* 推荐模板 */}
           <div className="config-section">
-            <button
-              type="button"
-              className="section-title clickable"
-              onClick={() => setShowTemplates(!showTemplates)}
-            >
-              快速模板 {showTemplates ? '▾' : '▸'}
-            </button>
-            {showTemplates && <div className="templates-list">{templateBlocks}</div>}
+            <div className="section-title">推荐模板</div>
+            <div className="templates-list">{templateBlocks}</div>
           </div>
         </div>
       )}

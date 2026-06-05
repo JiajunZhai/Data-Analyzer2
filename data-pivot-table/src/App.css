@@ -567,9 +567,9 @@ body {
 
 .calendar-weekday {
   text-align: center;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 400;
+  color: #c0c4cc;
   padding: 4px 0;
 }
 
@@ -584,10 +584,12 @@ body {
   font-size: 12px;
   padding: 6px 0;
   cursor: pointer;
+  border: none;
   border-radius: 0;
   transition: background 0.1s;
   color: var(--text-color);
   position: relative;
+  background: transparent;
 }
 
 .calendar-day.empty {
@@ -618,7 +620,7 @@ body {
 }
 
 .calendar-day:hover:not(.disabled):not(.empty) {
-  background: var(--hover-bg);
+  background: #f5f5f5;
 }
 
 .calendar-day.range-start,
@@ -626,43 +628,40 @@ body {
   background: var(--primary-light);
   color: white;
   font-weight: 600;
-  border-radius: 0;
-}
-
-.calendar-day.range-start {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.calendar-day.range-end {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: 50%;
 }
 
 .calendar-day.range-start.range-end {
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
 }
 
 .calendar-day.in-range {
   background: #dbeafe;
   color: #1e40af;
+  border-radius: 0;
 }
 
 .calendar-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
-  margin-top: 4px;
-  border-top: 1px solid var(--border-color);
+  padding: 12px 0;
+  margin-top: 12px;
+  border-top: 1px solid #ebeef5;
 }
 
 .calendar-footer-hint {
   font-size: 11px;
-  color: var(--text-muted);
+  color: #c0c4cc;
 }
 
 .calendar-footer-buttons {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+}
+
+.calendar-footer-buttons button {
+  padding: 6px 16px;
 }
 
 /* ========================================== */
@@ -732,28 +731,51 @@ body {
 }
 
 .template-item {
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e4e7ed;
+  background: #ffffff;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.25s ease;
 }
 
 .template-item:hover {
-  background: var(--hover-bg);
+  border-color: #409eff;
+  background-color: #fbfdff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.08);
+}
+
+.template-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
 }
 
 .template-item-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 3px;
+  color: #303133;
+}
+
+.template-item-formula {
+  font-size: 11px;
+  color: #909399;
+  background: #f4f4f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .template-item-desc {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 12px;
+  color: #606266;
   line-height: 1.5;
-  margin-bottom: 6px;
+  margin: 0;
 }
 
 .template-item-config {
@@ -2576,10 +2598,13 @@ td.group-boundary-col {
 
 .spatial-zone-columns .spatial-zone-header {
   background: var(--color-cols-bg);
-  flex: 0 0 100px;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 80px;
   height: 100%;
   border-right: 1px solid var(--color-cols-border);
   border-bottom: none;
+  writing-mode: horizontal-tb;
 }
 
 .spatial-zone-rows .spatial-zone-header {
@@ -2607,27 +2632,72 @@ td.group-boundary-col {
   font-weight: 700;
 }
 
-.spatial-zone-toggle-label {
+/* 总计控制区域 */
+.spatial-zone-total-control {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  cursor: pointer;
-  user-select: none;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 10px;
 }
 
-.spatial-zone-toggle-label input[type="checkbox"] {
-  width: 13px;
-  height: 13px;
-  accent-color: var(--primary-light);
-  cursor: pointer;
-}
-
-.spatial-zone-toggle-label span {
+.total-control-label {
   font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+/* 列配置区总计控制 */
+.column-total-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+/* 微型开关 */
+.mini-switch {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+  background: #cbd5e1;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.mini-switch:hover {
+  background: #94a3b8;
+}
+
+.mini-switch.active {
+  background: var(--primary-light);
+}
+
+.mini-switch.active:hover {
+  background: #2563eb;
+}
+
+.mini-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.mini-switch.active::after {
+  transform: translateX(12px);
 }
 
 .spatial-zone-body {
@@ -3923,8 +3993,8 @@ button.dataset-info {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: var(--zone-bg);
-  border: 1px solid var(--border-light);
+  background: white;
+  border: 1px solid #f0f0f0;
   border-radius: var(--radius-element);
   margin-bottom: 8px;
   cursor: pointer;
@@ -3932,13 +4002,14 @@ button.dataset-info {
 }
 
 .config-card:hover {
-  border-color: var(--primary-light);
-  background: var(--hover-bg);
+  border-color: #c0c4cc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: white;
 }
 
 .config-card.current {
-  border-color: var(--primary-light);
-  background: var(--hover-bg);
+  border-color: #c0c4cc;
+  background: #fafafa;
 }
 
 .config-info {
@@ -4020,29 +4091,6 @@ button.dataset-info {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.template-item {
-  padding: 8px 10px;
-  border-radius: var(--radius-element);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.template-item:hover {
-  background: var(--hover-bg);
-}
-
-.template-item-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.template-item-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 /* ========================================== */
