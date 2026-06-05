@@ -1,8 +1,8 @@
-import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PivotResult, PivotTreeNode } from '../../types';
 import { animateTableRowHeaders } from '../../utils/animations';
 import { calculateAllRowSpans } from '../../utils/rowSpanCalculator';
+import { useVirtualScroll, shouldUseVirtualScroll } from '../../hooks/useVirtualScroll';
 
 const KEY_SEPARATOR = '\u001f';
 const BASE_METRICS = ['注册用户', '曝光人数', '曝光次数', '广告收益', '点击次数'];
@@ -29,19 +29,30 @@ interface VisibleTreeRow {
   rowIndex?: number;
 }
 
-const PivotTable: React.FC<PivotTableProps> = ({
+const ROW_HEIGHT = 36; // 与 CSS 中的行高一致
+
+const PivotTable: React.FC<PivotTableProps> = React.memo(({
   result,
   valueFieldName,
   emptyMessage = '请配置透视表字段以查看结果',
   showRowTotal = true,
   showColumnTotal = true,
 }) => {
-  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLTableElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const canUseRowTree = result?.valueAxis === 'columns' && Boolean(result.rowTree?.length);
+  const rowCount = result?.rowHeaders?.length ?? 0;
+  const useVirtual = !canUseRowTree && shouldUseVirtualScroll(rowCount);
+
+  // 虚拟滚动 - 仅对 flat 模式启用
+  const { startIndex, endIndex, onScroll, totalHeight, getRowStyle } = useVirtualScroll({
+    rowCount: useVirtual ? rowCount : 0,
+    rowHeight: ROW_HEIGHT,
+    containerRef,
+    overscan: 5,
+  });
 
   const visibleTreeRows = useMemo<VisibleTreeRow[]>(() => {
     if (!result?.rowTree || result.valueAxis !== 'columns') return [];
@@ -95,22 +106,6 @@ const PivotTable: React.FC<PivotTableProps> = ({
       return next;
     });
   }, []);
-
-  const handleMouseEnter = useCallback((rowIndex: number, colIndex: number) => {
-    setHoveredCell({ row: rowIndex, col: colIndex });
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setHoveredCell(null);
-  }, []);
-
-  const isCellHighlighted = useCallback(
-    (rowIndex: number, colIndex: number): boolean => {
-      if (!hoveredCell) return false;
-      return hoveredCell.row === rowIndex || hoveredCell.col === colIndex;
-    },
-    [hoveredCell]
-  );
 
   const formatValue = useCallback(
     (num: number, metricName?: string): { text: string; isEmpty: boolean } => {
@@ -376,7 +371,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
   );
 
   const renderTreeRows = () =>
-    visibleTreeRows.map((treeRow, ri) => {
+    visibleTreeRows.map((treeRow) => {
       const isExpandedGroup = treeRow.type === 'group' && treeRow.isExpanded;
       const dataValues =
         treeRow.data.length > 0 ? treeRow.data : Array.from({ length: dataColumnCount }, () => 0);
@@ -393,16 +388,13 @@ const PivotTable: React.FC<PivotTableProps> = ({
           {renderTreeRowHeader(treeRow)}
 
           {dataValues.map((val, ci) => {
-            const highlighted = isCellHighlighted(ri, ci);
             const boundaryClass = getGroupBoundaryClass(ci);
 
             if (isExpandedGroup) {
               return (
                 <td
                   key={ci}
-                  className={`data-cell tree-group-placeholder ${highlighted ? 'cell-highlight' : ''} ${boundaryClass}`}
-                  onMouseEnter={() => handleMouseEnter(ri, ci)}
-                  onMouseLeave={handleMouseLeave}
+                  className={`data-cell tree-group-placeholder ${boundaryClass}`}
                 >
                   &nbsp;
                 </td>
@@ -416,9 +408,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
             return (
               <td
                 key={ci}
-                className={`data-cell ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'} ${highlighted ? 'cell-highlight' : ''} ${boundaryClass}`}
-                onMouseEnter={() => handleMouseEnter(ri, ci)}
-                onMouseLeave={handleMouseLeave}
+                className={`data-cell ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
               >
                 {text}
               </td>
@@ -449,69 +439,135 @@ const PivotTable: React.FC<PivotTableProps> = ({
       );
     });
 
-  const renderFlatRows = () =>
-    rowHeaders.map((row, ri) => {
-      const totalRow = isTotalRow(ri);
+  // 渲染单行数据（虚拟滚动和非虚拟滚动共用）
+  const renderSingleFlatRow = (ri: number) => {
+    const row = rowHeaders[ri];
+    const totalRow = isTotalRow(ri);
 
-      return (
-        <tr key={ri}>
-          {row.map((cellValue, ci) => {
-            const span = rowSpans[ci]?.[ri] ?? 1;
+    return (
+      <tr key={ri} style={useVirtual ? getRowStyle(ri) : undefined}>
+        {row.map((cellValue, ci) => {
+          const span = rowSpans[ci]?.[ri] ?? 1;
 
-            if (span === 0) return null;
+          if (span === 0) return null;
 
-            if (totalRow && ci === 0) {
-              return (
-                <td key={ci} className="row-header total-label" colSpan={dimensionCount}>
-                  <div className="frozen-cell-inner">列总计</div>
-                </td>
-              );
-            }
-
-            const isLastDimCol = ci === row.length - 1;
+          if (totalRow && ci === 0) {
             return (
-              <td
-                key={ci}
-                className={`row-header frozen-row-header ${isLastDimCol ? 'dimension-col-end frozen-row-header-last' : ''}`}
-                rowSpan={span}
-              >
-                <div className="frozen-cell-inner">{cellValue || '总计'}</div>
+              <td key={ci} className="row-header total-label" colSpan={dimensionCount}>
+                <div className="frozen-cell-inner">列总计</div>
               </td>
             );
-          })}
+          }
 
-          {(data[ri] || []).map((val, ci) => {
-            const { text, isEmpty } = formatValue(val, getDataMetricName(ri, ci));
-            const highlighted = isCellHighlighted(ri, ci);
-            const boundaryClass = getGroupBoundaryClass(ci);
+          const isLastDimCol = ci === row.length - 1;
+          return (
+            <td
+              key={ci}
+              className={`row-header frozen-row-header ${isLastDimCol ? 'dimension-col-end frozen-row-header-last' : ''}`}
+              rowSpan={span}
+            >
+              <div className="frozen-cell-inner">{cellValue || '总计'}</div>
+            </td>
+          );
+        })}
+
+        {(data[ri] || []).map((val, ci) => {
+          const { text, isEmpty } = formatValue(val, getDataMetricName(ri, ci));
+          const boundaryClass = getGroupBoundaryClass(ci);
+          return (
+            <td
+              key={ci}
+              className={`data-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+            >
+              {text}
+            </td>
+          );
+        })}
+
+        {showRowTotal &&
+          (rowTotalValues[ri] || []).map((val, ti) => {
+            const { text, isEmpty } = formatValue(val, getRowTotalMetricName(ri, ti));
             return (
               <td
-                key={ci}
-                className={`data-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${highlighted ? 'cell-highlight' : ''} ${boundaryClass}`}
-                onMouseEnter={() => handleMouseEnter(ri, ci)}
-                onMouseLeave={handleMouseLeave}
+                key={ti}
+                className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
               >
                 {text}
               </td>
             );
           })}
+      </tr>
+    );
+  };
 
-          {showRowTotal &&
-            (rowTotalValues[ri] || []).map((val, ti) => {
-              const { text, isEmpty } = formatValue(val, getRowTotalMetricName(ri, ti));
-              return (
-                <td
-                  key={ti}
-                  className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
-                >
-                  {text}
-                </td>
-              );
-            })}
-        </tr>
-      );
-    });
+  // 虚拟滚动模式：只渲染可见行
+  const renderVirtualFlatRows = () => {
+    const visibleRows = [];
+    for (let ri = startIndex; ri <= endIndex; ri++) {
+      if (ri < rowCount) {
+        visibleRows.push(renderSingleFlatRow(ri));
+      }
+    }
+    return visibleRows;
+  };
 
+  // 非虚拟滚动模式：渲染所有行
+  const renderAllFlatRows = () =>
+    rowHeaders.map((_, ri) => renderSingleFlatRow(ri));
+
+  // 虚拟滚动模式
+  if (useVirtual) {
+    return (
+      <div
+        className="pivot-table-container"
+        ref={containerRef}
+        onScroll={onScroll}
+        style={{ overflow: 'auto', height: '100%' }}
+      >
+        <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
+          <table className="pivot-table" ref={tableRef} style={{ position: 'absolute', top: 0, width: '100%' }}>
+            <thead>
+              <tr>
+                {canUseRowTree ? (
+                  <th className="corner-cell tree-corner-cell">{rowHeaderTitle}</th>
+                ) : (
+                  rowDimensions.map((dim) => (
+                    <th key={dim} className="corner-cell">
+                      {dim}
+                    </th>
+                  ))
+                )}
+                {columnHeaders.map((col, idx) => (
+                  <th
+                    key={idx}
+                    className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                  >
+                    {formatHeader(col)}
+                  </th>
+                ))}
+                {showRowTotal &&
+                  totalColumnHeaders.length > 0 &&
+                  (hasMultipleTotalColumns ? (
+                    totalColumnHeaders.map((header, idx) => (
+                      <th key={idx} className="total-header total-header-leaf total-header-sticky">
+                        {header}
+                      </th>
+                    ))
+                  ) : (
+                    <th className="total-header total-header-sticky">行总计</th>
+                  ))}
+              </tr>
+            </thead>
+            <tbody>
+              {renderVirtualFlatRows()}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // 非虚拟滚动模式
   return (
     <div className="pivot-table-container" ref={containerRef}>
       <table className="pivot-table" ref={tableRef}>
@@ -569,7 +625,7 @@ const PivotTable: React.FC<PivotTableProps> = ({
           )}
         </thead>
         <tbody>
-          {canUseRowTree ? renderTreeRows() : renderFlatRows()}
+          {canUseRowTree ? renderTreeRows() : renderAllFlatRows()}
 
           {showColumnTotal &&
             totalRows.map((totalRow, totalRowIdx) => {
@@ -617,6 +673,6 @@ const PivotTable: React.FC<PivotTableProps> = ({
       </table>
     </div>
   );
-};
+});
 
 export default PivotTable;

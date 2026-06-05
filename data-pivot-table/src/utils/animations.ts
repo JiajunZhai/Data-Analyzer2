@@ -105,3 +105,37 @@ export const animateTableRowHeaders = (elements: HTMLElement[]) => {
     }
   );
 };
+
+/**
+ * 沉浸模式中临时唤醒配置区（拖拽时）
+ */
+export const showConfigPanelTemporarily = () => {
+  if (prefersReducedMotion()) {
+    gsap.set('.spatial-left-rail', { x: '0%', opacity: 0.9 });
+    return;
+  }
+
+  gsap.to('.spatial-left-rail', {
+    x: '0%',
+    opacity: 0.9,
+    duration: 0.2,
+    ease: 'power2.out',
+  });
+};
+
+/**
+ * 沉浸模式中隐藏配置区（拖拽结束）
+ */
+export const hideConfigPanelTemporarily = () => {
+  if (prefersReducedMotion()) {
+    gsap.set('.spatial-left-rail', { x: '-100%', opacity: 0 });
+    return;
+  }
+
+  gsap.to('.spatial-left-rail', {
+    x: '-100%',
+    opacity: 0,
+    duration: 0.2,
+    ease: 'power2.in',
+  });
+};

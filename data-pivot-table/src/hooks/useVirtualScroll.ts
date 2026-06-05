@@ -5,8 +5,8 @@ interface VirtualScrollOptions {
   rowCount: number;
   /** 每行高度（像素） */
   rowHeight: number;
-  /** 容器高度（像素） */
-  containerHeight: number;
+  /** 容器引用（动态获取高度） */
+  containerRef: React.RefObject<HTMLElement | null>;
   /** 预渲染的额外行数 */
   overscan?: number;
 }
@@ -18,10 +18,8 @@ interface VirtualScrollResult {
   endIndex: number;
   /** 容器的 onScroll 处理函数 */
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
-  /** 容器的 style */
-  containerStyle: React.CSSProperties;
-  /** 内容的 style */
-  contentStyle: React.CSSProperties;
+  /** 内容的总高度 */
+  totalHeight: number;
   /** 获取行的 style */
   getRowStyle: (index: number) => React.CSSProperties;
 }
@@ -31,9 +29,29 @@ interface VirtualScrollResult {
  * 用于优化大数据量表格的渲染性能
  */
 export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollResult {
-  const { rowCount, rowHeight, containerHeight, overscan = 5 } = options;
+  const { rowCount, rowHeight, containerRef, overscan = 5 } = options;
   const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(600);
   const rafRef = useRef<number | null>(null);
+
+  // 动态监听容器高度
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateHeight = () => {
+      setContainerHeight(container.clientHeight);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [containerRef]);
 
   // 计算可见行的范围
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
@@ -41,6 +59,8 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
     rowCount - 1,
     Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan
   );
+
+  const totalHeight = rowCount * rowHeight;
 
   // 使用 requestAnimationFrame 优化滚动性能
   const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
@@ -62,16 +82,6 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
     };
   }, []);
 
-  const containerStyle: React.CSSProperties = {
-    height: containerHeight,
-    overflow: 'auto',
-  };
-
-  const contentStyle: React.CSSProperties = {
-    height: rowCount * rowHeight,
-    position: 'relative',
-  };
-
   const getRowStyle = useCallback(
     (index: number): React.CSSProperties => ({
       position: 'absolute',
@@ -86,8 +96,7 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
     startIndex,
     endIndex,
     onScroll,
-    containerStyle,
-    contentStyle,
+    totalHeight,
     getRowStyle,
   };
 }

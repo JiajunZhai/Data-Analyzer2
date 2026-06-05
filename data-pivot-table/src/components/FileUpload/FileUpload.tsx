@@ -5,6 +5,7 @@ import {
   FileText,
   Folder,
   Link2,
+  Loader2,
   X,
   XCircle,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [fileName, setFileName] = useState<string>('');
   const [fileSize, setFileSize] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
   const isHeaderVariant = variant === 'header';
   const isMappingVariant = variant === 'mapping';
   const isCapsuleVariant = variant === 'capsule' || variant === 'capsule-mapping';
@@ -55,6 +57,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     async (file: File) => {
       try {
         setError('');
+        setIsLoading(true);
 
         if (isMappingVariant || isCapsuleMapping) {
           if (!file.name.endsWith('.csv')) {
@@ -84,6 +87,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         } else {
           alert(message);
         }
+      } finally {
+        setIsLoading(false);
       }
     },
     [isMappingVariant, isCapsuleMapping, onDataLoaded, onMappingLoaded]
@@ -166,21 +171,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
   if (isCapsuleVariant) {
     return (
       <label
-        className={`file-capsule ${isCapsuleMapping ? 'file-capsule-mapping' : ''} ${isDragging ? 'capsule-dragging' : ''}`}
+        className={`file-capsule ${isCapsuleMapping ? 'file-capsule-mapping' : ''} ${isDragging ? 'capsule-dragging' : ''} ${isLoading ? 'capsule-loading' : ''}`}
       >
         <span className="capsule-icon">
-          {isCapsuleMapping ? <Link2 size={14} /> : <Folder size={14} />}
+          {isLoading ? (
+            <Loader2 size={14} className="spin-animation" />
+          ) : isCapsuleMapping ? (
+            <Link2 size={14} />
+          ) : (
+            <Folder size={14} />
+          )}
         </span>
         <span className="capsule-name" title={fileName || (isCapsuleMapping ? '映射表' : '数据源')}>
-          {fileName ? truncateFileName(fileName, 18) : isCapsuleMapping ? '映射表' : '导入新数据源'}
+          {isLoading
+            ? '正在加载解析引擎...'
+            : fileName
+              ? truncateFileName(fileName, 18)
+              : isCapsuleMapping
+                ? '映射表'
+                : '导入新数据源'}
         </span>
-        {fileSize && <span className="capsule-size">{fileSize}</span>}
-        <span className="capsule-action">{fileName ? '更换' : '选择'}</span>
+        {fileSize && !isLoading && <span className="capsule-size">{fileSize}</span>}
+        <span className="capsule-action">{isLoading ? '' : fileName ? '更换' : '选择'}</span>
         <input
           type="file"
           accept={isCapsuleMapping ? '.csv' : '.xlsx,.xls,.csv'}
           onChange={handleFileInput}
           style={{ display: 'none' }}
+          disabled={isLoading}
         />
       </label>
     );

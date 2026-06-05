@@ -101,7 +101,7 @@
 
 body {
   font-family:
-    "Inter", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC",
+    system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC",
     sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -2044,8 +2044,9 @@ td.group-boundary-col {
   max-width: 152px;
 }
 
-.data-cell:hover {
-  background: var(--hover-bg);
+/* 行悬停高亮 - 纯 CSS 实现，无需 React state */
+.pivot-table tbody tr:hover td:not(.row-header) {
+  background-color: var(--hover-bg);
 }
 
 /* 斑马纹 */
@@ -2055,11 +2056,6 @@ td.group-boundary-col {
 
 .pivot-table tbody tr:nth-child(even):hover td:not(.row-header):not(.total-cell):not(.grand-total) {
   background: var(--hover-bg);
-}
-
-/* 行悬停高亮 */
-.pivot-table tbody tr:hover td {
-  background: var(--hover-bg) !important;
 }
 
 .total-header {
@@ -2144,14 +2140,7 @@ td.group-boundary-col {
   border-right: 1px solid #c3d2e4 !important;
 }
 
-/* 十字交叉高亮 */
-.pivot-table td.cell-highlight {
-  background-color: #f0f9ff !important;
-}
-
-.pivot-table td.cell-highlight.empty-cell {
-  background-color: #f0f9ff !important;
-}
+/* 十字交叉高亮 - 已改为纯 CSS :has() 实现 */
 
 /* 搜索框样式 */
 .field-search {
@@ -2429,6 +2418,27 @@ td.group-boundary-col {
 .file-capsule.capsule-dragging {
   background: rgba(59, 130, 246, 0.2);
   border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Loading 状态 */
+.file-capsule.capsule-loading {
+  opacity: 0.8;
+  cursor: wait;
+  pointer-events: none;
+}
+
+/* 旋转动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
 }
 
 /* 映射表胶囊特殊样式 */
@@ -4844,4 +4854,177 @@ button.dataset-info {
 .mapping-2d-table .cell-input::placeholder {
   color: var(--text-muted);
   opacity: 0.5;
+}
+
+/* ============ 沉浸模式 (Zen Mode) ============ */
+
+/* 沉浸模式触发按钮 */
+.zen-mode-trigger {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.zen-mode-trigger:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.zen-mode-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.zen-mode-trigger.zen-mode-active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.zen-mode-trigger.zen-mode-active:hover {
+  background: rgba(99, 102, 241, 0.9);
+}
+
+.capsule-shortcut {
+  font-size: 10px;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+/* 沉浸模式激活时的布局过渡 */
+.app {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 悬浮控制条 */
+.floating-control-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+  padding: 8px 16px;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.15s ease;
+}
+
+.floating-control-bar.visible {
+  opacity: 1;
+}
+
+/* 自动暗化 */
+.floating-control-bar.idle {
+  opacity: 0.05;
+}
+
+/* hover 时强制显示 */
+.floating-control-bar:hover {
+  opacity: 1 !important;
+}
+
+.zen-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.zen-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.zen-bar-btn:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-light);
+  color: var(--text-primary);
+}
+
+.zen-bar-btn-exit {
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+.zen-bar-btn-exit:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.zen-bar-btn kbd {
+  font-size: 10px;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+/* 总计栏开关 */
+.zen-bar-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.zen-bar-switch:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-light);
+  color: var(--text-primary);
+}
+
+.zen-bar-switch.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+.zen-bar-switch.active:hover {
+  background: rgba(99, 102, 241, 0.9);
+}
+
+/* 分隔线 */
+.zen-bar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 4px;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .floating-control-bar {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+[data-theme="dark"] .floating-control-bar:hover {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+[data-theme="dark"] .zen-bar-btn kbd {
+  background: rgba(255, 255, 255, 0.1);
 }

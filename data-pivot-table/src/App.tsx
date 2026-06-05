@@ -14,17 +14,24 @@ import type { FilterChipConfig } from './components/AdMobFilterBar/AdMobFilterBa
 import AdMobFilterBar from './components/AdMobFilterBar/AdMobFilterBar';
 import ConfigManager from './components/ConfigManager/ConfigManager';
 import DataSourceManager from './components/DataSourceManager/DataSourceManager';
+import FloatingControlBar from './components/FloatingControlBar';
 import MappingManager from './components/MappingManager/MappingManager';
 import PivotTable from './components/PivotTable/PivotTable';
 import SpatialFieldZone from './components/SpatialFieldZone';
+import ZenModeButton from './components/ZenModeButton';
 import { useConfigs } from './hooks/useConfigs';
 import { useDatasetManager } from './hooks/useDatasetManager';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { useMappings } from './hooks/useMappings';
 import { usePivotState } from './hooks/usePivotState';
+import { useZenMode } from './hooks/useZenMode';
 import { storageService } from './services/storage';
 import type { DataRow, Field } from './types';
 import type { StoredDataset, StoredMapping } from './types/storage';
+import {
+  showConfigPanelTemporarily,
+  hideConfigPanelTemporarily,
+} from './utils/animations';
 import {
   addCalculatedFields,
   PRESET_CALCULATED_FIELDS,
@@ -145,6 +152,21 @@ function App() {
 
   const [shouldApplyDefault, setShouldApplyDefault] = useState(false);
   const loadDatasetRef = useRef<(dataset: StoredDataset) => Promise<void>>(async () => {});
+
+  // 沉浸模式
+  const {
+    isZenMode,
+    isIdle,
+    isFullscreen,
+    toggleZenMode,
+    exitZenMode,
+    toggleFullscreen,
+    handleDragStart: handleZenDragStart,
+    handleDragEnd: handleZenDragEnd,
+  } = useZenMode({
+    onDragStart: () => showConfigPanelTemporarily(),
+    onDragEnd: () => hideConfigPanelTemporarily(),
+  });
 
   // 拖拽逻辑
   const { activeDragField, handleDragStart, handleDragEnd } = useDragAndDrop({
@@ -485,15 +507,44 @@ function App() {
     ]
   );
 
+  const ZEN_TRANSITION = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+
   return (
     <DndContext
       collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragStart={(e) => {
+        handleDragStart(e);
+        handleZenDragStart();
+      }}
+      onDragEnd={(e) => {
+        handleDragEnd(e);
+        handleZenDragEnd();
+      }}
       onDragCancel={() => {}}
     >
-      <div className="app">
-        <header className="app-header">
+      <div
+        className={`app ${isZenMode ? 'zen-mode' : ''}`}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isZenMode ? '0px 1fr' : '1fr',
+          gridTemplateRows: isZenMode ? '0px 1fr' : 'auto 1fr',
+          transition: ZEN_TRANSITION,
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+        }}
+      >
+        <header
+          className="app-header"
+          style={{
+            transform: isZenMode ? 'translateY(-100%)' : 'translateY(0)',
+            opacity: isZenMode ? 0 : 1,
+            pointerEvents: isZenMode ? 'none' : 'auto',
+            height: isZenMode ? '0px' : 'auto',
+            overflow: 'hidden',
+            transition: ZEN_TRANSITION,
+          }}
+        >
           <h1>
             <BarChart3
               size={18}
@@ -511,6 +562,11 @@ function App() {
             />
           )}
           <div className="header-file-capsules">
+            <ZenModeButton
+              disabled={data.length === 0}
+              isActive={isZenMode}
+              onClick={toggleZenMode}
+            />
             {data.length > 0 && (
               <ConfigManager
                 currentDatasetId={currentDatasetId}
@@ -549,8 +605,24 @@ function App() {
         </header>
 
         <main className="app-main spatial-main">
-          <div className="spatial-workspace">
-            <div className="spatial-left-rail">
+          <div
+            className="spatial-workspace"
+            style={{
+              gridTemplateColumns: isZenMode ? '0px 1fr' : '260px 1fr',
+              transition: ZEN_TRANSITION,
+            }}
+          >
+            <div
+              className="spatial-left-rail"
+              style={{
+                transform: isZenMode ? 'translateX(-100%)' : 'translateX(0)',
+                opacity: isZenMode ? 0 : 1,
+                pointerEvents: isZenMode ? 'none' : 'auto',
+                width: isZenMode ? '0px' : 'auto',
+                overflow: 'hidden',
+                transition: ZEN_TRANSITION,
+              }}
+            >
               <div className="spatial-origin">
                 <SpatialFieldZone
                   id="values"
@@ -581,7 +653,17 @@ function App() {
             </div>
 
             <div className="spatial-right-rail">
-              <div className="spatial-columns">
+              <div
+                className="spatial-columns"
+                style={{
+                  transform: isZenMode ? 'translateY(-100%)' : 'translateY(0)',
+                  opacity: isZenMode ? 0 : 1,
+                  pointerEvents: isZenMode ? 'none' : 'auto',
+                  height: isZenMode ? '0px' : 'auto',
+                  overflow: 'hidden',
+                  transition: ZEN_TRANSITION,
+                }}
+              >
                 <SpatialFieldZone
                   id="columns"
                   title="列配置区"
@@ -597,7 +679,13 @@ function App() {
                 />
               </div>
 
-              <div className="spatial-table">
+              <div
+                className="spatial-table"
+                style={{
+                  padding: isZenMode ? '24px' : '0px',
+                  transition: ZEN_TRANSITION,
+                }}
+              >
                 <PivotTable
                   result={pivotResult}
                   valueFieldName={valueFields[0]?.field.name}
@@ -609,6 +697,20 @@ function App() {
             </div>
           </div>
         </main>
+
+        {/* 沉浸模式悬浮控制条 */}
+        {isZenMode && (
+          <FloatingControlBar
+            isIdle={isIdle}
+            isFullscreen={isFullscreen}
+            showRowTotal={showRowTotal}
+            showColumnTotal={showColumnTotal}
+            onExit={exitZenMode}
+            onToggleFullscreen={toggleFullscreen}
+            onToggleRowTotal={() => setShowRowTotal(!showRowTotal)}
+            onToggleColumnTotal={() => setShowColumnTotal(!showColumnTotal)}
+          />
+        )}
       </div>
       <DragOverlay>
         {activeDragField && (

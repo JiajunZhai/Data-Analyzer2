@@ -6,5 +6,14 @@ export default defineConfig({
   plugins: [react()],
   build: {
     chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'vendor-gsap': ['gsap', '@gsap/react'],
+        },
+      },
+    },
   },
 });

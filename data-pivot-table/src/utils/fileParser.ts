@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import type { DataRow } from '../types';
 import { readAsTextWithAutoEncoding } from './encodingUtils';
 
@@ -26,7 +25,10 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-export function parseExcelFile(file: File): Promise<{ headers: string[]; data: DataRow[] }> {
+export async function parseExcelFile(file: File): Promise<{ headers: string[]; data: DataRow[] }> {
+  // 动态导入 xlsx，减少首屏 bundle 大小
+  const XLSX = await import('xlsx');
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
