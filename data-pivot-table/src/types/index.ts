@@ -84,10 +84,3 @@ export interface PivotResult {
   totalColumnValueFieldNames: string[];
   totalRows: PivotTotalRow[];
 }
-
-export interface ScenarioMapping {
-  lookupMap: Map<string, string>;
-  appCodes: string[];
-  scenarioCount: number;
-  mappedRowCount: number;
-}

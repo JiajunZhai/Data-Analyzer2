@@ -1,6 +1,5 @@
 import { Film, Globe, Megaphone, Pencil, Save, Settings, Smartphone, Trash2 } from 'lucide-react';
-import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import templatesData from '../../data/pivotTemplates.json';
 import type { Field, FilterConfig, PivotField } from '../../types';
 import type { StoredConfig } from '../../types/storage';
@@ -18,7 +17,6 @@ interface PivotTemplate {
 }
 
 const FALLBACK_MAP: Record<string, string> = {
-  实际场景: '广告场景',
   实际国家: '国家',
   买量渠道: '渠道',
 };
@@ -321,4 +319,4 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
   );
 };
 
-export default ConfigManager;
+export default React.memo(ConfigManager);

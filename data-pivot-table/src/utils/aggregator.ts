@@ -13,12 +13,26 @@ import { BASE_METRICS, calculateMetricFromAggregates, isCalculatedMetric } from 
 
 const KEY_SEPARATOR = '\u001f';
 const TOTAL_LABEL = '总计';
-const RAW_SCENARIO_FIELD = '广告场景';
-const MAPPED_SCENARIO_FIELD = '实际场景';
+const SCENARIO_FIELDS = ['标准广告场景', '聚合广告场景'];
 const ALL_SCENARIO_VALUE = 'ALL';
+const REGISTERED_USERS_METRIC = '注册用户';
+const IMPRESSION_USERS_METRIC = '曝光人数';
+const SEMI_ADDITIVE_SUM_METRICS = new Set([REGISTERED_USERS_METRIC, IMPRESSION_USERS_METRIC]);
+const SEMI_ADDITIVE_KEY_FIELD_GROUPS = [
+  ['日期'],
+  ['应用'],
+  ['国家', '实际国家'],
+  ['版本'],
+  ['渠道', '买量渠道'],
+];
 const collator = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
 
-type MetricSeriesMap = Record<string, number[]>;
+interface MetricPoint {
+  value: number;
+  semiAdditiveKey: string;
+}
+
+type MetricSeriesMap = Record<string, MetricPoint[]>;
 
 interface KeyInfo {
   key: string;
@@ -49,11 +63,45 @@ export function aggregateData(
 ): PivotResult {
   let filteredData = data;
 
-  filterConfigs.forEach((filter) => {
-    filteredData = filteredData.filter((row) =>
-      filter.selectedValues.includes(getDimensionValue(row, filter.fieldName))
+  if (filterConfigs.length > 0) {
+    // 预构建 Set 以加速查找，单次遍历完成所有过滤
+    const filterSets = filterConfigs.map((filter) => ({
+      fieldName: filter.fieldName,
+      valueSet: new Set(filter.selectedValues),
+    }));
+
+    filteredData = data.filter((row) =>
+      filterSets.every((filter) => filter.valueSet.has(getDimensionValue(row, filter.fieldName)))
     );
-  });
+  }
+
+  // 检查场景是否作为维度
+  const scenarioFieldNames = new Set(SCENARIO_FIELDS);
+  const hasScenarioDimension = [...rowFields, ...colFields].some((field) =>
+    scenarioFieldNames.has(field.field.name)
+  );
+
+  // 在过滤 ALL 行之前，提取 ALL 行的半可加指标值（曝光人数、注册用户）
+  // 用于在计算总计/小计时注入，避免数据翻倍
+  // 始终构建，不依赖 hasScenarioDimension，确保计算指标分母可用
+  const metricNamesForLookup = getMetricNames(valueFields);
+  const allRowSemiAdditiveLookup = new Map<string, Map<string, number>>();
+  for (const row of filteredData) {
+    if (!isAllScenarioRow(row)) continue;
+    const key = getSemiAdditiveKey(row);
+    if (!allRowSemiAdditiveLookup.has(key)) {
+      allRowSemiAdditiveLookup.set(key, new Map());
+    }
+    const values = allRowSemiAdditiveLookup.get(key)!;
+    for (const metric of metricNamesForLookup) {
+      if (SEMI_ADDITIVE_SUM_METRICS.has(metric)) {
+        const value = Number(row[metric]);
+        if (!Number.isNaN(value)) {
+          values.set(metric, value);
+        }
+      }
+    }
+  }
 
   filteredData = normalizeScenarioRows(filteredData, rowFields, colFields, filterConfigs);
 
@@ -63,10 +111,10 @@ export function aggregateData(
   if (filteredData.length > 0) {
     // 动态计算筛选后的总广告收益，确保收益占比逻辑正确
     const filteredTotalRevenue = filteredData.reduce(
-      (sum, row) => sum + (Number(row['广告收益']) || 0),
+      (sum, row) => sum + (Number(row.广告收益) || 0),
       0
     );
-    constants['总广告收益'] = filteredTotalRevenue;
+    constants.总广告收益 = filteredTotalRevenue;
   }
 
   const rowKeyParts = new Map<string, string[]>();
@@ -78,6 +126,7 @@ export function aggregateData(
   filteredData.forEach((row) => {
     const rowInfo = getKeyInfo(row, rowFields);
     const colInfo = getKeyInfo(row, colFields);
+    const semiAdditiveKey = getSemiAdditiveKey(row);
 
     rowKeys.add(rowInfo.key);
     colKeys.add(colInfo.key);
@@ -87,8 +136,8 @@ export function aggregateData(
     const cellData = ensureCellData(baseDataMap, rowInfo.key, colInfo.key, metricNames);
     metricNames.forEach((metric) => {
       const value = Number(row[metric]);
-      if (!isNaN(value)) {
-        cellData[metric].push(value);
+      if (!Number.isNaN(value)) {
+        cellData[metric].push({ value, semiAdditiveKey });
       }
     });
   });
@@ -101,7 +150,8 @@ export function aggregateData(
     sortedRowKeys,
     sortedColKeys,
     baseDataMap,
-    metricNames
+    metricNames,
+    allRowSemiAdditiveLookup
   );
   const grandTotalData = mergeMany(Array.from(columnTotalsByKey.values()), metricNames);
 
@@ -121,6 +171,7 @@ export function aggregateData(
       valueFields,
       valueAxis,
       constants,
+      allRowSemiAdditiveLookup,
     });
   }
 
@@ -139,6 +190,7 @@ export function aggregateData(
     valueFields,
     valueAxis,
     constants,
+    allRowSemiAdditiveLookup,
   });
 }
 
@@ -152,7 +204,7 @@ function normalizeScenarioRows(
     return data;
   }
 
-  const scenarioFieldNames = new Set([RAW_SCENARIO_FIELD, MAPPED_SCENARIO_FIELD]);
+  const scenarioFieldNames = new Set(SCENARIO_FIELDS);
   const hasScenarioDimension = [...rowFields, ...colFields].some((field) =>
     scenarioFieldNames.has(field.field.name)
   );
@@ -161,21 +213,25 @@ function normalizeScenarioRows(
   );
 
   if (hasScenarioDimension) {
+    // 场景作为维度 → 过滤 ALL 行，仅展示子场景
     return data.filter((row) => !isAllScenarioRow(row));
   }
 
-  if (!hasScenarioFilter) {
-    return data.filter((row) => isAllScenarioRow(row));
+  if (hasScenarioFilter) {
+    // 场景有筛选但不作为维度 → 过滤 ALL 行，避免与筛选的子场景求和翻倍
+    return data.filter((row) => !isAllScenarioRow(row));
   }
 
-  return data;
+  // 场景既不是维度也没有筛选 → 仅保留 ALL 行
+  return data.filter((row) => isAllScenarioRow(row));
 }
 
 function isAllScenarioRow(row: DataRow): boolean {
-  return (
-    String(row[RAW_SCENARIO_FIELD] ?? '')
-      .trim()
-      .toUpperCase() === ALL_SCENARIO_VALUE
+  return SCENARIO_FIELDS.some(
+    (field) =>
+      String(row[field] ?? '')
+        .trim()
+        .toUpperCase() === ALL_SCENARIO_VALUE
   );
 }
 
@@ -195,6 +251,7 @@ interface BuildResultOptions {
   valueFields: PivotField[];
   valueAxis: ValueAxis;
   constants: Record<string, number>;
+  allRowSemiAdditiveLookup: Map<string, Map<string, number>>;
 }
 
 function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
@@ -213,6 +270,7 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     valueFields,
     valueAxis,
     constants,
+    allRowSemiAdditiveLookup,
   } = options;
 
   const displayColumns = buildDisplayColumns(
@@ -275,6 +333,7 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     data,
     rowTotalValues,
     constants,
+    allRowSemiAdditiveLookup,
   });
 
   return {
@@ -312,6 +371,7 @@ interface BuildRowTreeOptions {
   data: number[][];
   rowTotalValues: number[][];
   constants: Record<string, number>;
+  allRowSemiAdditiveLookup: Map<string, Map<string, number>>;
 }
 
 function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
@@ -374,7 +434,7 @@ function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
 }
 
 function getDisplayValuesForRows(rowKeys: string[], options: BuildRowTreeOptions): number[] {
-  const { displayColumns, baseDataMap, metricNames, constants } = options;
+  const { displayColumns, baseDataMap, metricNames, constants, allRowSemiAdditiveLookup } = options;
 
   return displayColumns.map((column) => {
     const totalData = createMetricSeries(metricNames);
@@ -387,12 +447,15 @@ function getDisplayValuesForRows(rowKeys: string[], options: BuildRowTreeOptions
       );
     });
 
+    // 注入 ALL 行的半可加指标值
+    injectAllRowSemiAdditiveValues(totalData, allRowSemiAdditiveLookup, metricNames);
+
     return getMetricValue(column.valueField, totalData, constants);
   });
 }
 
 function getRowTotalValuesForRows(rowKeys: string[], options: BuildRowTreeOptions): number[] {
-  const { rowTotalsByKey, metricNames, valueFields, constants } = options;
+  const { rowTotalsByKey, metricNames, valueFields, constants, allRowSemiAdditiveLookup } = options;
   const totalData = createMetricSeries(metricNames);
 
   rowKeys.forEach((rowKey) => {
@@ -402,6 +465,9 @@ function getRowTotalValuesForRows(rowKeys: string[], options: BuildRowTreeOption
       metricNames
     );
   });
+
+  // 注入 ALL 行的半可加指标值
+  injectAllRowSemiAdditiveValues(totalData, allRowSemiAdditiveLookup, metricNames);
 
   return valueFields.map((valueField) => getMetricValue(valueField, totalData, constants));
 }
@@ -421,6 +487,7 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     valueFields,
     valueAxis,
     constants,
+    allRowSemiAdditiveLookup,
   } = options;
 
   const displayRows = buildDisplayRows(sortedRowKeys, rowKeyParts, rowFields.length, valueFields);
@@ -566,14 +633,17 @@ function getKeyInfo(row: DataRow, fields: PivotField[]): KeyInfo {
 }
 
 function getDimensionValue(row: DataRow, fieldName: string): string {
-  if (fieldName === RAW_SCENARIO_FIELD) {
-    const mappedScenario = String(row[MAPPED_SCENARIO_FIELD] ?? '').trim();
-    if (mappedScenario) {
-      return mappedScenario;
-    }
-  }
-
   return String(row[fieldName] ?? '').trim();
+}
+
+function getSemiAdditiveKey(row: DataRow): string {
+  return SEMI_ADDITIVE_KEY_FIELD_GROUPS.map((fieldNames) => {
+    for (const fieldName of fieldNames) {
+      const value = String(row[fieldName] ?? '').trim();
+      if (value) return value;
+    }
+    return '';
+  }).join(KEY_SEPARATOR);
 }
 
 function ensureCellData(
@@ -582,16 +652,19 @@ function ensureCellData(
   colKey: string,
   metricNames: string[]
 ): MetricSeriesMap {
-  if (!dataMap.has(rowKey)) {
-    dataMap.set(rowKey, new Map());
+  let rowMap = dataMap.get(rowKey);
+  if (!rowMap) {
+    rowMap = new Map();
+    dataMap.set(rowKey, rowMap);
   }
 
-  const rowMap = dataMap.get(rowKey)!;
-  if (!rowMap.has(colKey)) {
-    rowMap.set(colKey, createMetricSeries(metricNames));
+  let cellData = rowMap.get(colKey);
+  if (!cellData) {
+    cellData = createMetricSeries(metricNames);
+    rowMap.set(colKey, cellData);
   }
 
-  return rowMap.get(colKey)!;
+  return cellData;
 }
 
 function getCellData(
@@ -633,7 +706,8 @@ function buildColumnTotals(
   rowKeys: string[],
   colKeys: string[],
   dataMap: Map<string, Map<string, MetricSeriesMap>>,
-  metricNames: string[]
+  metricNames: string[],
+  allRowSemiAdditiveLookup: Map<string, Map<string, number>>
 ): Map<string, MetricSeriesMap> {
   const totals = new Map<string, MetricSeriesMap>();
 
@@ -642,6 +716,8 @@ function buildColumnTotals(
     rowKeys.forEach((rowKey) => {
       mergeInto(columnTotal, getCellData(dataMap, rowKey, colKey, metricNames), metricNames);
     });
+    // 注入 ALL 行的半可加指标值，避免跨场景 SUM 导致数据翻倍
+    injectAllRowSemiAdditiveValues(columnTotal, allRowSemiAdditiveLookup, metricNames);
     totals.set(colKey, columnTotal);
   });
 
@@ -650,13 +726,36 @@ function buildColumnTotals(
 
 function mergeMany(seriesList: MetricSeriesMap[], metricNames: string[]): MetricSeriesMap {
   const merged = createMetricSeries(metricNames);
-  seriesList.forEach((series) => mergeInto(merged, series, metricNames));
+  seriesList.forEach((series) => {
+    mergeInto(merged, series, metricNames);
+  });
   return merged;
+}
+
+/**
+ * 将 ALL 行的半可加指标值注入到 MetricSeriesMap 中
+ * 场景作为维度时，ALL 行被过滤，但总计/小计需要使用 ALL 行的真实去重值
+ */
+function injectAllRowSemiAdditiveValues(
+  metricData: MetricSeriesMap,
+  allRowLookup: Map<string, Map<string, number>>,
+  metricNames: string[]
+): void {
+  for (const [semiAddKey, values] of allRowLookup) {
+    for (const [metric, value] of values) {
+      if (metricNames.includes(metric) && metricData[metric]) {
+        metricData[metric].push({ value, semiAdditiveKey: semiAddKey });
+      }
+    }
+  }
 }
 
 function mergeInto(target: MetricSeriesMap, source: MetricSeriesMap, metricNames: string[]) {
   metricNames.forEach((metricName) => {
-    target[metricName].push(...(source[metricName] || []));
+    const sourcePoints = source[metricName] || [];
+    for (const point of sourcePoints) {
+      target[metricName].push(point);
+    }
   });
 }
 
@@ -671,17 +770,44 @@ function getMetricValue(
     return calculateMetricFromAggregates(fieldName, sumBaseMetrics(metricData), constants);
   }
 
-  return aggregateValues(metricData[fieldName] || [], valueField.aggregation || 'sum');
+  const points = metricData[fieldName] || [];
+  const aggregation = valueField.aggregation || 'sum';
+  if (aggregation === 'sum' && SEMI_ADDITIVE_SUM_METRICS.has(fieldName)) {
+    return sumSemiAdditiveMetric(points);
+  }
+
+  return aggregateValues(points, aggregation);
 }
 
 function sumBaseMetrics(metricData: MetricSeriesMap): Record<string, number> {
   const aggregated: Record<string, number> = {};
 
   BASE_METRICS.forEach((metric) => {
-    aggregated[metric] = (metricData[metric] || []).reduce((sum, value) => sum + value, 0);
+    const points = metricData[metric] || [];
+    aggregated[metric] = SEMI_ADDITIVE_SUM_METRICS.has(metric)
+      ? sumSemiAdditiveMetric(points)
+      : sumMetricPoints(points);
   });
 
   return aggregated;
+}
+
+function sumMetricPoints(points: MetricPoint[]): number {
+  return points.reduce((sum, point) => sum + point.value, 0);
+}
+
+function sumSemiAdditiveMetric(points: MetricPoint[]): number {
+  const maxByKey = new Map<string, number>();
+
+  points.forEach((point) => {
+    const current = maxByKey.get(point.semiAdditiveKey);
+    maxByKey.set(
+      point.semiAdditiveKey,
+      current === undefined ? point.value : Math.max(current, point.value)
+    );
+  });
+
+  return Array.from(maxByKey.values()).reduce((sum, value) => sum + value, 0);
 }
 
 function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLevel[][] {
@@ -738,8 +864,10 @@ function formatParts(parts: string[]): string {
   return parts.filter(Boolean).join(' / ') || TOTAL_LABEL;
 }
 
-function aggregateValues(values: number[], type: AggregationType): number {
-  if (values.length === 0) return 0;
+function aggregateValues(points: MetricPoint[], type: AggregationType): number {
+  if (points.length === 0) return 0;
+
+  const values = points.map((point) => point.value);
 
   switch (type) {
     case 'sum':

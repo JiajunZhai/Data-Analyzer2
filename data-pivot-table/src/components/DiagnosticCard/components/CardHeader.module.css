@@ -1,0 +1,108 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotCritical {
+  background: var(--danger-color, #ef4444);
+}
+
+.dotWarning {
+  background: var(--warning-color, #f59e0b);
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.levelBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: var(--radius-full, 9999px);
+}
+
+.badgeCritical {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.badgeWarning {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--success-color, #10b981);
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-full, 9999px);
+}
+
+.statusBadgeMuted {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted, #94a3b8);
+  background: var(--zone-bg, #f1f5f9);
+  border-radius: var(--radius-full, 9999px);
+}
+
+.deviation {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.negative {
+  color: var(--danger-color, #ef4444);
+}
+
+.positive {
+  color: var(--success-color, #10b981);
+}
+
+.baseline {
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+}

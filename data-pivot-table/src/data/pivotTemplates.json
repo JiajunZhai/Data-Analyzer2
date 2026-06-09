@@ -81,10 +81,10 @@
     "category": "广告场景维度",
     "categoryIcon": "film",
     "name": "多场景变现效率交叉对比",
-    "formula": "实际场景 × 应用",
+    "formula": "广告场景 × 应用",
     "description": "横向直观对比各应用中开屏、插屏、视频等场景的变现大盘",
     "rows": ["应用"],
-    "cols": ["实际场景"],
+    "cols": ["广告场景"],
     "values": ["广告收益", "eCPM", "CTR"]
   },
   {
@@ -92,10 +92,10 @@
     "category": "广告场景维度",
     "categoryIcon": "film",
     "name": "各场景版本变现波动对比",
-    "formula": "实际场景 × 版本",
+    "formula": "广告场景 × 版本",
     "description": "排查随着版本迭代，哪些广告场景变现效率发生了异常波动",
     "rows": ["版本"],
-    "cols": ["实际场景"],
+    "cols": ["广告场景"],
     "values": ["eCPM", "IPU", "CTR"]
   },
   {
@@ -103,10 +103,10 @@
     "category": "广告场景维度",
     "categoryIcon": "film",
     "name": "核心场景国家大盘对比",
-    "formula": "实际场景 × 实际国家",
+    "formula": "广告场景 × 实际国家",
     "description": "观察各广告场景在各国家的受众喜好与变现单价",
     "rows": ["实际国家"],
-    "cols": ["实际场景"],
+    "cols": ["广告场景"],
     "values": ["eCPM", "ARPU", "渗透率"]
   }
 ]

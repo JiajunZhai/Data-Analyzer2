@@ -1,0 +1,30 @@
+.card {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-card, 8px);
+  transition: all 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--border-focus, #3b82f6);
+  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+
+.card:last-child {
+  margin-bottom: 0;
+}
+
+.history {
+  opacity: 0.85;
+}
+
+.resolved {
+  border-left: 3px solid var(--success-color, #10b981);
+}
+
+.muted {
+  border-left: 3px solid var(--text-muted, #94a3b8);
+  opacity: 0.7;
+}

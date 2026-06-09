@@ -1,0 +1,117 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--zone-bg, #f1f5f9);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.metricCard.primary {
+  border-color: var(--primary-light, #3b82f6);
+  background: var(--hover-bg, #eff6ff);
+}
+
+.metricCard.highlighted {
+  border-color: var(--color-warning, #e5a00b);
+  box-shadow: 0 0 0 2px rgba(229, 160, 11, 0.15);
+}
+
+.metricLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metricValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricChange {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.metricChange.positive {
+  color: var(--color-positive, #2d9f75);
+}
+
+.metricChange.negative {
+  color: var(--color-negative, #e05353);
+}
+
+.metricChange.neutral {
+  color: var(--text-muted, #94a3b8);
+}
+
+.attribution {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attrBar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--border-color, #e2e8f0);
+}
+
+.attrQuantity {
+  background: var(--primary-light, #3b82f6);
+  transition: width var(--transition-normal, 250ms ease);
+}
+
+.attrPrice {
+  background: var(--color-warning, #e5a00b);
+  transition: width var(--transition-normal, 250ms ease);
+}
+
+.attrLabels {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+}
+
+.attrActive {
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+}
+
+.attrDivider {
+  color: var(--border-color, #e2e8f0);
+}
+
+.attrArrow {
+  color: var(--text-muted, #94a3b8);
+}
+
+.attrConclusion {
+  font-weight: 600;
+  color: var(--primary-light, #3b82f6);
+}

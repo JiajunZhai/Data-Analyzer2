@@ -13,27 +13,6 @@ export interface StoredDataset {
   };
   fields: Field[];
   data: DataRow[];
-  activeMappingId?: string;
-}
-
-export interface ScenarioConfig {
-  id: string;
-  appCode: string;
-  originalScenario: string;
-  targetScenario: string;
-}
-
-export interface StoredMapping {
-  id: string;
-  name: string;
-  fileName: string;
-  createdAt: number;
-  updatedAt: number;
-  scenarioCount: number;
-  mappedRowCount: number;
-  lookupMap: Record<string, string>;
-  appCodes: string[];
-  scenarioConfigs: ScenarioConfig[];
 }
 
 export interface StoredConfig {
@@ -50,7 +29,6 @@ export interface StoredConfig {
 
 export interface UserPreferences {
   lastDatasetId?: string;
-  lastMappingId?: string;
   defaultRowFields?: string[];
   defaultColFields?: string[];
   defaultValueFields?: string[];
@@ -61,6 +39,4 @@ export interface StorageQuota {
   limit: number;
   datasetCount: number;
   datasetLimit: number;
-  mappingCount: number;
-  mappingLimit: number;
 }

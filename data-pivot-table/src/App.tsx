@@ -2,49 +2,38 @@ import { closestCenter, DndContext, DragOverlay } from '@dnd-kit/core';
 import {
   BarChart3,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Film,
   Globe,
-  Link2,
   Megaphone,
+  RotateCcw,
   Settings,
   Smartphone,
+  Stethoscope,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FilterChipConfig } from './components/AdMobFilterBar/AdMobFilterBar';
 import AdMobFilterBar from './components/AdMobFilterBar/AdMobFilterBar';
 import ConfigManager from './components/ConfigManager/ConfigManager';
 import DataSourceManager from './components/DataSourceManager/DataSourceManager';
+import { DiagnosticCard } from './components/DiagnosticCard';
 import FloatingControlBar from './components/FloatingControlBar';
-import MappingManager from './components/MappingManager/MappingManager';
 import PivotTable from './components/PivotTable/PivotTable';
 import SpatialFieldZone from './components/SpatialFieldZone';
 import ZenModeButton from './components/ZenModeButton';
 import { useConfigs } from './hooks/useConfigs';
 import { useDatasetManager } from './hooks/useDatasetManager';
 import { useDragAndDrop } from './hooks/useDragAndDrop';
-import { useMappings } from './hooks/useMappings';
 import { usePivotState } from './hooks/usePivotState';
 import { useZenMode } from './hooks/useZenMode';
 import { storageService } from './services/storage';
 import type { DataRow, Field } from './types';
-import type { StoredDataset, StoredMapping } from './types/storage';
-import {
-  showConfigPanelTemporarily,
-  hideConfigPanelTemporarily,
-} from './utils/animations';
-import {
-  addCalculatedFields,
-  PRESET_CALCULATED_FIELDS,
-  precomputeGlobalRevenue,
-} from './utils/calculatedField';
-import { applyCountryMapping } from './utils/countryMapper';
+import type { StoredDataset } from './types/storage';
+import { hideConfigPanelTemporarily, showConfigPanelTemporarily } from './utils/animations';
+import { PRESET_CALCULATED_FIELDS } from './utils/calculatedField';
+import { preprocessData } from './utils/dataPreprocessor';
 import { detectFieldTypes } from './utils/fieldDetector';
-import {
-  applyScenarioMapping,
-  buildLookupMapFromConfigs,
-  calculateScenarioMatchStats,
-  scenarioMappingToRecord,
-} from './utils/scenarioMapper';
 import { generateDatasetName } from './utils/storageUtils';
 import './styles/variables.css';
 import './styles/global.css';
@@ -56,8 +45,8 @@ const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
   { icon: <Settings size={14} />, label: '版本', fieldName: '版本' },
   { icon: <Megaphone size={14} />, label: '渠道', fieldName: '渠道' },
   { icon: <Globe size={14} />, label: '国家', fieldName: '国家' },
-  { icon: <Film size={14} />, label: '广告场景', fieldName: '广告场景' },
-  { icon: <Link2 size={14} />, label: '实际场景', fieldName: '实际场景' },
+  { icon: <Film size={14} />, label: '标准广告场景', fieldName: '标准广告场景' },
+  { icon: <Film size={14} />, label: '聚合广告场景', fieldName: '聚合广告场景' },
 ];
 
 const DEFAULT_ROW_FIELDS = ['日期'];
@@ -69,19 +58,10 @@ const createPivotField = (field: Field) => ({
   aggregation: field.type === 'measure' ? ('sum' as const) : undefined,
 });
 
-const areLookupRecordsEqual = (a: Record<string, string>, b: Record<string, string>) => {
-  const aEntries = Object.entries(a);
-  const bEntries = Object.entries(b);
-  if (aEntries.length !== bEntries.length) return false;
-
-  return aEntries.every(([key, value]) => b[key] === value);
-};
-
 function App() {
   // 使用自定义 hooks
   const pivotState = usePivotState();
   const datasetManager = useDatasetManager();
-  const mappingsManager = useMappings(datasetManager.isStorageReady);
   const configsManager = useConfigs();
 
   const {
@@ -131,18 +111,6 @@ function App() {
   } = datasetManager;
 
   const {
-    mappings,
-    activeMappingId,
-    setActiveMappingId,
-    loadMappings,
-    handleMappingSelect: handleMappingSelectBase,
-    handleMappingUpload: handleMappingUploadBase,
-    handleMappingExport,
-    handleMappingDelete,
-    handleMappingUpdate: handleMappingUpdateBase,
-  } = mappingsManager;
-
-  const {
     savedConfigs,
     handleConfigSave: handleConfigSaveBase,
     handleConfigLoad: handleConfigLoadBase,
@@ -151,6 +119,7 @@ function App() {
   } = configsManager;
 
   const [shouldApplyDefault, setShouldApplyDefault] = useState(false);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
   const loadDatasetRef = useRef<(dataset: StoredDataset) => Promise<void>>(async () => {});
 
   // 沉浸模式
@@ -182,6 +151,7 @@ function App() {
     transferField,
   });
 
+  const isDragging = activeDragField !== null;
   // 应用默认配置
   const applyDefaultConfig = useCallback(() => {
     if (fields.length === 0) return;
@@ -213,87 +183,12 @@ function App() {
     }
   }, [shouldApplyDefault, fields, applyDefaultConfig]);
 
-  // 当前数据源变化后，刷新所有映射模板在该数据源上的真实命中数
-  useEffect(() => {
-    if (!currentDatasetId || mappings.length === 0) return;
-
-    let cancelled = false;
-
-    const refreshMappingMatchCounts = async () => {
-      const dataset = await storageService.getDataset(currentDatasetId);
-      if (!dataset || cancelled) return;
-
-      let hasUpdates = false;
-      for (const mapping of mappings) {
-        const scenarioMapping = buildLookupMapFromConfigs(
-          mapping.scenarioConfigs,
-          mapping.appCodes
-        );
-        const mappedRowCount = calculateScenarioMatchStats(
-          dataset.data,
-          scenarioMapping
-        ).mappedRowCount;
-        const lookupMap = scenarioMappingToRecord(scenarioMapping);
-
-        if (
-          mapping.scenarioCount !== scenarioMapping.scenarioCount ||
-          mapping.mappedRowCount !== mappedRowCount ||
-          !areLookupRecordsEqual(mapping.lookupMap, lookupMap)
-        ) {
-          await storageService.updateMapping(mapping.id, {
-            lookupMap,
-            scenarioCount: scenarioMapping.scenarioCount,
-            mappedRowCount,
-          });
-          hasUpdates = true;
-        }
-      }
-
-      if (hasUpdates && !cancelled) {
-        await loadMappings();
-      }
-    };
-
-    refreshMappingMatchCounts().catch((error) => {
-      console.error('刷新映射命中数失败:', error);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentDatasetId, mappings, loadMappings]);
-
   // 加载数据集
   const loadDataset = useCallback(
     async (dataset: StoredDataset) => {
       setFields(dataset.fields);
       setData(dataset.data);
       setCurrentDatasetId(dataset.id);
-      setActiveMappingId(dataset.activeMappingId);
-
-      // 应用映射
-      if (dataset.activeMappingId) {
-        const mapping = await storageService.getMapping(dataset.activeMappingId);
-        if (mapping) {
-          const scenarioMapping = buildLookupMapFromConfigs(
-            mapping.scenarioConfigs,
-            mapping.appCodes
-          );
-          const mappedRowCount = calculateScenarioMatchStats(
-            dataset.data,
-            scenarioMapping
-          ).mappedRowCount;
-          await storageService.updateMapping(mapping.id, {
-            lookupMap: scenarioMappingToRecord(scenarioMapping),
-            scenarioCount: scenarioMapping.scenarioCount,
-            mappedRowCount,
-          });
-          const updatedData = applyScenarioMapping(dataset.data, scenarioMapping);
-          setData(updatedData);
-          await loadMappings();
-          await loadDatasets();
-        }
-      }
 
       // 标记需要应用默认配置
       setShouldApplyDefault(true);
@@ -301,7 +196,7 @@ function App() {
       // 保存用户偏好
       await storageService.saveUserPreferences({ lastDatasetId: dataset.id });
     },
-    [setFields, setData, setCurrentDatasetId, setActiveMappingId, loadMappings, loadDatasets]
+    [setFields, setData, setCurrentDatasetId]
   );
 
   // 更新 loadDataset ref
@@ -329,9 +224,7 @@ function App() {
   const handleDataLoaded = useCallback(
     async (headers: string[], rawData: DataRow[], fileName: string) => {
       const detectedFields = detectFieldTypes(headers, rawData);
-      const dataWithCountryNames = applyCountryMapping(rawData);
-      const dataWithRevenue = precomputeGlobalRevenue(dataWithCountryNames);
-      const dataWithCalculated = addCalculatedFields(dataWithRevenue, PRESET_CALCULATED_FIELDS);
+      const dataWithCalculated = preprocessData(rawData);
       const newCalculatedFields: Field[] = PRESET_CALCULATED_FIELDS.map((calculatedField) => ({
         name: calculatedField.name,
         type: 'measure',
@@ -401,44 +294,6 @@ function App() {
     [loadDataset]
   );
 
-  // 映射选择
-  const handleMappingSelect = useCallback(
-    async (mappingId: string | null) => {
-      await handleMappingSelectBase(mappingId, currentDatasetId, setData, loadDatasets);
-    },
-    [handleMappingSelectBase, currentDatasetId, setData, loadDatasets]
-  );
-
-  // 映射上传
-  const handleMappingUpload = useCallback(
-    async (file: File) => {
-      await handleMappingUploadBase(file, currentDatasetId);
-    },
-    [handleMappingUploadBase, currentDatasetId]
-  );
-
-  // 映射更新
-  const handleMappingUpdate = useCallback(
-    async (id: string, updates: Partial<StoredMapping>) => {
-      await handleMappingUpdateBase(
-        id,
-        updates,
-        currentDatasetId,
-        activeMappingId,
-        setData,
-        loadDatasets
-      );
-    },
-    [handleMappingUpdateBase, currentDatasetId, activeMappingId, setData, loadDatasets]
-  );
-
-  const handleMappingRename = useCallback(
-    async (id: string, newName: string) => {
-      await handleMappingUpdate(id, { name: newName });
-    },
-    [handleMappingUpdate]
-  );
-
   // 配置保存
   const handleConfigSave = useCallback(
     async (name: string) => {
@@ -490,7 +345,6 @@ function App() {
         setColFields([]);
         setValueFields([]);
         setFilterConfigs([]);
-        setActiveMappingId(undefined);
       }
     },
     [
@@ -503,7 +357,6 @@ function App() {
       setColFields,
       setValueFields,
       setFilterConfigs,
-      setActiveMappingId,
     ]
   );
 
@@ -537,11 +390,12 @@ function App() {
         <header
           className="app-header"
           style={{
-            transform: isZenMode ? 'translateY(-100%)' : 'translateY(0)',
+            transform: isZenMode ? 'translateY(-100%)' : 'none',
             opacity: isZenMode ? 0 : 1,
             pointerEvents: isZenMode ? 'none' : 'auto',
             height: isZenMode ? '0px' : 'auto',
-            overflow: 'hidden',
+            overflow: isZenMode ? 'hidden' : 'visible',
+            zIndex: 100,
             transition: ZEN_TRANSITION,
           }}
         >
@@ -583,23 +437,11 @@ function App() {
             <DataSourceManager
               currentDatasetId={currentDatasetId}
               datasets={datasets}
-              mappings={mappings}
-              activeMappingId={activeMappingId}
               storageQuota={storageQuota}
               onDatasetSelect={handleDatasetSelect}
               onDatasetRename={handleDatasetRename}
               onDatasetDelete={handleDatasetDeleteWithCleanup}
               onDataUpload={handleDataLoaded}
-              onMappingSelect={handleMappingSelect}
-            />
-            <MappingManager
-              mappings={mappings}
-              storageQuota={storageQuota}
-              onMappingUpload={handleMappingUpload}
-              onMappingRename={handleMappingRename}
-              onMappingDelete={handleMappingDelete}
-              onMappingUpdate={handleMappingUpdate}
-              onMappingExport={handleMappingExport}
             />
           </div>
         </header>
@@ -631,8 +473,29 @@ function App() {
                   fields={measures}
                   activeFields={valueFields}
                   orientation="vertical"
+                  isDragging={isDragging}
                   onToggle={toggleValueField}
                 />
+                {valueFields.length > 0 && (() => {
+                  const regField = measures.find((f) => f.name === '注册用户');
+                  const isDefault = valueFields.length === 1 && valueFields[0].field.name === '注册用户';
+                  if (isDefault) return null;
+                  return (
+                    <button
+                      type="button"
+                      className="value-reset-btn"
+                      onClick={() => {
+                        if (regField) {
+                          setValueFields([createPivotField(regField)]);
+                        }
+                      }}
+                      title="重置为仅注册用户"
+                    >
+                      <RotateCcw size={12} />
+                      <span>重置</span>
+                    </button>
+                  );
+                })()}
               </div>
 
               <div className="spatial-rows">
@@ -647,6 +510,7 @@ function App() {
                   disabledReason="该维度已在列区域启用"
                   showRowTotal={showRowTotal}
                   onToggleRowTotal={() => setShowRowTotal(!showRowTotal)}
+                  isDragging={isDragging}
                   onToggle={toggleRowField}
                 />
               </div>
@@ -675,6 +539,7 @@ function App() {
                   disabledReason="该维度已在行区域启用"
                   showColumnTotal={showColumnTotal}
                   onToggleColumnTotal={() => setShowColumnTotal(!showColumnTotal)}
+                  isDragging={isDragging}
                   onToggle={toggleColField}
                 />
               </div>
@@ -710,6 +575,43 @@ function App() {
             onToggleRowTotal={() => setShowRowTotal(!showRowTotal)}
             onToggleColumnTotal={() => setShowColumnTotal(!showColumnTotal)}
           />
+        )}
+
+        {/* 诊断抽屉 */}
+        {!isZenMode && data.length > 0 && (
+          <div className={`diagnostic-drawer ${isDiagnosticOpen ? '' : 'collapsed'}`}>
+            <button
+              type="button"
+              className="diagnostic-drawer-toggle"
+              onClick={() => setIsDiagnosticOpen(!isDiagnosticOpen)}
+              title={isDiagnosticOpen ? '收起诊断面板' : '展开诊断面板'}
+            >
+              {isDiagnosticOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
+            <DiagnosticCard
+              data={data}
+              fields={fields}
+              isStorageReady={isStorageReady}
+              onClose={() => setIsDiagnosticOpen(false)}
+              onApplyFilters={handleFilterChange}
+              onApplyRowFields={setRowFields}
+              onApplyValueFields={setValueFields}
+              onApplyColFields={setColFields}
+            />
+          </div>
+        )}
+
+        {/* 诊断抽屉触发按钮 (抽屉关闭时) */}
+        {!isZenMode && data.length > 0 && !isDiagnosticOpen && (
+          <button
+            type="button"
+            className="diagnostic-trigger-btn"
+            onClick={() => setIsDiagnosticOpen(true)}
+            title="打开智能数据诊断"
+          >
+            <Stethoscope size={14} />
+            <span>智能诊断</span>
+          </button>
         )}
       </div>
       <DragOverlay>

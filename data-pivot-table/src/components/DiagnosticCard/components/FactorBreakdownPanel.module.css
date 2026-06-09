@@ -1,0 +1,200 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panelTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+}
+
+.panelFormula {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  font-family: monospace;
+}
+
+.factorList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.factorRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--zone-bg, #f1f5f9);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.factorRow.factorHighlight {
+  border-color: var(--color-warning, #e5a00b);
+  background: var(--color-warning-bg, rgba(229, 160, 11, 0.08));
+}
+
+.factorInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.factorLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.factorDesc {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 2px;
+}
+
+.factorValues {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.factorCurrent {
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+}
+
+.factorArrow {
+  color: var(--text-muted, #94a3b8);
+}
+
+.factorPrevious {
+  color: var(--text-secondary, #64748b);
+}
+
+.factorChange {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs, 4px);
+}
+
+.factorChange.positive {
+  color: var(--color-positive, #2d9f75);
+  background: var(--color-positive-bg, rgba(45, 159, 117, 0.08));
+}
+
+.factorChange.negative {
+  color: var(--color-negative, #e05353);
+  background: var(--color-negative-bg, rgba(224, 83, 83, 0.08));
+}
+
+.factorChange.neutral {
+  color: var(--text-muted, #94a3b8);
+  background: var(--zone-bg, #f1f5f9);
+}
+
+.warningIcon {
+  flex-shrink: 0;
+  color: var(--color-warning, #e5a00b);
+}
+
+.successIcon {
+  flex-shrink: 0;
+  color: var(--color-positive, #2d9f75);
+}
+
+.diagnosis {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  background: var(--zone-bg, #f1f5f9);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.dimList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dimSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dimTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dimRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dimMember {
+  min-width: 60px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+}
+
+.dimBar {
+  flex: 1;
+  height: 6px;
+  background: var(--border-color, #e2e8f0);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dimBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--transition-normal, 250ms ease);
+}
+
+.dimBarFill.positive {
+  background: var(--color-positive, #2d9f75);
+}
+
+.dimBarFill.negative {
+  background: var(--color-negative, #e05353);
+}
+
+.dimContrib {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary, #64748b);
+}

@@ -1,42 +1,34 @@
-import { FileSpreadsheet, FileText, Paperclip, Pencil, Trash2, X } from 'lucide-react';
-import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { FileSpreadsheet, Pencil, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { DataRow } from '../../types';
-import type { StorageQuota, StoredDataset, StoredMapping } from '../../types/storage';
+import type { StorageQuota, StoredDataset } from '../../types/storage';
 import { formatBytes } from '../../utils/storageUtils';
 import FileUpload from '../FileUpload/FileUpload';
 
 interface DataSourceManagerProps {
   currentDatasetId: string | null;
   datasets: StoredDataset[];
-  mappings: StoredMapping[];
-  activeMappingId?: string;
   storageQuota: StorageQuota;
   onDatasetSelect: (id: string) => void;
   onDatasetRename: (id: string, newName: string) => void;
   onDatasetDelete: (id: string) => void;
   onDataUpload: (headers: string[], data: DataRow[], fileName: string) => void;
-  onMappingSelect: (mappingId: string | null) => void;
 }
 
 const DataSourceManager: React.FC<DataSourceManagerProps> = ({
   currentDatasetId,
   datasets,
-  mappings,
-  activeMappingId,
   storageQuota,
   onDatasetSelect,
   onDatasetRename,
   onDatasetDelete,
   onDataUpload,
-  onMappingSelect,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [switchConfirmId, setSwitchConfirmId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [showMappingSelector, setShowMappingSelector] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,7 +39,6 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
         setEditingId(null);
         setSwitchConfirmId(null);
         setDeleteConfirmId(null);
-        setShowMappingSelector(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -120,16 +111,6 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
     setSwitchConfirmId(null);
   }, []);
 
-  const handleMappingSelect = useCallback(
-    (mappingId: string | null) => {
-      onMappingSelect(mappingId);
-      setShowMappingSelector(false);
-    },
-    [onMappingSelect]
-  );
-
-  const activeMapping = mappings.find((m) => m.id === activeMappingId);
-
   return (
     <div className="datasource-manager-wrapper" ref={dropdownRef}>
       <button
@@ -196,9 +177,6 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                         {currentDataset.rowCount.toLocaleString()} 行 ·{' '}
                         {currentDataset.fieldCount.dimensions} 维度 ·{' '}
                         {currentDataset.fieldCount.measures} 指标
-                        {currentDataset.activeMappingId && (
-                          <span className="mapping-badge"> · 场景映射 ✓</span>
-                        )}
                       </div>
                     </>
                   )}
@@ -211,66 +189,6 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   >
                     <Pencil size={14} />
                   </button>
-                </div>
-              </div>
-
-              {/* 场景映射选择器 */}
-              <div className="mapping-section">
-                <div className="section-title">场景映射</div>
-                <div className="mapping-selector">
-                  <button
-                    type="button"
-                    className={`mapping-selector-trigger ${activeMapping ? 'has-value' : ''}`}
-                    onClick={() => setShowMappingSelector(!showMappingSelector)}
-                  >
-                    <span className="mapping-icon">
-                      <Paperclip size={14} />
-                    </span>
-                    <span className="mapping-name">
-                      {activeMapping
-                        ? `${activeMapping.name} · ${activeMapping.scenarioCount} 个场景`
-                        : '请选择场景映射文件'}
-                    </span>
-                    {activeMapping ? (
-                      <button
-                        type="button"
-                        className="mapping-clear"
-                        title="清除映射"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMappingSelect(null);
-                        }}
-                      >
-                        <X size={14} />
-                      </button>
-                    ) : (
-                      <span className="mapping-arrow">{showMappingSelector ? '▲' : '▼'}</span>
-                    )}
-                  </button>
-
-                  {showMappingSelector && (
-                    <div className="mapping-selector-dropdown">
-                      {mappings.map((mapping) => (
-                        <button
-                          type="button"
-                          key={mapping.id}
-                          className={`mapping-option ${mapping.id === activeMappingId ? 'active' : ''}`}
-                          onClick={() => handleMappingSelect(mapping.id)}
-                        >
-                          <span className="mapping-option-icon">
-                            <FileText size={14} />
-                          </span>
-                          <span className="mapping-option-name">{mapping.name}</span>
-                          <span className="mapping-option-meta">
-                            {mapping.scenarioCount} 个场景
-                          </span>
-                        </button>
-                      ))}
-                      {mappings.length === 0 && (
-                        <div className="mapping-option-empty">暂无可用映射</div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -360,4 +278,4 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
   );
 };
 
-export default DataSourceManager;
+export default React.memo(DataSourceManager);

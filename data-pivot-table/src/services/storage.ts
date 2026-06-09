@@ -1,26 +1,21 @@
 import { type IDBPDatabase, openDB } from 'idb';
+import type { AnomalyResult, AnomalyStatus } from '../types/anomaly';
 import type {
   StorageQuota,
   StoredConfig,
   StoredDataset,
-  StoredMapping,
   UserPreferences,
 } from '../types/storage';
 import { estimateDataSize, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
 
 const DB_NAME = 'data-pivot-table';
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 interface PivotTableDB {
   datasets: {
     key: string;
     value: StoredDataset;
     indexes: { name: string; createdAt: number };
-  };
-  mappings: {
-    key: string;
-    value: StoredMapping;
-    indexes: { name: string; createdAt: number; datasetId: string };
   };
   configs: {
     key: string;
@@ -31,24 +26,30 @@ interface PivotTableDB {
     key: string;
     value: UserPreferences;
   };
+  anomalies: {
+    key: string;
+    value: AnomalyResult;
+    indexes: { dataDate: string; status: string; metricName: string };
+  };
 }
 
 class StorageService {
   private db: IDBPDatabase<PivotTableDB> | null = null;
+  private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
+    if (this.initPromise) return this.initPromise;
+    this.initPromise = this.doInit();
+    return this.initPromise;
+  }
+
+  private async doInit(): Promise<void> {
     this.db = await openDB<PivotTableDB>(DB_NAME, DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('datasets')) {
           const datasetStore = db.createObjectStore('datasets', { keyPath: 'id' });
           datasetStore.createIndex('name', 'name');
           datasetStore.createIndex('createdAt', 'createdAt');
-        }
-
-        if (!db.objectStoreNames.contains('mappings')) {
-          const mappingStore = db.createObjectStore('mappings', { keyPath: 'id' });
-          mappingStore.createIndex('name', 'name');
-          mappingStore.createIndex('createdAt', 'createdAt');
         }
 
         if (!db.objectStoreNames.contains('configs')) {
@@ -59,6 +60,18 @@ class StorageService {
 
         if (!db.objectStoreNames.contains('preferences')) {
           db.createObjectStore('preferences', { keyPath: 'id' });
+        }
+
+        if (!db.objectStoreNames.contains('anomalies')) {
+          const anomalyStore = db.createObjectStore('anomalies', { keyPath: 'anomalyId' });
+          anomalyStore.createIndex('dataDate', 'dataDate');
+          anomalyStore.createIndex('status', 'status');
+          anomalyStore.createIndex('metricName', 'metricName');
+        }
+
+        // 删除旧的 mappings 表
+        if (db.objectStoreNames.contains('mappings')) {
+          db.deleteObjectStore('mappings');
         }
       },
     });
@@ -134,97 +147,6 @@ class StorageService {
     return await db.count('datasets');
   }
 
-  // ============ 映射操作（全局） ============
-
-  async saveMapping(
-    mapping: Omit<StoredMapping, 'id' | 'createdAt' | 'updatedAt'>
-  ): Promise<string> {
-    const db = this.getDb();
-    const count = await db.count('mappings');
-    if (count >= STORAGE_LIMITS.MAX_MAPPINGS) {
-      throw new Error(`映射数量已达上限 (${STORAGE_LIMITS.MAX_MAPPINGS})`);
-    }
-
-    const id = generateId();
-    const now = Date.now();
-
-    await db.put('mappings', {
-      ...mapping,
-      id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return id;
-  }
-
-  async getAllMappings(): Promise<StoredMapping[]> {
-    const db = this.getDb();
-    return await db.getAll('mappings');
-  }
-
-  async getMapping(id: string): Promise<StoredMapping | null> {
-    const db = this.getDb();
-    return (await db.get('mappings', id)) ?? null;
-  }
-
-  async updateMapping(id: string, updates: Partial<StoredMapping>): Promise<void> {
-    const db = this.getDb();
-    const mapping = await db.get('mappings', id);
-    if (!mapping) {
-      throw new Error('Mapping not found');
-    }
-
-    await db.put('mappings', {
-      ...mapping,
-      ...updates,
-      updatedAt: Date.now(),
-    });
-  }
-
-  async deleteMapping(id: string): Promise<void> {
-    const db = this.getDb();
-    await db.delete('mappings', id);
-
-    // 清除使用该映射的数据源的 activeMappingId
-    const datasets = await db.getAll('datasets');
-    for (const ds of datasets) {
-      if (ds.activeMappingId === id) {
-        await db.put('datasets', { ...ds, activeMappingId: undefined, updatedAt: Date.now() });
-      }
-    }
-  }
-
-  async renameMapping(id: string, newName: string): Promise<void> {
-    await this.updateMapping(id, { name: newName });
-  }
-
-  async getMappingCount(): Promise<number> {
-    const db = this.getDb();
-    return await db.count('mappings');
-  }
-
-  // ============ 数据源与映射关联 ============
-
-  async setActiveMapping(datasetId: string, mappingId: string | null): Promise<void> {
-    const db = this.getDb();
-    const dataset = await db.get('datasets', datasetId);
-    if (dataset) {
-      await db.put('datasets', {
-        ...dataset,
-        activeMappingId: mappingId ?? undefined,
-        updatedAt: Date.now(),
-      });
-    }
-  }
-
-  async getActiveMapping(datasetId: string): Promise<StoredMapping | null> {
-    const db = this.getDb();
-    const dataset = await db.get('datasets', datasetId);
-    if (!dataset?.activeMappingId) return null;
-    return (await db.get('mappings', dataset.activeMappingId)) ?? null;
-  }
-
   // ============ 配置操作 ============
 
   async saveConfig(config: Omit<StoredConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
@@ -295,11 +217,73 @@ class StorageService {
     return prefs ?? {};
   }
 
+  // ============ 异常诊断操作 ============
+
+  async saveAnomaly(anomaly: AnomalyResult): Promise<void> {
+    const db = this.getDb();
+    await db.put('anomalies', anomaly);
+  }
+
+  async saveAnomalies(anomalies: AnomalyResult[]): Promise<void> {
+    const db = this.getDb();
+    const tx = db.transaction('anomalies', 'readwrite');
+    for (const anomaly of anomalies) {
+      await tx.store.put(anomaly);
+    }
+    await tx.done;
+  }
+
+  async getAllAnomalies(): Promise<AnomalyResult[]> {
+    const db = this.getDb();
+    return await db.getAll('anomalies');
+  }
+
+  async getAnomaly(id: string): Promise<AnomalyResult | null> {
+    const db = this.getDb();
+    return (await db.get('anomalies', id)) ?? null;
+  }
+
+  async getAnomaliesByStatus(status: AnomalyStatus): Promise<AnomalyResult[]> {
+    const db = this.getDb();
+    return await db.getAllFromIndex('anomalies', 'status', status);
+  }
+
+  async updateAnomalyStatus(
+    id: string,
+    status: AnomalyStatus,
+    userActionTime?: number,
+    mutedUntil?: string
+  ): Promise<void> {
+    const db = this.getDb();
+    const anomaly = await db.get('anomalies', id);
+    if (anomaly) {
+      anomaly.status = status;
+      anomaly.updatedAt = Date.now();
+      if (userActionTime !== undefined) anomaly.userActionTime = userActionTime;
+      if (mutedUntil !== undefined) anomaly.mutedUntil = mutedUntil;
+      await db.put('anomalies', anomaly);
+    }
+  }
+
+  async deleteAnomaly(id: string): Promise<void> {
+    const db = this.getDb();
+    await db.delete('anomalies', id);
+  }
+
+  async clearAnomalies(): Promise<void> {
+    const db = this.getDb();
+    await db.clear('anomalies');
+  }
+
+  async getAnomalyCount(): Promise<number> {
+    const db = this.getDb();
+    return await db.count('anomalies');
+  }
+
   // ============ 存储配额 ============
 
   async getStorageQuota(): Promise<StorageQuota> {
     const datasets = await this.getAllDatasets();
-    const mappings = await this.getAllMappings();
 
     const used = datasets.reduce((sum, ds) => {
       return sum + estimateDataSize(ds.data);
@@ -310,8 +294,6 @@ class StorageService {
       limit: STORAGE_LIMITS.MAX_STORAGE_BYTES,
       datasetCount: datasets.length,
       datasetLimit: STORAGE_LIMITS.MAX_DATASETS,
-      mappingCount: mappings.length,
-      mappingLimit: STORAGE_LIMITS.MAX_MAPPINGS,
     };
   }
 }

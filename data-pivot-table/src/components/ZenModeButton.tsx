@@ -23,9 +23,7 @@ const ZenModeButton: React.FC<ZenModeButtonProps> = ({
       <span className="capsule-icon">
         <Maximize2 size={14} />
       </span>
-      <span className="capsule-name">
-        {isActive ? '沉浸模式中' : '沉浸模式'}
-      </span>
+      <span className="capsule-name">{isActive ? '沉浸模式中' : '沉浸模式'}</span>
       {!isActive && <span className="capsule-shortcut">F</span>}
     </button>
   );

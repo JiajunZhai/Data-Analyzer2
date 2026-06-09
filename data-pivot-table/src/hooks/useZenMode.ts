@@ -12,6 +12,8 @@ interface UseZenModeResult {
   toggleZenMode: () => void;
   exitZenMode: () => void;
   toggleFullscreen: () => void;
+  handleDragStart: () => void;
+  handleDragEnd: () => void;
 }
 
 const IDLE_TIMEOUT = 3000; // 3 秒无操作视为闲置
@@ -102,9 +104,7 @@ export function useZenMode(options: UseZenModeOptions = {}): UseZenModeResult {
 
       // 保护屏障：焦点在可输入元素上时忽略快捷键
       const isInputElement =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable;
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
       if (isInputElement) return;
 
@@ -184,5 +184,5 @@ export function useZenMode(options: UseZenModeOptions = {}): UseZenModeResult {
     toggleFullscreen,
     handleDragStart,
     handleDragEnd,
-  } as UseZenModeResult & { handleDragStart: () => void; handleDragEnd: () => void };
+  };
 }

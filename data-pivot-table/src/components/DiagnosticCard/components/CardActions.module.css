@@ -1,0 +1,67 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.locateBtn,
+.acceptBtn,
+.muteBtn,
+.undoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-primary, #ffffff);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.locateBtn {
+  color: var(--primary-light, #3b82f6);
+  border-color: var(--primary-light, #3b82f6);
+}
+
+.locateBtn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.acceptBtn {
+  color: var(--success-color, #10b981);
+  border-color: var(--success-color, #10b981);
+}
+
+.acceptBtn:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.muteBtn {
+  color: var(--text-muted, #94a3b8);
+  border-color: var(--border-color, #e2e8f0);
+}
+
+.muteBtn:hover {
+  background: var(--zone-bg, #f1f5f9);
+  color: var(--text-secondary, #64748b);
+}
+
+.undoBtn {
+  color: var(--warning-color, #f59e0b);
+  border-color: var(--warning-color, #f59e0b);
+}
+
+.undoBtn:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.historyLabel {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  margin-left: auto;
+}

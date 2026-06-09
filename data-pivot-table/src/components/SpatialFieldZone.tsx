@@ -4,8 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { Link2 } from 'lucide-react';
-import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Field, PivotField } from '../types';
 import { animateCollapse, animateFieldEntry } from '../utils/animations';
 import type { SpatialZoneId } from '../utils/fieldHelpers';
@@ -27,6 +26,7 @@ interface SpatialFieldZoneProps {
   onToggleRowTotal?: () => void;
   showColumnTotal?: boolean;
   onToggleColumnTotal?: () => void;
+  isDragging?: boolean;
   onToggle: (field: Field) => void;
 }
 
@@ -64,9 +64,12 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.8 : undefined,
+    transform: isDragging
+      ? `translate3d(0, 0, 0) ${CSS.Transform.toString(transform)}`
+      : CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+    willChange: isDragging ? 'transform' : undefined,
+    opacity: isDragging ? 0.85 : undefined,
     boxShadow: isDragging ? '0 8px 20px rgba(0, 0, 0, 0.2)' : undefined,
     cursor: disabled ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
   };
@@ -166,6 +169,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   onToggleRowTotal,
   showColumnTotal = true,
   onToggleColumnTotal,
+  isDragging = false,
   onToggle,
 }) => {
   const [isInactiveExpanded, setIsInactiveExpanded] = useState(true);
@@ -242,7 +246,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   return (
     <section
       ref={containerRef}
-      className={`spatial-zone spatial-zone-${id} spatial-zone-${orientation}`}
+      className={`spatial-zone spatial-zone-${id} spatial-zone-${orientation} ${isDragging ? 'drag-active' : ''}`}
     >
       <div className="spatial-zone-header">
         <span className="spatial-zone-title">{title}</span>
@@ -404,4 +408,4 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   );
 };
 
-export default SpatialFieldZone;
+export default React.memo(SpatialFieldZone);

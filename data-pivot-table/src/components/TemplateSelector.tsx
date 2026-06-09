@@ -16,7 +16,6 @@ interface PivotTemplate {
 }
 
 const FALLBACK_MAP: Record<string, string> = {
-  实际场景: '广告场景',
   实际国家: '国家',
   买量渠道: '渠道',
 };

@@ -1,0 +1,15 @@
+.body {
+  margin-bottom: 8px;
+}
+
+.text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+}
+
+.highlight {
+  color: var(--text-primary, #1e293b);
+  font-weight: 600;
+}

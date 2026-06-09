@@ -1,6 +1,5 @@
 import { Maximize2, Minimize2, Table2, X } from 'lucide-react';
-import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface FloatingControlBarProps {
   isIdle: boolean;
@@ -80,4 +79,4 @@ const FloatingControlBar: React.FC<FloatingControlBarProps> = ({
   );
 };
 
-export default FloatingControlBar;
+export default React.memo(FloatingControlBar);

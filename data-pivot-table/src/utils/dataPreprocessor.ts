@@ -41,7 +41,23 @@ export function preprocessData(data: DataRow[]): DataRow[] {
   // 第一步：计算全局总收益（需要先遍历一次）
   const totalRevenue = data.reduce((sum, row) => sum + (Number(row['广告收益']) || 0), 0);
 
-  // 第二步：单次遍历完成所有转换
+  // 第二步：按 日期/应用/国家 建立 ALL 行注册用户映射
+  // 解决 SQL 导出中部分国家有曝光人数但无注册用户的问题
+  const registeredUserLookup = new Map<string, number>();
+  for (const row of data) {
+    const scene = String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '').trim().toUpperCase();
+    if (scene !== 'ALL') continue;
+    const date = String(row['日期'] ?? '').trim();
+    const app = String(row['应用'] ?? '').trim();
+    const country = String(row['国家'] ?? '').trim();
+    const key = `${date}\u001f${app}\u001f${country}`;
+    const val = Number(row['注册用户']);
+    if (!Number.isNaN(val) && val > 0) {
+      registeredUserLookup.set(key, val);
+    }
+  }
+
+  // 第三步：单次遍历完成所有转换
   return data.map((row) => {
     const newRow: DataRow = {};
 
@@ -54,6 +70,19 @@ export function preprocessData(data: DataRow[]): DataRow[] {
     const code = String(row['国家'] ?? '');
     if (code) {
       newRow['国家'] = countryMap[code.toLowerCase()] ?? code;
+    }
+
+    // 注册用户回填：子场景注册用户为 0 时，用同日期/应用/国家的 ALL 行值填充
+    const regUsers = Number(row['注册用户']);
+    if ((!regUsers || regUsers === 0) && String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '').trim().toUpperCase() !== 'ALL') {
+      const date = String(row['日期'] ?? '').trim();
+      const app = String(row['应用'] ?? '').trim();
+      const country = String(row['国家'] ?? '').trim();
+      const key = `${date}\u001f${app}\u001f${country}`;
+      const fallback = registeredUserLookup.get(key);
+      if (fallback && fallback > 0) {
+        newRow['注册用户'] = fallback;
+      }
     }
 
     // 预计算全局收益
@@ -70,7 +99,7 @@ export function preprocessData(data: DataRow[]): DataRow[] {
         if (fieldName === '总广告收益') {
           value = totalRevenue;
         } else {
-          value = Number(row[fieldName]);
+          value = Number(newRow[fieldName] ?? row[fieldName]);
           if (isNaN(value)) value = 0;
         }
         formula = formula.replace(regexes[index], String(value));

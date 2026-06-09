@@ -1,0 +1,61 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+  min-width: 56px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barContainer {
+  flex: 1;
+  height: 6px;
+  background: var(--zone-bg, #f1f5f9);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.barNegative {
+  background: var(--danger-color, #ef4444);
+}
+
+.barPositive {
+  background: var(--success-color, #10b981);
+}
+
+.value {
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+
+.valueNegative {
+  color: var(--danger-color, #ef4444);
+}
+
+.valuePositive {
+  color: var(--success-color, #10b981);
+}

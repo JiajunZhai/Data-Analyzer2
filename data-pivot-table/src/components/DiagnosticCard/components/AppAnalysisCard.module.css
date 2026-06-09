@@ -1,0 +1,259 @@
+.card {
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-card, 8px);
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card:last-child {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light, rgba(226, 232, 240, 0.6));
+}
+
+.appInfo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.appName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.period {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.trendsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.metricRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metricName {
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  min-width: 52px;
+  white-space: nowrap;
+}
+
+.barContainer {
+  flex: 1;
+  height: 6px;
+  background: var(--zone-bg, #f1f5f9);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.barPositive {
+  background: var(--color-positive, #2d9f75);
+}
+
+.barNegative {
+  background: var(--color-negative, #e05353);
+}
+
+.metricRate {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 52px;
+  text-align: right;
+}
+
+.ratePositive {
+  color: var(--color-positive, #2d9f75);
+}
+
+.rateNegative {
+  color: var(--color-negative, #e05353);
+}
+
+.locateBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--primary-light, #3b82f6);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: all var(--transition-fast);
+}
+
+.locateBtn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  transform: scale(1.1);
+}
+
+.noTrend {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  text-align: center;
+  padding: 10px 0;
+}
+
+.anomaliesSection {
+  margin-bottom: 10px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 8px;
+}
+
+.anomalyList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.anomalyItem {
+  padding: 10px;
+  border-radius: var(--radius-sm, 6px);
+  border-left: 3px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.anomalyItem:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.critical {
+  background: var(--color-negative-bg, rgba(224, 83, 83, 0.08));
+  border-left-color: var(--color-negative, #e05353);
+}
+
+.warning {
+  background: var(--color-warning-bg, rgba(229, 160, 11, 0.08));
+  border-left-color: var(--color-warning, #e5a00b);
+}
+
+.anomalyHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.anomalyDate {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.anomalyMetric {
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+  padding: 1px 5px;
+  background: var(--zone-bg, #f1f5f9);
+  border-radius: 3px;
+}
+
+.anomalyRate {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.locateSmallBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--primary-light, #3b82f6);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all var(--transition-fast);
+}
+
+.locateSmallBtn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  transform: scale(1.1);
+}
+
+.anomalyDetail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anomalyValues {
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+  font-variant-numeric: tabular-nums;
+}
+
+.anomalyCause {
+  font-size: 10px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+}
+
+.summary {
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.5;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light, rgba(226, 232, 240, 0.6));
+}
+
+/* 查看更多 */
+.viewMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  font-size: 11px;
+  color: var(--primary-light, #3b82f6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: all var(--transition-fast);
+  width: 100%;
+  margin-top: 4px;
+}
+
+.viewMore:hover {
+  background: rgba(59, 130, 246, 0.08);
+}

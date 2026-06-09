@@ -1,6 +1,6 @@
 import type { DataRow, Field, FieldType } from '../types';
 
-const DIMENSION_FIELDS = ['日期', '国家', '应用', '渠道', '版本', '广告场景'];
+const DIMENSION_FIELDS = ['日期', '国家', '应用', '渠道', '版本', '标准广告场景', '聚合广告场景'];
 
 const MEASURE_FIELDS = ['注册用户', '曝光人数', '曝光次数', '广告收益', '点击次数'];
 
