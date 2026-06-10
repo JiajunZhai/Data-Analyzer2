@@ -47,23 +47,29 @@
 }
 
 .metricChange {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  width: fit-content;
 }
 
 .metricChange.positive {
   color: var(--color-positive, #2d9f75);
+  background: var(--color-positive-bg, rgba(45, 159, 117, 0.1));
 }
 
 .metricChange.negative {
   color: var(--color-negative, #e05353);
+  background: var(--color-negative-bg, rgba(224, 83, 83, 0.1));
 }
 
 .metricChange.neutral {
   color: var(--text-muted, #94a3b8);
+  background: var(--zone-bg, #f1f5f9);
 }
 
 .attribution {

@@ -1,22 +1,11 @@
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import type React from 'react';
 import type { ArpuDecomposition } from '../../../types/anomaly';
+import { formatRate, formatValue } from '../../../utils/formatters';
 import styles from './ArpuFactorCard.module.css';
 
 interface ArpuFactorCardProps {
   decomposition: ArpuDecomposition;
-}
-
-function formatRate(rate: number): string {
-  const pct = Math.abs(rate * 100);
-  if (pct < 0.1) return '0%';
-  return `${rate > 0 ? '+' : '-'}${pct.toFixed(1)}%`;
-}
-
-function formatValue(val: number, suffix = ''): string {
-  if (val >= 1000) return `${(val / 1000).toFixed(1)}k${suffix}`;
-  if (val >= 100) return `${Math.round(val)}${suffix}`;
-  return `${val.toFixed(2)}${suffix}`;
 }
 
 function ChangeIcon({ rate }: { rate: number }) {

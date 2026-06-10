@@ -11,7 +11,6 @@ import styles from './DiagnosticCard.module.css';
 interface DiagnosticCardProps {
   data: DataRow[];
   fields: Field[];
-  isStorageReady: boolean;
   onClose?: () => void;
   onApplyFilters: (fieldName: string, selectedValues: string[]) => void;
   onApplyRowFields: (fields: PivotField[]) => void;
@@ -34,7 +33,6 @@ const SkeletonCard: React.FC = () => (
 export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
   data,
   fields,
-  isStorageReady: _isStorageReady,
   onClose,
   onApplyFilters,
   onApplyRowFields,

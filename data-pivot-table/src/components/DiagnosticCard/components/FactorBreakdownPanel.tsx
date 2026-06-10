@@ -1,24 +1,13 @@
 import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle, Minus } from 'lucide-react';
 import type React from 'react';
 import type { DimensionContribution, IpuDecomposition } from '../../../types/anomaly';
+import { formatRate, formatValue } from '../../../utils/formatters';
 import styles from './FactorBreakdownPanel.module.css';
 
 interface FactorBreakdownPanelProps {
   primaryFactor: 'quantity' | 'price' | 'balanced';
   ipuBreakdown: IpuDecomposition;
   ecpmDimensions: DimensionContribution[];
-}
-
-function formatRate(rate: number): string {
-  const pct = Math.abs(rate * 100);
-  if (pct < 0.1) return '0%';
-  return `${rate > 0 ? '+' : '-'}${pct.toFixed(1)}%`;
-}
-
-function formatValue(val: number, suffix = ''): string {
-  if (val >= 1000) return `${(val / 1000).toFixed(1)}k${suffix}`;
-  if (val >= 100) return `${Math.round(val)}${suffix}`;
-  return `${val.toFixed(2)}${suffix}`;
 }
 
 const DIAGNOSIS_LABELS: Record<string, string> = {
@@ -40,7 +29,7 @@ export const FactorBreakdownPanel: React.FC<FactorBreakdownPanelProps> = ({
 };
 
 const IpuBreakdownView: React.FC<{ breakdown: IpuDecomposition }> = ({ breakdown }) => {
-  const { ipuPerUser, penetration, impressionUserIpu, diagnosis } = breakdown;
+  const { penetration, impressionUserIpu, diagnosis } = breakdown;
 
   const factors = [
     {

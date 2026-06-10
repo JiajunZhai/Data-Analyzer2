@@ -12,8 +12,6 @@ export function useDatasetManager() {
     limit: STORAGE_LIMITS.MAX_STORAGE_BYTES,
     datasetCount: 0,
     datasetLimit: STORAGE_LIMITS.MAX_DATASETS,
-    mappingCount: 0,
-    mappingLimit: STORAGE_LIMITS.MAX_MAPPINGS,
   });
 
   const loadDatasetsRef = useRef<() => Promise<void>>(() => Promise.resolve());

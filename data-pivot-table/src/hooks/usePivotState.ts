@@ -2,13 +2,15 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { useCallback, useMemo, useState } from 'react';
 import type { DataRow, Field, FilterConfig, PivotField } from '../types';
 import { aggregateData } from '../utils/aggregator';
+import { createPivotField, MAX_PRIORITY_FIELDS } from '../utils/fieldHelpers';
 
-const MAX_PRIORITY_FIELDS = 5;
-
-const createPivotField = (field: Field): PivotField => ({
-  field,
-  aggregation: field.type === 'measure' ? 'sum' : undefined,
-});
+// 配置数据类型
+export interface PivotConfig {
+  rowFields: PivotField[];
+  colFields: PivotField[];
+  valueFields: PivotField[];
+  filterConfigs: FilterConfig[];
+}
 
 export function usePivotState() {
   const [fields, setFields] = useState<Field[]>([]);
@@ -51,6 +53,36 @@ export function usePivotState() {
   }, [data, rowFields, colFields, valueFields, filterConfigs]);
 
   const emptyMessage = data.length === 0 ? '请先在顶部选择数据源' : '请配置透视表字段以查看结果';
+
+  // 高级 API：加载数据
+  const loadData = useCallback((newFields: Field[], newData: DataRow[]) => {
+    setFields(newFields);
+    setData(newData);
+  }, []);
+
+  // 高级 API：重置配置
+  const resetConfig = useCallback(() => {
+    setRowFields([]);
+    setColFields([]);
+    setValueFields([]);
+    setFilterConfigs([]);
+  }, []);
+
+  // 高级 API：应用配置
+  const applyConfig = useCallback((config: PivotConfig) => {
+    setRowFields(config.rowFields.slice(0, MAX_PRIORITY_FIELDS));
+    setColFields(config.colFields.slice(0, MAX_PRIORITY_FIELDS));
+    setValueFields(config.valueFields);
+    setFilterConfigs(config.filterConfigs);
+  }, []);
+
+  // 高级 API：获取当前配置
+  const getCurrentConfig = useCallback((): PivotConfig => ({
+    rowFields,
+    colFields,
+    valueFields,
+    filterConfigs,
+  }), [rowFields, colFields, valueFields, filterConfigs]);
 
   const toggleValueField = useCallback((field: Field) => {
     setValueFields((prev) => {
@@ -245,10 +277,12 @@ export function usePivotState() {
   );
 
   return {
+    // 数据状态
     fields,
     setFields,
     data,
     setData,
+    // 透视配置状态
     rowFields,
     setRowFields,
     colFields,
@@ -257,6 +291,7 @@ export function usePivotState() {
     setValueFields,
     filterConfigs,
     setFilterConfigs,
+    // 派生状态
     dimensions,
     measures,
     rowFieldNames,
@@ -264,10 +299,17 @@ export function usePivotState() {
     activeDimensionNames,
     pivotResult,
     emptyMessage,
+    // UI 状态
     showRowTotal,
     setShowRowTotal,
     showColumnTotal,
     setShowColumnTotal,
+    // 高级 API
+    loadData,
+    resetConfig,
+    applyConfig,
+    getCurrentConfig,
+    // 字段操作
     toggleValueField,
     toggleRowField,
     toggleColField,

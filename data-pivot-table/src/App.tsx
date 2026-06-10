@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Film,
   Globe,
+  Link2,
   Megaphone,
   RotateCcw,
   Settings,
@@ -33,6 +34,7 @@ import type { StoredDataset } from './types/storage';
 import { hideConfigPanelTemporarily, showConfigPanelTemporarily } from './utils/animations';
 import { PRESET_CALCULATED_FIELDS } from './utils/calculatedField';
 import { preprocessData } from './utils/dataPreprocessor';
+import { createPivotField } from './utils/fieldHelpers';
 import { detectFieldTypes } from './utils/fieldDetector';
 import { generateDatasetName } from './utils/storageUtils';
 import './styles/variables.css';
@@ -53,11 +55,6 @@ const DEFAULT_ROW_FIELDS = ['日期'];
 const DEFAULT_COL_FIELDS = ['应用'];
 const DEFAULT_VALUE_FIELDS = ['注册用户'];
 
-const createPivotField = (field: Field) => ({
-  field,
-  aggregation: field.type === 'measure' ? ('sum' as const) : undefined,
-});
-
 function App() {
   // 使用自定义 hooks
   const pivotState = usePivotState();
@@ -65,10 +62,10 @@ function App() {
   const configsManager = useConfigs();
 
   const {
+    // 数据状态
     fields,
-    setFields,
     data,
-    setData,
+    // 透视配置状态
     rowFields,
     setRowFields,
     colFields,
@@ -76,7 +73,7 @@ function App() {
     valueFields,
     setValueFields,
     filterConfigs,
-    setFilterConfigs,
+    // 派生状态
     dimensions,
     measures,
     rowFieldNames,
@@ -84,10 +81,16 @@ function App() {
     activeDimensionNames,
     pivotResult,
     emptyMessage,
+    // UI 状态
     showRowTotal,
     setShowRowTotal,
     showColumnTotal,
     setShowColumnTotal,
+    // 高级 API
+    loadData,
+    resetConfig,
+    applyConfig,
+    // 字段操作
     toggleValueField,
     toggleRowField,
     toggleColField,
@@ -186,8 +189,7 @@ function App() {
   // 加载数据集
   const loadDataset = useCallback(
     async (dataset: StoredDataset) => {
-      setFields(dataset.fields);
-      setData(dataset.data);
+      loadData(dataset.fields, dataset.data);
       setCurrentDatasetId(dataset.id);
 
       // 标记需要应用默认配置
@@ -196,7 +198,7 @@ function App() {
       // 保存用户偏好
       await storageService.saveUserPreferences({ lastDatasetId: dataset.id });
     },
-    [setFields, setData, setCurrentDatasetId]
+    [loadData, setCurrentDatasetId]
   );
 
   // 更新 loadDataset ref
@@ -233,12 +235,8 @@ function App() {
       }));
 
       const allFields = [...detectedFields, ...newCalculatedFields];
-      setFields(allFields);
-      setData(dataWithCalculated);
-      setRowFields([]);
-      setColFields([]);
-      setValueFields([]);
-      setFilterConfigs([]);
+      loadData(allFields, dataWithCalculated);
+      resetConfig();
 
       if (isStorageReady) {
         try {
@@ -273,12 +271,8 @@ function App() {
     [
       isStorageReady,
       loadDatasets,
-      setFields,
-      setData,
-      setRowFields,
-      setColFields,
-      setValueFields,
-      setFilterConfigs,
+      loadData,
+      resetConfig,
       setCurrentDatasetId,
     ]
   );
@@ -312,9 +306,12 @@ function App() {
   // 配置加载
   const handleConfigLoad = useCallback(
     async (id: string) => {
-      await handleConfigLoadBase(id, setRowFields, setColFields, setValueFields, setFilterConfigs);
+      const result = await handleConfigLoadBase(id);
+      if (result) {
+        applyConfig(result);
+      }
     },
-    [handleConfigLoadBase, setRowFields, setColFields, setValueFields, setFilterConfigs]
+    [handleConfigLoadBase, applyConfig]
   );
 
   // 配置删除
@@ -339,25 +336,11 @@ function App() {
       await handleDatasetDelete(id);
       if (currentDatasetId === id) {
         setCurrentDatasetId(null);
-        setFields([]);
-        setData([]);
-        setRowFields([]);
-        setColFields([]);
-        setValueFields([]);
-        setFilterConfigs([]);
+        loadData([], []);
+        resetConfig();
       }
     },
-    [
-      currentDatasetId,
-      handleDatasetDelete,
-      setCurrentDatasetId,
-      setFields,
-      setData,
-      setRowFields,
-      setColFields,
-      setValueFields,
-      setFilterConfigs,
-    ]
+    [currentDatasetId, handleDatasetDelete, setCurrentDatasetId, loadData, resetConfig]
   );
 
   const ZEN_TRANSITION = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -416,10 +399,14 @@ function App() {
             />
           )}
           <div className="header-file-capsules">
-            <ZenModeButton
-              disabled={data.length === 0}
-              isActive={isZenMode}
-              onClick={toggleZenMode}
+            <DataSourceManager
+              currentDatasetId={currentDatasetId}
+              datasets={datasets}
+              storageQuota={storageQuota}
+              onDatasetSelect={handleDatasetSelect}
+              onDatasetRename={handleDatasetRename}
+              onDatasetDelete={handleDatasetDeleteWithCleanup}
+              onDataUpload={handleDataLoaded}
             />
             {data.length > 0 && (
               <ConfigManager
@@ -434,14 +421,11 @@ function App() {
                 onTemplateApply={applyTemplate}
               />
             )}
-            <DataSourceManager
-              currentDatasetId={currentDatasetId}
-              datasets={datasets}
-              storageQuota={storageQuota}
-              onDatasetSelect={handleDatasetSelect}
-              onDatasetRename={handleDatasetRename}
-              onDatasetDelete={handleDatasetDeleteWithCleanup}
-              onDataUpload={handleDataLoaded}
+            <div className="toolbar-divider" />
+            <ZenModeButton
+              disabled={data.length === 0}
+              isActive={isZenMode}
+              onClick={toggleZenMode}
             />
           </div>
         </header>
@@ -591,7 +575,6 @@ function App() {
             <DiagnosticCard
               data={data}
               fields={fields}
-              isStorageReady={isStorageReady}
               onClose={() => setIsDiagnosticOpen(false)}
               onApplyFilters={handleFilterChange}
               onApplyRowFields={setRowFields}

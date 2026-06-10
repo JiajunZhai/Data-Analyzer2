@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import templatesData from '../../data/pivotTemplates.json';
 import type { Field, FilterConfig, PivotField } from '../../types';
 import type { StoredConfig } from '../../types/storage';
+import { createPivotField } from '../../utils/fieldHelpers';
 
 interface PivotTemplate {
   id: string;
@@ -27,13 +28,6 @@ function resolveField(name: string, fields: Field[]): Field | null {
   const fbName = FALLBACK_MAP[name];
   if (fbName) return fields.find((f) => f.name === fbName) ?? null;
   return null;
-}
-
-function createPivotField(field: Field): PivotField {
-  return {
-    field,
-    aggregation: field.type === 'measure' ? 'sum' : undefined,
-  };
 }
 
 interface ConfigManagerProps {
@@ -217,13 +211,13 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
     <div className="config-manager-wrapper" ref={dropdownRef}>
       <button
         type="button"
-        className={`file-capsule config-trigger ${isOpen ? 'capsule-dragging' : ''}`}
+        className={`toolbar-btn ${isOpen ? 'is-open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="capsule-icon">
-          <Settings size={14} />
+          <Settings size={13} />
         </span>
-        <span className="capsule-name">配置管理</span>
+        <span className="capsule-name">配置</span>
         <span className="capsule-action">{isOpen ? '▲' : '▼'}</span>
       </button>
 

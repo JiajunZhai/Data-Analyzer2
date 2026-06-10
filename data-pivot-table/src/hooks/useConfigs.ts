@@ -2,8 +2,15 @@ import { useCallback, useState } from 'react';
 import { storageService } from '../services/storage';
 import type { FilterConfig, PivotField } from '../types';
 import type { StoredConfig } from '../types/storage';
+import { MAX_PRIORITY_FIELDS } from '../utils/fieldHelpers';
 
-const MAX_PRIORITY_FIELDS = 5;
+// 配置加载结果类型
+export interface ConfigLoadResult {
+  rowFields: PivotField[];
+  colFields: PivotField[];
+  valueFields: PivotField[];
+  filterConfigs: FilterConfig[];
+}
 
 export function useConfigs() {
   const [savedConfigs, setSavedConfigs] = useState<StoredConfig[]>([]);
@@ -48,25 +55,18 @@ export function useConfigs() {
     []
   );
 
-  // 配置加载
-  const handleConfigLoad = useCallback(
-    async (
-      id: string,
-      setRowFields: (fields: PivotField[]) => void,
-      setColFields: (fields: PivotField[]) => void,
-      setValueFields: (fields: PivotField[]) => void,
-      setFilterConfigs: (configs: FilterConfig[]) => void
-    ) => {
-      const config = await storageService.getConfig(id);
-      if (config) {
-        setRowFields(config.rowFields.slice(0, MAX_PRIORITY_FIELDS));
-        setColFields(config.colFields.slice(0, MAX_PRIORITY_FIELDS));
-        setValueFields(config.valueFields);
-        setFilterConfigs(config.filterConfigs);
-      }
-    },
-    []
-  );
+  // 配置加载 - 返回配置数据，由调用方决定如何应用
+  const handleConfigLoad = useCallback(async (id: string): Promise<ConfigLoadResult | null> => {
+    const config = await storageService.getConfig(id);
+    if (!config) return null;
+
+    return {
+      rowFields: config.rowFields.slice(0, MAX_PRIORITY_FIELDS),
+      colFields: config.colFields.slice(0, MAX_PRIORITY_FIELDS),
+      valueFields: config.valueFields,
+      filterConfigs: config.filterConfigs,
+    };
+  }, []);
 
   // 配置删除
   const handleConfigDelete = useCallback(async (id: string, currentDatasetId: string | null) => {

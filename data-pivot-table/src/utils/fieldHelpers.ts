@@ -1,6 +1,15 @@
-import type { Field } from '../types';
+import type { Field, PivotField } from '../types';
 
 export type SpatialZoneId = 'rows' | 'columns' | 'values';
+
+// 优先级字段最大数量
+export const MAX_PRIORITY_FIELDS = 5;
+
+// 创建 PivotField 实例
+export const createPivotField = (field: Field): PivotField => ({
+  field,
+  aggregation: field.type === 'measure' ? 'sum' : undefined,
+});
 
 // 判断字段类型（维度 or 指标）
 export const getFieldType = (field: Field): 'dimension' | 'metric' => {

@@ -133,10 +133,12 @@ const PrioritySlot: React.FC<PrioritySlotProps> = ({ zoneId, index, field, disab
     },
   });
 
+  const isRow = zoneId === 'rows';
+
   return (
     <div
       ref={setNodeRef}
-      className={`priority-slot ${field ? 'occupied' : 'empty'} ${isOver ? 'drag-over' : ''}`}
+      className={`${isRow ? 'row-slot' : 'priority-slot'} ${field ? 'occupied' : 'empty'} ${isOver ? 'drag-over' : ''}`}
       data-slot={index + 1}
       title={field ? `优先级 ${index + 1}: ${field.name}` : `拖入优先级 ${index + 1}`}
     >
@@ -149,6 +151,11 @@ const PrioritySlot: React.FC<PrioritySlotProps> = ({ zoneId, index, field, disab
           sortable={true}
           disabledReason={disabledReason}
         />
+      ) : isRow ? (
+        <>
+          <span className="row-slot-plus">+</span>
+          <span className="row-slot-num">{index + 1}</span>
+        </>
       ) : (
         <span className="priority-slot-num">{index + 1}</span>
       )}
@@ -270,18 +277,23 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
           <div className="column-flow-zone">
             <div ref={setActiveRef} className={`column-flow-active ${activeDropClass}`}>
               <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
-                <div className="priority-slots-track priority-slots-columns">
-                  {slotItems.map((field, index) => (
-                    <PrioritySlot
-                      key={`${id}-slot-${index}`}
-                      zoneId={id}
-                      index={index}
+                <div className="column-flow-tags">
+                  {activeItems.map((field) => (
+                    <FieldCapsule
+                      key={field.name}
                       field={field}
+                      zoneId={id}
+                      active={true}
+                      disabled={false}
+                      sortable={true}
+                      onToggle={onToggle}
                     />
                   ))}
+                  <span className={`column-flow-hint ${activeItems.length > 0 ? 'inline' : ''}`}>
+                    {isDragging ? '+ 拖至此处' : activeItems.length === 0 ? '拖入维度' : ''}
+                  </span>
                 </div>
               </SortableContext>
-              {activeItems.length === 0 && <div className="column-flow-placeholder">拖入维度</div>}
             </div>
 
             <div className="column-flow-divider" aria-hidden="true" />
@@ -334,7 +346,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
               >
                 <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
                   {usesPrioritySlots ? (
-                    <div className="priority-slots-track priority-slots-rows">
+                    <div className={id === 'rows' ? 'row-slots-track' : 'priority-slots-track priority-slots-rows'}>
                       {slotItems.map((field, index) => (
                         <PrioritySlot
                           key={`${id}-slot-${index}`}

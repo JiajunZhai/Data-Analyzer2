@@ -1,26 +1,12 @@
 import { AlertTriangle, MapPin } from 'lucide-react';
 import type React from 'react';
 import type { AppAnalysisResult, DayAnomaly } from '../../../types/anomaly';
+import { formatValue, formatPercent } from '../../../utils/formatters';
 import styles from './AppAnalysisCard.module.css';
 
 interface AppAnalysisCardProps {
   result: AppAnalysisResult;
   onLocate: (metricName: string) => void;
-}
-
-function formatValue(num: number): string {
-  if (Math.abs(num) >= 10000) {
-    return `${(num / 1000).toFixed(1)}k`;
-  }
-  if (Math.abs(num) >= 100) {
-    return Math.round(num).toLocaleString();
-  }
-  return num.toFixed(2);
-}
-
-function formatPercent(rate: number): string {
-  const sign = rate >= 0 ? '+' : '';
-  return `${sign}${(rate * 100).toFixed(1)}%`;
 }
 
 const MetricBar: React.FC<{

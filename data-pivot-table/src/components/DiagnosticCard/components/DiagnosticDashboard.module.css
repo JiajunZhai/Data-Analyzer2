@@ -4,29 +4,27 @@
   gap: 10px;
 }
 
-/* 对比信息条 */
+/* 对比信息条 — 轻量化文字流排版 */
 .comparisonBar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: var(--hover-bg, #eff6ff);
-  border: 1px solid rgba(59, 130, 246, 0.15);
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
   border-radius: var(--radius-sm, 6px);
 }
 
 .comparisonIcon {
   flex-shrink: 0;
-  color: var(--primary-light, #3b82f6);
+  color: var(--text-muted, #94a3b8);
+  opacity: 0.6;
 }
 
 .comparisonLabel {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--primary-light, #3b82f6);
-  padding: 1px 6px;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: var(--radius-xs, 3px);
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
 }
 
 .comparisonDates {
@@ -38,29 +36,22 @@
 }
 
 .dateTag {
-  padding: 2px 8px;
-  background: var(--zone-bg, #f1f5f9);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: var(--radius-xs, 4px);
   font-size: 11px;
-  font-weight: 500;
-  color: var(--text-secondary, #64748b);
+  font-weight: 400;
+  color: var(--text-muted, #94a3b8);
   font-variant-numeric: tabular-nums;
 }
 
 .dateArrow {
   color: var(--text-muted, #94a3b8);
-  font-size: 11px;
+  font-size: 10px;
+  opacity: 0.5;
 }
 
 .dateTagCurrent {
-  padding: 2px 8px;
-  background: var(--primary-light-bg, rgba(59, 130, 246, 0.08));
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: var(--radius-xs, 4px);
   font-size: 11px;
-  font-weight: 600;
-  color: var(--primary-light, #3b82f6);
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
   font-variant-numeric: tabular-nums;
 }
 
@@ -130,12 +121,12 @@
   color: var(--text-primary, #1e293b);
 }
 
-/* 关键指标速览 */
+/* 关键指标速览 — 去卡片化平铺网格 */
 .metricsOverview {
-  background: var(--zone-bg, #f1f5f9);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: var(--radius-md, 8px);
-  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 .overviewTitle {
@@ -145,7 +136,7 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--text-primary, #1e293b);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .overviewDate {
@@ -158,7 +149,10 @@
 .metricsGrid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 2px;
+  background: var(--zone-bg, #f1f5f9);
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
 }
 
 .miniCard {
@@ -168,13 +162,10 @@
   gap: 2px;
   padding: 8px 4px;
   background: var(--bg-primary, #ffffff);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: var(--radius-sm, 6px);
-  transition: border-color 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .miniCardPrimary {
-  border-color: var(--primary-light, #3b82f6);
   background: var(--hover-bg, #eff6ff);
 }
 
@@ -183,7 +174,7 @@
   font-weight: 600;
   color: var(--text-muted, #94a3b8);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .miniValue {
@@ -191,6 +182,7 @@
   font-weight: 700;
   color: var(--text-primary, #1e293b);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .miniSuffix {
@@ -206,18 +198,19 @@
   gap: 2px;
   font-size: 10px;
   font-weight: 600;
-  padding: 1px 4px;
-  border-radius: var(--radius-xs, 3px);
+  padding: 2px 6px;
+  border-radius: 10px;
+  width: fit-content;
 }
 
 .changeIndicator.up {
   color: var(--color-positive, #2d9f75);
-  background: var(--color-positive-bg, rgba(45, 159, 117, 0.08));
+  background: var(--color-positive-bg, rgba(45, 159, 117, 0.1));
 }
 
 .changeIndicator.down {
   color: var(--color-negative, #e05353);
-  background: var(--color-negative-bg, rgba(224, 83, 83, 0.08));
+  background: var(--color-negative-bg, rgba(224, 83, 83, 0.1));
 }
 
 .changeIndicator.flat {
@@ -300,19 +293,28 @@
 
 .findingIcon {
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
 }
 
 .findingCritical .findingIcon {
-  color: var(--color-negative, #e05353);
+  color: #fff;
+  background: var(--color-negative, #e05353);
 }
 
 .findingWarning .findingIcon {
-  color: var(--color-warning, #e5a00b);
+  color: #fff;
+  background: var(--color-warning, #e5a00b);
 }
 
 .findingInfo .findingIcon {
-  color: var(--primary-light, #3b82f6);
+  color: #fff;
+  background: var(--primary-light, #3b82f6);
 }
 
 .findingText {

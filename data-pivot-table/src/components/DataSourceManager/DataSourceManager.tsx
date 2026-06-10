@@ -115,13 +115,13 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
     <div className="datasource-manager-wrapper" ref={dropdownRef}>
       <button
         type="button"
-        className={`file-capsule datasource-trigger ${isOpen ? 'capsule-dragging' : ''}`}
+        className={`toolbar-btn ${isOpen ? 'is-open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="capsule-icon">
-          <FileSpreadsheet size={14} />
+          <FileSpreadsheet size={13} />
         </span>
-        <span className="capsule-name">{currentDataset ? currentDataset.name : '数据源管理'}</span>
+        <span className="capsule-name">{currentDataset ? currentDataset.name : '数据源'}</span>
         <span className="capsule-action">{isOpen ? '▲' : '▼'}</span>
       </button>
 

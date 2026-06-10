@@ -634,8 +634,9 @@ function findDimensionContributions(
 
 /**
  * 结构化 RootCauseResult（替代原 findRootCause 返回字符串）
+ * @internal 保留供未来使用
  */
-function findStructuredRootCause(
+export function findStructuredRootCause(
   currentRows: DataRow[],
   previousRows: DataRow[],
   metricName: string,

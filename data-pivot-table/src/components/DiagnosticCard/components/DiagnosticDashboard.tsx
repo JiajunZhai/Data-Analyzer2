@@ -4,7 +4,6 @@ import {
   ArrowUp,
   ArrowLeftRight,
   BarChart3,
-  CheckCircle,
   ChevronDown,
   ChevronUp,
   DollarSign,
@@ -17,8 +16,9 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import type { ComparisonMode, DiagnosticResult, MetricSnapshot, RevenueSnapshot } from '../../../types/anomaly';
+import type { ComparisonMode, DiagnosticResult, MetricSnapshot } from '../../../types/anomaly';
 import { COMPARISON_MODES } from '../../../types/anomaly';
+import { formatRate, formatValue, formatMoney } from '../../../utils/formatters';
 import { ArpuFactorCard } from './ArpuFactorCard';
 import { DimensionContributionList } from './DimensionContributionList';
 import { FactorBreakdownPanel } from './FactorBreakdownPanel';
@@ -31,24 +31,6 @@ const COMPARISON_LABELS: Record<ComparisonMode, string> = Object.fromEntries(
 interface DiagnosticDashboardProps {
   result: DiagnosticResult;
   onLocate?: (dimension: string, value: string) => void;
-}
-
-function formatRate(rate: number): string {
-  const pct = Math.abs(rate * 100);
-  if (pct < 0.1) return '0%';
-  return `${rate > 0 ? '+' : '-'}${pct.toFixed(1)}%`;
-}
-
-function formatValue(val: number): string {
-  if (val >= 10000) return `${(val / 1000).toFixed(1)}k`;
-  if (val >= 100) return `${Math.round(val)}`;
-  return val.toFixed(2);
-}
-
-function formatMoney(val: number): string {
-  if (val >= 10000) return `$${(val / 1000).toFixed(1)}k`;
-  if (val >= 100) return `$${Math.round(val)}`;
-  return `$${val.toFixed(2)}`;
 }
 
 function ChangeIndicator({ snapshot }: { snapshot: MetricSnapshot }) {

@@ -44,11 +44,19 @@ export function useAnomalyState({
   );
 
   // 当前选中的模式不可用时，自动回退到第一个可用模式
-  useEffect(() => {
+  const stableComparisonMode = useMemo(() => {
     if (availableModes.length > 0 && !availableModes.some((m) => m.mode === comparisonMode)) {
-      setComparisonMode(availableModes[0].mode);
+      return availableModes[0].mode;
     }
+    return comparisonMode;
   }, [availableModes, comparisonMode]);
+
+  // 同步稳定值到状态
+  useEffect(() => {
+    if (stableComparisonMode !== comparisonMode) {
+      setComparisonMode(stableComparisonMode);
+    }
+  }, [stableComparisonMode, comparisonMode]);
 
   const runAnalysis = useCallback(() => {
     if (data.length === 0) return;
@@ -80,7 +88,7 @@ export function useAnomalyState({
     }, 0);
   }, [data, availableFields, fieldMappingStatus, selectedApp, comparisonMode]);
 
-  useEffect(() => {
+  const resetOnEmptyData = useCallback(() => {
     if (data.length === 0) {
       setDiagnosticResult(null);
       setErrorMessage(null);
@@ -88,6 +96,10 @@ export function useAnomalyState({
       setHasAnalyzed(false);
     }
   }, [data]);
+
+  useEffect(() => {
+    resetOnEmptyData();
+  }, [resetOnEmptyData]);
 
   const locateDimension = useCallback(
     (dimensionName: string, memberValue: string) => {

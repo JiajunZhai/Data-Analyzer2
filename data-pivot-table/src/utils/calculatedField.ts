@@ -2,7 +2,7 @@ import type { CalculatedField, DataRow } from '../types';
 
 const SAFE_EXPR_PATTERN = /^[\d\s+\-*/().]+$/;
 
-function safeEval(expr: string): number {
+export function safeEval(expr: string): number {
   if (!SAFE_EXPR_PATTERN.test(expr)) return 0;
   try {
     const result = Function(`"use strict"; return (${expr})`)();
@@ -54,7 +54,7 @@ export function calculateMetricFromAggregates(
   return safeEval(formula);
 }
 
-function escapeRegExp(string: string): string {
+export function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

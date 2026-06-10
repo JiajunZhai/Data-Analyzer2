@@ -75,15 +75,8 @@ export function aggregateData(
     );
   }
 
-  // 检查场景是否作为维度
-  const scenarioFieldNames = new Set(SCENARIO_FIELDS);
-  const hasScenarioDimension = [...rowFields, ...colFields].some((field) =>
-    scenarioFieldNames.has(field.field.name)
-  );
-
   // 在过滤 ALL 行之前，提取 ALL 行的半可加指标值（曝光人数、注册用户）
   // 用于在计算总计/小计时注入，避免数据翻倍
-  // 始终构建，不依赖 hasScenarioDimension，确保计算指标分母可用
   const metricNamesForLookup = getMetricNames(valueFields);
   const allRowSemiAdditiveLookup = new Map<string, Map<string, number>>();
   for (const row of filteredData) {
@@ -487,7 +480,6 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     valueFields,
     valueAxis,
     constants,
-    allRowSemiAdditiveLookup,
   } = options;
 
   const displayRows = buildDisplayRows(sortedRowKeys, rowKeyParts, rowFields.length, valueFields);

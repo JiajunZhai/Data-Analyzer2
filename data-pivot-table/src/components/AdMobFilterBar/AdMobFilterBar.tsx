@@ -1,4 +1,4 @@
-import { BarChart3, RotateCcw } from 'lucide-react';
+import { BarChart3, RotateCcw, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { DataRow, FilterConfig } from '../../types';
 import DateRangeFilterChip from './DateRangeFilterChip';
@@ -106,15 +106,20 @@ const FilterChip: React.FC<FilterChipProps> = ({
 
   const getDisplayValue = () => {
     if (selectedValues.length === allValues.length) {
-      return '全部';
+      return `全部${config.label}`;
     }
     if (selectedValues.length === 0) {
-      return '未选择';
+      return `未选${config.label}`;
     }
     if (selectedValues.length <= 2) {
-      return selectedValues.join(', ');
+      return `${config.label}: ${selectedValues.join(', ')}`;
     }
-    return `已选 ${selectedValues.length} 个`;
+    return `${config.label}: 已选 ${selectedValues.length} 个`;
+  };
+
+  const handleChipReset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelectionChange(allValues);
   };
 
   return (
@@ -131,11 +136,19 @@ const FilterChip: React.FC<FilterChipProps> = ({
         }}
       >
         <span className="chip-icon">{config.icon}</span>
-        <span className="chip-label">{config.label}：</span>
-        <span className="chip-value">{getDisplayValue()}</span>
+        <span className="chip-text">{getDisplayValue()}</span>
         {dimensionHint && (
           <span className="chip-dimension-hint" title={dimensionHint}>
             <BarChart3 size={11} />
+          </span>
+        )}
+        {isActive && (
+          <span
+            className="chip-reset-icon"
+            title={`重置${config.label}`}
+            onClick={handleChipReset}
+          >
+            <X size={11} />
           </span>
         )}
         <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>

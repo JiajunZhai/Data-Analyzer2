@@ -204,15 +204,15 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
   }, []);
 
   const displayValue = useMemo(() => {
-    if (isAllSelected) return '全部';
-    if (selectedValues.length === 0) return '未选择';
+    if (isAllSelected) return `全部${label}`;
+    if (selectedValues.length === 0) return `未选${label}`;
     if (rangeStart && rangeEnd) {
-      if (isSameDay(rangeStart, rangeEnd)) return formatDate(rangeStart);
-      return `${formatDate(rangeStart)} ~ ${formatDate(rangeEnd)}`;
+      if (isSameDay(rangeStart, rangeEnd)) return `${label}: ${formatDate(rangeStart)}`;
+      return `${label}: ${formatDate(rangeStart)} ~ ${formatDate(rangeEnd)}`;
     }
-    if (selectedValues.length <= 2) return selectedValues.join(', ');
-    return `已选 ${selectedValues.length} 个`;
-  }, [isAllSelected, selectedValues, rangeStart, rangeEnd]);
+    if (selectedValues.length <= 2) return `${label}: ${selectedValues.join(', ')}`;
+    return `${label}: 已选 ${selectedValues.length} 个`;
+  }, [isAllSelected, selectedValues, rangeStart, rangeEnd, label]);
 
   const isActive = !isAllSelected && selectedValues.length > 0;
 
@@ -353,8 +353,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
         }}
       >
         <span className="chip-icon">{icon}</span>
-        <span className="chip-label">{label}：</span>
-        <span className="chip-value">{displayValue}</span>
+        <span className="chip-text">{displayValue}</span>
         <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
 

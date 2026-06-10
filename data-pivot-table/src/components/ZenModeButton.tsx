@@ -15,15 +15,15 @@ const ZenModeButton: React.FC<ZenModeButtonProps> = ({
   return (
     <button
       type="button"
-      className={`file-capsule zen-mode-trigger ${isActive ? 'zen-mode-active' : ''}`}
+      className={`zen-toggle ${isActive ? 'zen-active' : ''}`}
       onClick={onClick}
       disabled={disabled}
       title={disabled ? '请先加载数据' : isActive ? '退出沉浸模式 (Esc)' : '进入沉浸模式 (F)'}
     >
       <span className="capsule-icon">
-        <Maximize2 size={14} />
+        <Maximize2 size={13} />
       </span>
-      <span className="capsule-name">{isActive ? '沉浸模式中' : '沉浸模式'}</span>
+      <span>{isActive ? '沉浸中' : '沉浸'}</span>
       {!isActive && <span className="capsule-shortcut">F</span>}
     </button>
   );

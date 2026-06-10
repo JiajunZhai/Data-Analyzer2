@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, MapPin, Minus, TrendingDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, MapPin, TrendingDown } from 'lucide-react';
 import type React from 'react';
 import type { DimensionContribution } from '../../../types/anomaly';
 import styles from './DimensionContributionList.module.css';

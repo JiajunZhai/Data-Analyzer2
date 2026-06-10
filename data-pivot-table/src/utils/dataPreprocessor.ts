@@ -1,11 +1,9 @@
 import countryMapping from '../data/countryMapping.json';
 import type { DataRow } from '../types';
-import { CALCULATED_METRICS } from './calculatedField';
+import { CALCULATED_METRICS, escapeRegExp, safeEval } from './calculatedField';
+import { getCountryName } from './countryMapper';
 
 const countryMap: Record<string, string> = countryMapping;
-
-// 预编译正则表达式，避免每次调用都创建
-const SAFE_EXPR_PATTERN = /^[\d\s+\-*/().]+$/;
 
 // 缓存计算字段的正则表达式
 const calculatedFieldRegexes = new Map<string, RegExp[]>();
@@ -15,20 +13,6 @@ Object.entries(CALCULATED_METRICS).forEach(([name, config]) => {
     .map((field) => new RegExp(escapeRegExp(field), 'g'));
   calculatedFieldRegexes.set(name, regexes);
 });
-
-function escapeRegExp(string: string): string {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function safeEval(expr: string): number {
-  if (!SAFE_EXPR_PATTERN.test(expr)) return 0;
-  try {
-    const result = Function(`"use strict"; return (${expr})`)();
-    return typeof result === 'number' && isFinite(result) ? result : 0;
-  } catch {
-    return 0;
-  }
-}
 
 /**
  * 优化：合并数据预处理链为单次遍历
@@ -112,9 +96,5 @@ export function preprocessData(data: DataRow[]): DataRow[] {
   });
 }
 
-/**
- * 获取国家名称
- */
-export function getCountryName(code: string): string {
-  return countryMap[code.toLowerCase()] ?? code;
-}
+// 重新导出 getCountryName 以保持向后兼容
+export { getCountryName };
