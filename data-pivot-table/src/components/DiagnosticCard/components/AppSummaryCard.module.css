@@ -1,0 +1,19 @@
+.card{background:var(--accent-surface-blue,#f8fafc);border:none;border-radius:var(--radius-inner-card,8px);padding:16px 16px 16px 20px;border-left:var(--accent-bar-width,4px) solid var(--accent-blue,#3b82f6);box-shadow:var(--shadow-card-subtle,0 4px 12px rgba(0,0,0,0.03))}
+.summaryCard{background:var(--color-background,#F8FAFC);border-radius:var(--radius-sm,8px);display:flex;overflow:hidden;box-shadow:var(--shadow-md,0 4px 12px rgba(0,0,0,0.03))}
+.accentBar{width:4px;background:var(--color-primary,#3B82F6);flex-shrink:0}
+.cardContent{flex:1;padding:16px}
+.header{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.title{font-size:14px;font-weight:700;color:var(--text-color,#1e293b)}
+.comparison{display:flex;align-items:center;justify-content:center;gap:16px;padding:16px 0;background:var(--zone-bg,#f8fafc);border-radius:8px;margin-bottom:14px}
+.compValue{display:flex;flex-direction:column;align-items:center;gap:4px}
+.compLabel{font-size:11px;font-weight:600;color:var(--text-muted,#94a3b8)}
+.compFrom{font-size:28px;font-weight:700;color:var(--text-secondary,#64748b);font-variant-numeric:tabular-nums;font-family:"Inter",system-ui,sans-serif}
+.compTo{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;font-family:"Inter",system-ui,sans-serif}
+.compChange{font-size:13px;font-weight:700;padding:3px 10px;border-radius:var(--radius-full,9999px);display:inline-flex;align-items:center;gap:4px}
+.compArrow{font-size:16px;opacity:.4;color:var(--text-muted,#94a3b8)}
+.downText{color:#ef4444;background:rgba(239,68,68,0.08)}
+.upText{color:#065f46;background:rgba(209,250,229,0.6)}
+.narrative{font-size:13px;line-height:1.7;color:var(--text-color,#1e293b);margin-bottom:12px}
+.downTag{color:#ef4444;font-weight:600}
+.upTag{color:#22c55e;font-weight:600}
+.conclusion{font-size:12px;line-height:1.6;color:var(--text-secondary,#64748b);padding:10px 12px 10px 16px;background:var(--accent-surface-orange,rgba(245,158,11,0.04));border-left:var(--accent-bar-width,4px) solid var(--accent-orange,#f59e0b);border-radius:0 var(--radius-inner-card,8px) var(--radius-inner-card,8px) 0}
