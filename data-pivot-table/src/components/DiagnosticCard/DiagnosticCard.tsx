@@ -5,10 +5,13 @@ import type { DataRow, Field, PivotField } from '../../types';
 import { AppSelector } from './components/AppSelector';
 import AppSummaryCard from './components/AppSummaryCard';
 import ArpuWaterfallBar from './components/ArpuWaterfallBar';
+import { BalanceBar } from './components/BalanceBar';
 import { ComparisonModeSelector } from './components/ComparisonModeSelector';
 import DrilldownTree from './components/DrilldownTree';
+import { KpiBadge } from './components/KpiBadge';
 import OneClickPivot from './components/OneClickPivot';
 import { PanelHeader } from './components/PanelHeader';
+import { SkeletonCard } from './components/SkeletonCard';
 import TrendHeatGrid from './components/TrendHeatGrid';
 import styles from './DiagnosticCard.module.css';
 
@@ -21,13 +24,6 @@ interface DiagnosticCardProps {
   onApplyValueFields: (fields: PivotField[]) => void;
   onApplyColFields: (fields: PivotField[]) => void;
 }
-
-const SkeletonCard: React.FC = () => (
-  <div className={styles.skeletonCard}>
-    <div className={styles.skeletonHeader}><div className={styles.skeletonTitle} /><div className={styles.skeletonPeriod} /></div>
-    <div className={styles.skeletonBar} /><div className={styles.skeletonBar} /><div className={styles.skeletonBar} />
-  </div>
-);
 
 export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
   data, fields, onClose, onApplyFilters, onApplyRowFields, onApplyValueFields, onApplyColFields,
