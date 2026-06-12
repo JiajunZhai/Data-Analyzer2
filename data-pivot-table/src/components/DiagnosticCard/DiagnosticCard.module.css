@@ -138,68 +138,6 @@
   max-width: 240px;
 }
 
-.idleSteps {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.idleStep {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stepNum {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--primary-light, #3b82f6);
-  background: var(--primary-light-bg, rgba(59, 130, 246, 0.1));
-  border-radius: 50%;
-}
-
-.stepText {
-  font-size: 11px;
-  color: var(--text-secondary, #64748b);
-}
-
-.stepArrow {
-  color: var(--text-muted, #94a3b8);
-}
-
-.idleAnalyzeBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 10px 28px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--primary-light, #3b82f6), var(--primary-color, #2563eb));
-  border: none;
-  border-radius: var(--radius-md, 8px);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-}
-
-.idleAnalyzeBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
-}
-
-.idleAnalyzeBtn:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
-}
-
 /* 加载状态 */
 .loadingState {
   display: flex;
@@ -335,13 +273,17 @@
   animation: fadeInUp 0.35s ease-out;
 }
 
-.summarySection {
-  grid-column: 1 / -1;
+.card {
   background: var(--bg-primary, #fff);
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: var(--radius-md, 12px);
   padding: 14px 16px;
   box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.03));
+}
+
+.summarySection {
+  composes: card;
+  grid-column: 1 / -1;
 }
 
 .twoColGrid {
@@ -351,21 +293,13 @@
 }
 
 .leftColumn {
+  composes: card;
   grid-column: 1;
-  background: var(--bg-primary, #fff);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: var(--radius-md, 12px);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.03));
 }
 
 .rightColumn {
+  composes: card;
   grid-column: 2;
-  background: var(--bg-primary, #fff);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: var(--radius-md, 12px);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.03));
 }
 
 .sectionTitle {
