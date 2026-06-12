@@ -14,6 +14,21 @@ export const BalanceBar: React.FC<BalanceBarProps> = ({
   priceValue
 }) => {
   const maxValue = Math.max(Math.abs(volumeValue), Math.abs(priceValue));
+  if (maxValue === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748B' }}>
+          <span>{volumeLabel}</span>
+          <span>{priceLabel}</span>
+        </div>
+        <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#94A3B8' }}>No variance</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+          <span style={{ color: '#3B82F6' }}>0.0%</span>
+          <span style={{ color: '#F59E0B' }}>0.0%</span>
+        </div>
+      </div>
+    );
+  }
   const volumeWidth = (Math.abs(volumeValue) / maxValue) * 50;
   const priceWidth = (Math.abs(priceValue) / maxValue) * 50;
 
