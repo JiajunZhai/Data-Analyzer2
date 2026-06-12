@@ -19,11 +19,39 @@ function getRawUniqueValues(data: DataRow[], fieldName: string): string[] {
   return Array.from(values).sort((a, b) => collator.compare(a, b));
 }
 
+function computeRegistrationCounts(
+  data: DataRow[],
+  configs: FilterChipConfig[],
+  filterConfigs: FilterConfig[],
+  targetFieldName: string
+): Map<string, number> {
+  const dateFields = new Set(configs.filter((c) => c.type === 'date').map((c) => c.fieldName));
+  const otherFilters = filterConfigs.filter(
+    (f) => f.fieldName !== targetFieldName && !dateFields.has(f.fieldName) && f.selectedValues.length > 0
+  );
+  const filterSets = otherFilters.map((f) => ({
+    fieldName: f.fieldName,
+    valueSet: new Set(f.selectedValues),
+  }));
+  const counts = new Map<string, number>();
+  for (const row of data) {
+    if (filterSets.length > 0 && !filterSets.every((f) => f.valueSet.has(String(row[f.fieldName] ?? '').trim()))) {
+      continue;
+    }
+    const key = String(row[targetFieldName] ?? '').trim();
+    if (!key || key === 'undefined' || key === 'null') continue;
+    const reg = Number(row['\u6ce8\u518c\u7528\u6237'] ?? 0);
+    counts.set(key, (counts.get(key) ?? 0) + (isNaN(reg) ? 0 : reg));
+  }
+  return counts;
+}
+
 interface FilterChipConfig {
   icon: React.ReactNode;
   label: string;
   fieldName: string;
   type?: 'default' | 'date';
+  group?: 'more';
 }
 
 interface FilterChipProps {
@@ -32,6 +60,8 @@ interface FilterChipProps {
   selectedValues: string[];
   onSelectionChange: (values: string[]) => void;
   dimensionHint?: string;
+  registrationCounts?: Map<string, number>;
+  sortByCount?: boolean;
 }
 
 const FilterChip: React.FC<FilterChipProps> = ({
@@ -40,6 +70,8 @@ const FilterChip: React.FC<FilterChipProps> = ({
   selectedValues,
   onSelectionChange,
   dimensionHint,
+  registrationCounts,
+  sortByCount,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,9 +81,33 @@ const FilterChip: React.FC<FilterChipProps> = ({
   const isActive = selectedValues.length < allValues.length && selectedValues.length > 0;
 
   const filteredValues = useMemo(() => {
-    if (!searchQuery) return allValues;
-    return allValues.filter((v) => v.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [allValues, searchQuery]);
+    if (searchQuery) {
+      return allValues.filter((v) => v.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    const notAllSelected = selectedValues.length > 0 && selectedValues.length < allValues.length;
+    if (notAllSelected) {
+      const selectedSet = new Set(selectedValues);
+      const selected: string[] = [];
+      const unselected: string[] = [];
+      for (const v of allValues) {
+        if (selectedSet.has(v)) {
+          selected.push(v);
+        } else {
+          unselected.push(v);
+        }
+      }
+      if (sortByCount && registrationCounts && registrationCounts.size > 0) {
+        unselected.sort((a, b) => (registrationCounts.get(b) ?? 0) - (registrationCounts.get(a) ?? 0));
+      }
+      return [...selected, ...unselected];
+    }
+    if (sortByCount && registrationCounts && registrationCounts.size > 0) {
+      return [...allValues].sort(
+        (a, b) => (registrationCounts.get(b) ?? 0) - (registrationCounts.get(a) ?? 0)
+      );
+    }
+    return allValues;
+  }, [allValues, searchQuery, selectedValues, registrationCounts, sortByCount]);
 
   const isAllSelected = tempValues.length === allValues.length;
 
@@ -263,6 +319,99 @@ function getLinkedFilterValues(
   return getRawUniqueValues(filtered, targetFieldName);
 }
 
+// "更多筛选" 下拉组件
+interface MoreFiltersDropdownProps {
+  configs: FilterChipConfig[];
+  allFilterValues: Record<string, string[]>;
+  getSelectedValues: (fieldName: string) => string[];
+  onFilterChange: (fieldName: string, values: string[]) => void;
+  activeDimensionNames?: Set<string>;
+  hasActive: boolean;
+}
+
+const MoreFiltersDropdown: React.FC<MoreFiltersDropdownProps> = ({
+  configs,
+  allFilterValues,
+  getSelectedValues,
+  onFilterChange,
+  activeDimensionNames,
+  hasActive,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const activeCount = configs.filter((config) => {
+    const selected = getSelectedValues(config.fieldName);
+    const total = allFilterValues[config.fieldName]?.length ?? 0;
+    return selected.length > 0 && selected.length < total;
+  }).length;
+
+  return (
+    <div className="more-filters-wrapper" ref={dropdownRef}>
+      <button
+        type="button"
+        className={`filter-chip more-filters-trigger ${hasActive ? 'active-filter' : ''} ${isOpen ? 'open' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="chip-text">
+          更多筛选
+          {activeCount > 0 && <span className="more-filters-count">{activeCount}</span>}
+        </span>
+        <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
+      </button>
+
+      {isOpen && (
+        <div className="more-filters-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
+          {configs.map((config) => {
+            const allValues = allFilterValues[config.fieldName] || [];
+            const selectedValues = getSelectedValues(config.fieldName);
+            const isActive = selectedValues.length < allValues.length && selectedValues.length > 0;
+            return (
+              <div key={config.fieldName} className="more-filter-row">
+                <span className="more-filter-label">
+                  {config.icon}
+                  <span>{config.label}</span>
+                  {activeDimensionNames?.has(config.fieldName) && (
+                    <span className="more-filter-hint">已作为维度</span>
+                  )}
+                </span>
+                <select
+                  className={`more-filter-select ${isActive ? 'active' : ''}`}
+                  value={selectedValues.length === allValues.length ? '__all__' : selectedValues.join(',')}
+                  onChange={(e) => {
+                    if (e.target.value === '__all__') {
+                      onFilterChange(config.fieldName, allValues);
+                    } else {
+                      onFilterChange(config.fieldName, e.target.value.split(','));
+                    }
+                  }}
+                >
+                  <option value="__all__">全部{config.label}</option>
+                  {allValues.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SORT_BY_REG_FIELDS = new Set(['渠道', '国家']);
+
 const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   configs,
   data,
@@ -312,9 +461,36 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
     });
   };
 
+  // 分离主要筛选器和"更多"筛选器
+  const primaryConfigs = useMemo(() => configs.filter((c) => c.group !== 'more'), [configs]);
+  const moreConfigs = useMemo(() => configs.filter((c) => c.group === 'more'), [configs]);
+
+  // "更多"筛选器中是否有激活的
+  const hasActiveMoreFilters = moreConfigs.some((config) => {
+    const selected = getSelectedValues(config.fieldName);
+    const total = allFilterValues[config.fieldName]?.length ?? 0;
+    return selected.length > 0 && selected.length < total;
+  });
+
+  const appFilterActive = useMemo(() => {
+    const appFilter = filterConfigs.find((f) => f.fieldName === '应用');
+    if (!appFilter) return false;
+    const total = allFilterValues['应用']?.length ?? 0;
+    return appFilter.selectedValues.length > 0 && appFilter.selectedValues.length < total;
+  }, [filterConfigs, allFilterValues]);
+
+  const registrationCountsMap = useMemo(() => {
+    if (!appFilterActive) return new Map<string, Map<string, number>>();
+    const result = new Map<string, Map<string, number>>();
+    for (const fieldName of SORT_BY_REG_FIELDS) {
+      result.set(fieldName, computeRegistrationCounts(data, configs, filterConfigs, fieldName));
+    }
+    return result;
+  }, [appFilterActive, data, configs, filterConfigs]);
+
   return (
     <div className="admob-filter-bar">
-      {configs.map((config) =>
+      {primaryConfigs.map((config) =>
         config.type === 'date' ? (
           <DateRangeFilterChip
             key={config.fieldName}
@@ -334,9 +510,23 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
             dimensionHint={
               activeDimensionNames?.has(config.fieldName) ? `已作为维度使用` : undefined
             }
+            registrationCounts={registrationCountsMap.get(config.fieldName)}
+            sortByCount={appFilterActive && SORT_BY_REG_FIELDS.has(config.fieldName)}
           />
         )
       )}
+
+      {moreConfigs.length > 0 && (
+        <MoreFiltersDropdown
+          configs={moreConfigs}
+          allFilterValues={allFilterValues}
+          getSelectedValues={getSelectedValues}
+          onFilterChange={onFilterChange}
+          activeDimensionNames={activeDimensionNames}
+          hasActive={hasActiveMoreFilters}
+        />
+      )}
+
       {hasActiveFilters && (
         <button
           type="button"

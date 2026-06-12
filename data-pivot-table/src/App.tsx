@@ -2,8 +2,6 @@ import { closestCenter, DndContext, DragOverlay } from '@dnd-kit/core';
 import {
   BarChart3,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   Film,
   Globe,
   Link2,
@@ -11,7 +9,7 @@ import {
   RotateCcw,
   Settings,
   Smartphone,
-  Stethoscope,
+  Sparkles,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FilterChipConfig } from './components/AdMobFilterBar/AdMobFilterBar';
@@ -47,8 +45,8 @@ const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
   { icon: <Settings size={14} />, label: '版本', fieldName: '版本' },
   { icon: <Megaphone size={14} />, label: '渠道', fieldName: '渠道' },
   { icon: <Globe size={14} />, label: '国家', fieldName: '国家' },
-  { icon: <Film size={14} />, label: '标准广告场景', fieldName: '标准广告场景' },
-  { icon: <Film size={14} />, label: '聚合广告场景', fieldName: '聚合广告场景' },
+  { icon: <Film size={14} />, label: '标准广告场景', fieldName: '标准广告场景', group: 'more' },
+  { icon: <Film size={14} />, label: '聚合广告场景', fieldName: '聚合广告场景', group: 'more' },
 ];
 
 const DEFAULT_ROW_FIELDS = ['日期'];
@@ -421,6 +419,17 @@ function App() {
                 onTemplateApply={applyTemplate}
               />
             )}
+            {!isZenMode && data.length > 0 && (
+              <button
+                type="button"
+                className="diagnostic-entry-btn"
+                onClick={() => setIsDiagnosticOpen(true)}
+                title="智能数据诊断"
+              >
+                <Sparkles size={14} />
+                <span>智能诊断</span>
+              </button>
+            )}
             <div className="toolbar-divider" />
             <ZenModeButton
               disabled={data.length === 0}
@@ -561,40 +570,21 @@ function App() {
           />
         )}
 
-        {/* 诊断抽屉 */}
-        {!isZenMode && data.length > 0 && (
-          <div className={`diagnostic-drawer ${isDiagnosticOpen ? '' : 'collapsed'}`}>
-            <button
-              type="button"
-              className="diagnostic-drawer-toggle"
-              onClick={() => setIsDiagnosticOpen(!isDiagnosticOpen)}
-              title={isDiagnosticOpen ? '收起诊断面板' : '展开诊断面板'}
-            >
-              {isDiagnosticOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-            </button>
-            <DiagnosticCard
-              data={data}
-              fields={fields}
-              onClose={() => setIsDiagnosticOpen(false)}
-              onApplyFilters={handleFilterChange}
-              onApplyRowFields={setRowFields}
-              onApplyValueFields={setValueFields}
-              onApplyColFields={setColFields}
-            />
+        {/* 诊断弹窗 */}
+        {isDiagnosticOpen && (
+          <div className="diagnostic-modal-overlay" onClick={() => setIsDiagnosticOpen(false)}>
+            <div className="diagnostic-modal" onClick={(e) => e.stopPropagation()}>
+              <DiagnosticCard
+                data={data}
+                fields={fields}
+                onClose={() => setIsDiagnosticOpen(false)}
+                onApplyFilters={handleFilterChange}
+                onApplyRowFields={setRowFields}
+                onApplyValueFields={setValueFields}
+                onApplyColFields={setColFields}
+              />
+            </div>
           </div>
-        )}
-
-        {/* 诊断抽屉触发按钮 (抽屉关闭时) */}
-        {!isZenMode && data.length > 0 && !isDiagnosticOpen && (
-          <button
-            type="button"
-            className="diagnostic-trigger-btn"
-            onClick={() => setIsDiagnosticOpen(true)}
-            title="打开智能数据诊断"
-          >
-            <Stethoscope size={14} />
-            <span>智能诊断</span>
-          </button>
         )}
       </div>
       <DragOverlay>

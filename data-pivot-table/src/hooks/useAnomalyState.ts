@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createPivotField } from '../utils/fieldHelpers';
 import type { DataRow, Field, PivotField } from '../types';
 import type { ComparisonMode, DiagnosticResult, PivotSuggestion } from '../types/anomaly';
@@ -56,37 +56,19 @@ export function useAnomalyState({
     [data, availableFields, sparklineDays]
   );
 
+  // Derive effective diagnostic state — when data is empty, suppress results
+  const effectiveDiagnosticResult = data.length === 0 ? null : diagnosticResult;
+  const effectiveErrorMessage = data.length === 0 ? null : errorMessage;
+  const effectiveSelectedApp = data.length === 0 ? null : selectedApp;
+  const effectiveHasAnalyzed = data.length === 0 ? false : hasAnalyzed;
+
   // 当前选中的模式不可用时，自动回退到第一个可用模式
-  const stableComparisonMode = useMemo(() => {
+  const effectiveComparisonMode = useMemo(() => {
     if (availableModes.length > 0 && !availableModes.some((m) => m.mode === comparisonMode)) {
       return availableModes[0].mode;
     }
     return comparisonMode;
   }, [availableModes, comparisonMode]);
-
-  // 同步稳定值到状态
-  useEffect(() => {
-    if (stableComparisonMode !== comparisonMode) {
-      setComparisonMode(stableComparisonMode);
-    }
-  }, [stableComparisonMode, comparisonMode]);
-
-  // Re-analyze when comparison mode changes and an app is selected
-  useEffect(() => {
-    if (selectedApp && hasAnalyzed) {
-      setIsAnalyzing(true);
-      setTimeout(() => {
-        try {
-          const diagResult = runDiagnosticAnalysis(data, availableFields, selectedApp, comparisonMode);
-          setDiagnosticResult(diagResult);
-        } catch {
-          setErrorMessage('分析失败');
-        } finally {
-          setIsAnalyzing(false);
-        }
-      }, 0);
-    }
-  }, [comparisonMode]);
 
   const runAnalysis = useCallback(() => {
     if (data.length === 0) return;
@@ -107,7 +89,7 @@ export function useAnomalyState({
 
     setTimeout(() => {
       try {
-        const diagResult = runDiagnosticAnalysis(data, availableFields, selectedApp || undefined, comparisonMode);
+        const diagResult = runDiagnosticAnalysis(data, availableFields, selectedApp || undefined, effectiveComparisonMode);
         setDiagnosticResult(diagResult);
       } catch (error) {
         console.error('Diagnostic analysis failed:', error);
@@ -116,20 +98,7 @@ export function useAnomalyState({
         setIsAnalyzing(false);
       }
     }, 0);
-  }, [data, availableFields, fieldMappingStatus, selectedApp, comparisonMode]);
-
-  const resetOnEmptyData = useCallback(() => {
-    if (data.length === 0) {
-      setDiagnosticResult(null);
-      setErrorMessage(null);
-      setSelectedApp(null);
-      setHasAnalyzed(false);
-    }
-  }, [data]);
-
-  useEffect(() => {
-    resetOnEmptyData();
-  }, [resetOnEmptyData]);
+  }, [data, availableFields, fieldMappingStatus, selectedApp, effectiveComparisonMode]);
 
   const locateDimension = useCallback(
     (dimensionName: string, memberValue: string) => {
@@ -152,7 +121,7 @@ export function useAnomalyState({
       setHasAnalyzed(true);
       setTimeout(() => {
         try {
-          const diagResult = runDiagnosticAnalysis(data, fields.map((f) => f.name), appName, comparisonMode);
+          const diagResult = runDiagnosticAnalysis(data, fields.map((f) => f.name), appName, effectiveComparisonMode);
           setDiagnosticResult(diagResult);
         } catch (err) {
           console.error('Auto-analysis failed:', err);
@@ -162,7 +131,7 @@ export function useAnomalyState({
         }
       }, 0);
     }, 0);
-  }, [data, fields, comparisonMode]);
+  }, [data, fields, effectiveComparisonMode]);
 
   const applySuggestion = useCallback((suggestion: PivotSuggestion) => {
     const rowFields: PivotField[] = suggestion.rowDimensions
@@ -176,22 +145,39 @@ export function useAnomalyState({
     for (const [fieldName, values] of Object.entries(suggestion.filters)) { onApplyFilters(fieldName, values); }
   }, [fields, onApplyRowFields, onApplyValueFields, onApplyFilters]);
 
+  const handleComparisonModeChange = useCallback((mode: ComparisonMode) => {
+    setComparisonMode(mode);
+    if (selectedApp && hasAnalyzed) {
+      setIsAnalyzing(true);
+      setTimeout(() => {
+        try {
+          const diagResult = runDiagnosticAnalysis(data, availableFields, selectedApp, mode);
+          setDiagnosticResult(diagResult);
+        } catch {
+          setErrorMessage('分析失败');
+        } finally {
+          setIsAnalyzing(false);
+        }
+      }, 0);
+    }
+  }, [selectedApp, hasAnalyzed, data, availableFields]);
+
   return {
-    diagnosticResult,
+    diagnosticResult: effectiveDiagnosticResult,
     isAnalyzing,
-    errorMessage,
+    errorMessage: effectiveErrorMessage,
     fieldMappingStatus,
     runAnalysis,
     locateDimension,
     handleAppSelect,
     applySuggestion,
-    selectedApp,
+    selectedApp: effectiveSelectedApp,
     setSelectedApp,
     availableApps,
-    comparisonMode,
-    setComparisonMode,
+    comparisonMode: effectiveComparisonMode,
+    setComparisonMode: handleComparisonModeChange,
     availableModes,
-    hasAnalyzed,
+    hasAnalyzed: effectiveHasAnalyzed,
     activeStage,
     setActiveStage,
     dashboardOverview,
