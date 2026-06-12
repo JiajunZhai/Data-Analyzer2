@@ -1,5 +1,4 @@
 import { type IDBPDatabase, openDB } from 'idb';
-import type { AnomalyResult, AnomalyStatus } from '../types/anomaly';
 import type {
   StorageQuota,
   StoredConfig,
@@ -9,7 +8,7 @@ import type {
 import { estimateDataSize, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
 
 const DB_NAME = 'data-pivot-table';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 interface PivotTableDB {
   datasets: {
@@ -25,11 +24,6 @@ interface PivotTableDB {
   preferences: {
     key: string;
     value: UserPreferences;
-  };
-  anomalies: {
-    key: string;
-    value: AnomalyResult;
-    indexes: { dataDate: string; status: string; metricName: string };
   };
 }
 
@@ -62,11 +56,9 @@ class StorageService {
           db.createObjectStore('preferences', { keyPath: 'id' });
         }
 
-        if (!db.objectStoreNames.contains('anomalies')) {
-          const anomalyStore = db.createObjectStore('anomalies', { keyPath: 'anomalyId' });
-          anomalyStore.createIndex('dataDate', 'dataDate');
-          anomalyStore.createIndex('status', 'status');
-          anomalyStore.createIndex('metricName', 'metricName');
+        // 清理已移除的 anomalies 表
+        if (db.objectStoreNames.contains('anomalies')) {
+          db.deleteObjectStore('anomalies');
         }
 
         // 删除旧的 mappings 表
@@ -215,69 +207,6 @@ class StorageService {
     const db = this.getDb();
     const prefs = await db.get('preferences', 'default');
     return prefs ?? {};
-  }
-
-  // ============ 异常诊断操作 ============
-
-  async saveAnomaly(anomaly: AnomalyResult): Promise<void> {
-    const db = this.getDb();
-    await db.put('anomalies', anomaly);
-  }
-
-  async saveAnomalies(anomalies: AnomalyResult[]): Promise<void> {
-    const db = this.getDb();
-    const tx = db.transaction('anomalies', 'readwrite');
-    for (const anomaly of anomalies) {
-      await tx.store.put(anomaly);
-    }
-    await tx.done;
-  }
-
-  async getAllAnomalies(): Promise<AnomalyResult[]> {
-    const db = this.getDb();
-    return await db.getAll('anomalies');
-  }
-
-  async getAnomaly(id: string): Promise<AnomalyResult | null> {
-    const db = this.getDb();
-    return (await db.get('anomalies', id)) ?? null;
-  }
-
-  async getAnomaliesByStatus(status: AnomalyStatus): Promise<AnomalyResult[]> {
-    const db = this.getDb();
-    return await db.getAllFromIndex('anomalies', 'status', status);
-  }
-
-  async updateAnomalyStatus(
-    id: string,
-    status: AnomalyStatus,
-    userActionTime?: number,
-    mutedUntil?: string
-  ): Promise<void> {
-    const db = this.getDb();
-    const anomaly = await db.get('anomalies', id);
-    if (anomaly) {
-      anomaly.status = status;
-      anomaly.updatedAt = Date.now();
-      if (userActionTime !== undefined) anomaly.userActionTime = userActionTime;
-      if (mutedUntil !== undefined) anomaly.mutedUntil = mutedUntil;
-      await db.put('anomalies', anomaly);
-    }
-  }
-
-  async deleteAnomaly(id: string): Promise<void> {
-    const db = this.getDb();
-    await db.delete('anomalies', id);
-  }
-
-  async clearAnomalies(): Promise<void> {
-    const db = this.getDb();
-    await db.clear('anomalies');
-  }
-
-  async getAnomalyCount(): Promise<number> {
-    const db = this.getDb();
-    return await db.count('anomalies');
   }
 
   // ============ 存储配额 ============

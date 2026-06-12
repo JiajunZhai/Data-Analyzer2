@@ -9,14 +9,12 @@ import {
   RotateCcw,
   Settings,
   Smartphone,
-  Sparkles,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FilterChipConfig } from './components/AdMobFilterBar/AdMobFilterBar';
 import AdMobFilterBar from './components/AdMobFilterBar/AdMobFilterBar';
 import ConfigManager from './components/ConfigManager/ConfigManager';
 import DataSourceManager from './components/DataSourceManager/DataSourceManager';
-import { DiagnosticCard } from './components/DiagnosticCard';
 import FloatingControlBar from './components/FloatingControlBar';
 import PivotTable from './components/PivotTable/PivotTable';
 import SpatialFieldZone from './components/SpatialFieldZone';
@@ -111,18 +109,6 @@ function App() {
     handleDatasetDelete,
   } = datasetManager;
 
-  // 诊断引擎使用与透视表相同的过滤数据
-  const diagnosticData = useMemo(() => {
-    if (filterConfigs.length === 0) return data;
-    const filterSets = filterConfigs.map((filter) => ({
-      fieldName: filter.fieldName,
-      valueSet: new Set(filter.selectedValues),
-    }));
-    return data.filter((row) =>
-      filterSets.every((filter) => filter.valueSet.has(String(row[filter.fieldName] ?? '')))
-    );
-  }, [data, filterConfigs]);
-
   const {
     savedConfigs,
     handleConfigSave: handleConfigSaveBase,
@@ -132,7 +118,6 @@ function App() {
   } = configsManager;
 
   const [shouldApplyDefault, setShouldApplyDefault] = useState(false);
-  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
   const loadDatasetRef = useRef<(dataset: StoredDataset) => Promise<void>>(async () => {});
 
   // 沉浸模式
@@ -431,17 +416,6 @@ function App() {
                 onTemplateApply={applyTemplate}
               />
             )}
-            {!isZenMode && data.length > 0 && (
-              <button
-                type="button"
-                className="diagnostic-entry-btn"
-                onClick={() => setIsDiagnosticOpen(true)}
-                title="智能数据诊断"
-              >
-                <Sparkles size={14} />
-                <span>智能诊断</span>
-              </button>
-            )}
             <div className="toolbar-divider" />
             <ZenModeButton
               disabled={data.length === 0}
@@ -582,22 +556,6 @@ function App() {
           />
         )}
 
-        {/* 诊断弹窗 */}
-        {isDiagnosticOpen && (
-          <div className="diagnostic-modal-overlay" onClick={() => setIsDiagnosticOpen(false)}>
-            <div className="diagnostic-modal" onClick={(e) => e.stopPropagation()}>
-              <DiagnosticCard
-                data={diagnosticData}
-                fields={fields}
-                onClose={() => setIsDiagnosticOpen(false)}
-                onApplyFilters={handleFilterChange}
-                onApplyRowFields={setRowFields}
-                onApplyValueFields={setValueFields}
-                onApplyColFields={setColFields}
-              />
-            </div>
-          </div>
-        )}
       </div>
       <DragOverlay>
         {activeDragField && (

@@ -177,6 +177,101 @@ body {
   opacity: 0.8;
 }
 
+/* 更多筛选下拉 */
+.more-filters-wrapper {
+  position: relative;
+}
+
+.more-filters-trigger .chip-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.more-filters-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--primary-light);
+  color: white;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.more-filters-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  min-width: 200px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.more-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.more-filter-row:hover {
+  background: var(--zone-bg);
+}
+
+.more-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.more-filter-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--zone-bg);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.more-filter-select {
+  padding: 3px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-color);
+  background: white;
+  outline: none;
+  cursor: pointer;
+  max-width: 120px;
+}
+
+.more-filter-select:focus {
+  border-color: var(--primary-light);
+}
+
+.more-filter-select.active {
+  border-color: var(--primary-light);
+  color: var(--primary-light);
+}
+
 /* 单项重置按钮 */
 .chip-reset-icon {
   display: inline-flex;
@@ -1442,6 +1537,14 @@ body {
   font-size: 13px;
 }
 
+/* 冻结列头：垂直滚动时固定在顶部 */
+.pivot-table thead {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+}
+
 .pivot-table th,
 .pivot-table td {
   padding: 8px 12px;
@@ -1473,14 +1576,15 @@ body {
   width: 112px;
   min-width: 96px;
   max-width: 148px;
-  text-align: left;
+  text-align: center;
+  z-index: 12;
 }
 
 .tree-corner-cell {
   width: 260px;
   min-width: 220px;
   max-width: 340px;
-  text-align: left !important;
+  text-align: center !important;
 }
 
 .col-header {
@@ -1491,7 +1595,7 @@ body {
   min-width: 108px;
   width: 108px;
   max-width: 152px;
-  text-align: right;
+  text-align: center;
 }
 
 /* 第一级父表头 - 深色 */
@@ -1500,7 +1604,7 @@ body {
   font-weight: 700;
   font-size: 13px;
   color: var(--pivot-header-level-0-text);
-  text-align: left !important;
+  text-align: center !important;
   padding: 0 !important;
   height: 34px;
   vertical-align: middle;
@@ -1551,7 +1655,7 @@ td.group-boundary-col {
 .row-header {
   background: var(--zone-bg);
   font-weight: 500;
-  text-align: left !important;
+  text-align: center !important;
   color: var(--text-color);
   vertical-align: middle;
   padding: 8px 12px;
@@ -1753,7 +1857,7 @@ td.group-boundary-col {
 /* 总计行的维度列 */
 .row-header.total-label {
   font-weight: 600;
-  text-align: left !important;
+  text-align: center !important;
   background: var(--total-row-bg);
 }
 
@@ -1815,9 +1919,9 @@ td.group-boundary-col {
 }
 
 .total-row {
-  background: var(--total-row-bg);
-  border-top: var(--total-border-top) !important;
-  background-color: var(--total-row-bg) !important;
+  background: #f8fafc;
+  border-top: 3px double var(--pivot-data-separator) !important;
+  background-color: #f8fafc !important;
 }
 
 .total-row-secondary td {
@@ -1830,7 +1934,7 @@ td.group-boundary-col {
 
 .total-label {
   font-weight: 600;
-  text-align: left !important;
+  text-align: center !important;
   color: var(--text-secondary);
   text-transform: uppercase;
   font-size: 11px;
@@ -1851,7 +1955,7 @@ td.group-boundary-col {
 
 /* 空数据单元格样式 */
 .pivot-table td.empty-cell {
-  color: var(--pivot-empty-cell-text);
+  color: #d0d5dd;
   text-align: center;
   font-size: 12px;
 }
@@ -2383,10 +2487,6 @@ td.group-boundary-col {
   min-height: 0;
 }
 
-.spatial-diagnostic {
-  display: none;
-}
-
 .spatial-table {
   flex: 1 1 0;
   min-width: 0;
@@ -2425,7 +2525,7 @@ td.group-boundary-col {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--bg-primary);
-  overflow: hidden;
+  overflow: clip;
 }
 
 .spatial-zone-values {
@@ -2456,6 +2556,10 @@ td.group-boundary-col {
   padding: 0 10px;
   border-bottom: 1px solid var(--border-light);
   background: var(--zone-bg);
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .spatial-zone-columns .spatial-zone-header {
@@ -2680,7 +2784,7 @@ td.group-boundary-col {
 .priority-slot {
   position: relative;
   min-width: 0;
-  border: 1px dashed var(--border-color);
+  border: 1px dashed rgba(0, 0, 0, 0.06);
   border-radius: 6px;
   background: transparent;
   display: flex;
@@ -2701,13 +2805,13 @@ td.group-boundary-col {
   line-height: 1;
   color: var(--text-muted);
   font-weight: 700;
-  opacity: 0.5;
+  opacity: 0.25;
 }
 
 .priority-slot.empty {
   background: transparent;
   border-style: dashed;
-  border-color: var(--border-color);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 .priority-slot.occupied {
@@ -2717,16 +2821,17 @@ td.group-boundary-col {
 }
 
 .priority-slot.drag-over {
-  border-color: var(--primary-light);
-  background: var(--hover-bg);
-  border-style: dashed;
+  border-color: var(--primary-light) !important;
+  background: var(--hover-bg) !important;
+  border-style: dashed !important;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
 }
 
 .priority-slot-num {
   font-size: 11px;
   color: var(--text-muted);
   font-weight: 700;
-  opacity: 0.4;
+  opacity: 0.25;
 }
 
 .priority-slots-rows .priority-slot {
@@ -3028,14 +3133,14 @@ td.group-boundary-col {
   height: 28px;
   padding: 0 10px;
   border-radius: 12px;
-  border: 1px solid var(--capsule-border, #e4e7ed);
-  background: var(--capsule-bg, #f4f4f5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--capsule-bg, #f8f9fa);
   color: var(--capsule-text, #606266);
   font-size: 12px;
   font-weight: 500;
   cursor: grab;
   user-select: none;
-  box-shadow: var(--capsule-shadow, 0 1px 3px rgba(0, 0, 0, 0.04));
+  box-shadow: none;
   transition:
     transform 0.15s,
     box-shadow 0.15s,
@@ -3996,22 +4101,67 @@ button.dataset-info {
 
 .config-save-section {
   display: flex;
+  flex-direction: column;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border-light);
 }
 
+.config-save-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.config-name-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  background: white;
+  color: var(--text-color);
+}
+
+.config-name-input:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+.config-name-input::placeholder {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.config-current-summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: var(--zone-bg);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .btn-quick-save {
-  width: 100%;
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
   background: var(--primary-light);
   color: white;
   border: none;
   border-radius: var(--radius-element);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-quick-save:hover {
@@ -4105,6 +4255,128 @@ button.dataset-info {
 /* 快速模板 */
 .templates-list {
   margin-top: 8px;
+}
+
+.template-category {
+  margin-bottom: 8px;
+}
+
+.template-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  text-align: left;
+  font: inherit;
+  color: var(--text-secondary);
+}
+
+.template-category-header:hover {
+  background: var(--zone-bg);
+}
+
+.template-category-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.template-category-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+.template-category-arrow {
+  font-size: 9px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.template-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.template-item:hover {
+  border-color: var(--primary-light);
+  background: #f0f6ff;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.1);
+}
+
+.template-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.template-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.template-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  background: #e8f0fe;
+  color: #1a73e8;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.template-item-desc {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.4;
+}
+
+.template-item-apply {
+  display: none;
+  padding: 4px 12px;
+  background: var(--primary-light);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+.template-item:hover .template-item-apply {
+  display: inline-flex;
 }
 
 /* ========================================== */
@@ -5008,82 +5280,6 @@ button.dataset-info {
 
 [data-theme="dark"] .zen-bar-btn kbd {
   background: rgba(255, 255, 255, 0.1);
-}
-
-/* ============================================
-   诊断抽屉 (Diagnostic Drawer)
-   ============================================ */
-
-.diagnostic-drawer {
-  position: fixed;
-  right: 0;
-  top: 78px;
-  bottom: 0;
-  width: 420px;
-  background: var(--bg-primary);
-  border-left: 1px solid var(--border-color);
-  box-shadow: var(--shadow-drawer);
-  z-index: 50;
-  transition: transform var(--transition-slow);
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-}
-
-.diagnostic-drawer.collapsed {
-  transform: translateX(100%);
-}
-
-.diagnostic-drawer-toggle {
-  position: absolute;
-  left: -28px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 64px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-right: none;
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: all var(--transition-fast);
-  z-index: 51;
-  box-shadow: var(--shadow-md);
-}
-
-.diagnostic-drawer-toggle:hover {
-  background: var(--hover-bg);
-  color: var(--primary-light);
-}
-
-.diagnostic-trigger-btn {
-  position: fixed;
-  right: 8px;
-  bottom: 8px;
-  z-index: 55;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--primary-light, #3b82f6);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-full, 9999px);
-  box-shadow: var(--shadow-lg);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  transition: all var(--transition-fast);
-}
-
-.diagnostic-trigger-btn:hover {
-  background: var(--primary-color, #1e293b);
-  box-shadow: var(--shadow-drag);
-  transform: translateY(-1px);
 }
 
 /* ============================================
