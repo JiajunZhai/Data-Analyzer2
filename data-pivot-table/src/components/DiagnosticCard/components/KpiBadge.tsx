@@ -16,7 +16,7 @@ export const KpiBadge: React.FC<KpiBadgeProps> = ({ label, value, trend, prefix 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <span style={{ fontSize: '12px', color: '#94A3B8' }}>{label}</span>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-        <span style={{ fontSize: '24px', fontWeight: 700, color: '#1E293B', fontFamily: 'Inter, sans-serif' }}>
+        <span style={{ fontSize: '24px', fontWeight: 600, color: '#1E293B', fontFamily: 'Inter, sans-serif' }}>
           {prefix}{value}
         </span>
         <span style={{
