@@ -3,9 +3,12 @@ import type {
   AnalysisDiagnostics,
   AnomalySeverity,
   AppAnalysisResult,
+  AppTrendRow,
   ComparisonMode,
+  DashboardOverview,
   DayAnomaly,
   MetricTrend,
+  TrendCellData,
 } from '../types/anomaly';
 import { FIELD_MAPPING, MONITOR_THRESHOLDS } from '../types/anomaly';
 
@@ -428,6 +431,53 @@ export function runFullAnalysis(
   };
 }
 
+export function computeDashboardOverview(
+  data: DataRow[],
+  availableFields: string[],
+  sparklineDays: number = 7
+): DashboardOverview | null {
+  const fields = resolveAllFields(availableFields);
+  if (!fields.日期) return null;
+  const metricNames: { canonical: string }[] = [];
+  if (fields.广告收益 && fields.注册用户) metricNames.push({ canonical: 'ARPU' });
+  if (fields.广告收益 && fields.曝光次数) metricNames.push({ canonical: 'eCPM' });
+  if (fields.曝光人数 && fields.注册用户) metricNames.push({ canonical: '渗透率' });
+  if (metricNames.length === 0) return null;
+  const scenarioField = fields.标准广告场景 || fields.聚合广告场景 || null;
+  const appGroups = groupByDateAndApp(data, fields.日期, fields.应用 || null);
+  for (const [, dgs] of appGroups) { for (const dg of dgs) { dg.rows = filterForAggregateMetrics(dg.rows, scenarioField); } }
+  const rows: AppTrendRow[] = [];
+  let dateRange = '';
+  for (const [appName, dateGroups] of appGroups) {
+    if (dateGroups.length < 2) continue;
+    const recentDays = dateGroups.slice(-sparklineDays);
+    if (!dateRange && dateGroups.length > 0) { dateRange = dateGroups[0].date + ' ~ ' + dateGroups[dateGroups.length - 1].date; }
+    const cells: TrendCellData[] = [];
+    for (const metric of metricNames) {
+      const sparklineData: number[] = [];
+      for (const dg of recentDays) {
+        let value = 0;
+        if (metric.canonical === 'ARPU') { const rev = sumMetric(dg.rows, fields.广告收益!); const users = sumMetric(dg.rows, fields.注册用户!); value = users > 0 ? rev / users : 0; }
+        else if (metric.canonical === 'eCPM') { const rev = sumMetric(dg.rows, fields.广告收益!); const imp = sumMetric(dg.rows, fields.曝光次数!); value = imp > 0 ? (rev / imp) * 1000 : 0; }
+        else if (metric.canonical === '渗透率') { const impUsers = sumMetric(dg.rows, fields.曝光人数!); const regUsers = sumMetric(dg.rows, fields.注册用户!); value = regUsers > 0 ? impUsers / regUsers : 0; }
+        sparklineData.push(value);
+      }
+      const first = sparklineData[0] || 0; const last = sparklineData[sparklineData.length - 1] || 0;
+      const changeRate = first !== 0 ? (last - first) / first : 0;
+      const direction = changeRate > 0.02 ? 'up' : changeRate < -0.02 ? 'down' : 'flat';
+      const dailyChanges: number[] = [];
+      for (let i = 1; i < sparklineData.length; i++) { const prev = sparklineData[i - 1]; dailyChanges.push(prev !== 0 ? (sparklineData[i] - prev) / prev : 0); }
+      const std = dailyChanges.length >= 2 ? (() => { const mean = dailyChanges.reduce((s, v) => s + v, 0) / dailyChanges.length; const variance = dailyChanges.reduce((s, v) => s + (v - mean) ** 2, 0) / (dailyChanges.length - 1); return Math.sqrt(variance); })() : 0;
+      const threshold = Math.max(std * 2, 0.15);
+      const isAnomaly = dailyChanges.some(c2 => Math.abs(c2) >= threshold) && Math.abs(changeRate) > 0.15;
+      cells.push({ appName, metricName: metric.canonical, sparklineData, changeRate, direction, isAnomaly });
+    }
+    if (cells.length > 0) rows.push({ appName, cells });
+  }
+  rows.sort((a, b) => { const aa = a.cells.some(c2 => c2.isAnomaly) ? 1 : 0; const bb = b.cells.some(c2 => c2.isAnomaly) ? 1 : 0; if (aa !== bb) return bb - aa; return Math.max(...b.cells.map(c2 => Math.abs(c2.changeRate))) - Math.max(...a.cells.map(c2 => Math.abs(c2.changeRate))); });
+  return { rows, metrics: metricNames.map(m => m.canonical), totalApps: rows.length, dateRange, sparklineDays };
+}
+
 export function getUniqueApps(data: DataRow[], availableFields: string[]): string[] {
   const appField = resolveFieldName('应用', availableFields);
   if (!appField) return [];
@@ -831,6 +881,28 @@ export function runDiagnosticAnalysis(
   // 聚合指标使用 ALL 行过滤后的数据，避免曝光人数等状态指标跨场景重复求和
   const aggCurrent = filterForAggregateMetrics(currentRows, scenarioField2);
   const aggPrevious = filterForAggregateMetrics(previousRows, scenarioField2);
+
+  // DEBUG: 诊断数据与透视表对比
+  const debugCurrRevenue = safeSumMetric(aggCurrent, fields.广告收益);
+  const debugCurrUsers = safeSumMetric(aggCurrent, fields.注册用户);
+  const debugCurrImpressions = safeSumMetric(aggCurrent, fields.曝光次数);
+  const debugCurrImpUsers = safeSumMetric(aggCurrent, fields.曝光人数);
+  const debugPrevRevenue = safeSumMetric(aggPrevious, fields.广告收益);
+  const debugPrevUsers = safeSumMetric(aggPrevious, fields.注册用户);
+  const debugRawCurrRevenue = safeSumMetric(currentRows, fields.广告收益);
+  const debugRawCurrUsers = safeSumMetric(currentRows, fields.注册用户);
+  console.group(`[诊断引擎] ${targetApp} (${mode})`);
+  console.log(`当前日期: ${currentDateLabel}, 原始行数: ${currentRows.length}, 聚合后: ${aggCurrent.length}`);
+  console.log(`基准日期: ${previousDateLabel}, 原始行数: ${previousRows.length}, 聚合后: ${aggPrevious.length}`);
+  console.log(`场景字段: ${scenarioField2 ?? '无'}`);
+  console.log(`原始数据合计: 收益=${debugRawCurrRevenue}, 用户=${debugRawCurrUsers}, ARPU=${debugRawCurrUsers > 0 ? (debugRawCurrRevenue / debugRawCurrUsers).toFixed(6) : 'N/A'}`);
+  console.log(`聚合后数据: 收益=${debugCurrRevenue}, 用户=${debugCurrUsers}, 曝光=${debugCurrImpressions}, 曝光人数=${debugCurrImpUsers}`);
+  console.log(`聚合后ARPU: ${debugCurrUsers > 0 ? (debugCurrRevenue / debugCurrUsers).toFixed(6) : 'N/A'}`);
+  if (aggCurrent.length > 0 && aggCurrent.length <= 5) {
+    console.log(`聚合后行详情:`, aggCurrent.map(r => ({ 收益: r[fields.广告收益!], 用户: r[fields.注册用户!] })));
+  }
+  console.log(`字段映射:`, JSON.stringify(fields));
+  console.groupEnd();
 
   // 第一级：ARPU 双因子拆解（使用聚合数据）
   const level1 = decomposeArpu(aggCurrent, aggPrevious, fields);
