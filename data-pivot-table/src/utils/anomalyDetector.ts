@@ -887,8 +887,6 @@ export function runDiagnosticAnalysis(
   const debugCurrUsers = safeSumMetric(aggCurrent, fields.注册用户);
   const debugCurrImpressions = safeSumMetric(aggCurrent, fields.曝光次数);
   const debugCurrImpUsers = safeSumMetric(aggCurrent, fields.曝光人数);
-  const debugPrevRevenue = safeSumMetric(aggPrevious, fields.广告收益);
-  const debugPrevUsers = safeSumMetric(aggPrevious, fields.注册用户);
   const debugRawCurrRevenue = safeSumMetric(currentRows, fields.广告收益);
   const debugRawCurrUsers = safeSumMetric(currentRows, fields.注册用户);
   console.group(`[诊断引擎] ${targetApp} (${mode})`);

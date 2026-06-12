@@ -11,7 +11,7 @@ import {
   Smartphone,
   Sparkles,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FilterChipConfig } from './components/AdMobFilterBar/AdMobFilterBar';
 import AdMobFilterBar from './components/AdMobFilterBar/AdMobFilterBar';
 import ConfigManager from './components/ConfigManager/ConfigManager';
@@ -110,6 +110,18 @@ function App() {
     handleDatasetRename,
     handleDatasetDelete,
   } = datasetManager;
+
+  // 诊断引擎使用与透视表相同的过滤数据
+  const diagnosticData = useMemo(() => {
+    if (filterConfigs.length === 0) return data;
+    const filterSets = filterConfigs.map((filter) => ({
+      fieldName: filter.fieldName,
+      valueSet: new Set(filter.selectedValues),
+    }));
+    return data.filter((row) =>
+      filterSets.every((filter) => filter.valueSet.has(String(row[filter.fieldName] ?? '')))
+    );
+  }, [data, filterConfigs]);
 
   const {
     savedConfigs,
@@ -575,7 +587,7 @@ function App() {
           <div className="diagnostic-modal-overlay" onClick={() => setIsDiagnosticOpen(false)}>
             <div className="diagnostic-modal" onClick={(e) => e.stopPropagation()}>
               <DiagnosticCard
-                data={data}
+                data={diagnosticData}
                 fields={fields}
                 onClose={() => setIsDiagnosticOpen(false)}
                 onApplyFilters={handleFilterChange}
