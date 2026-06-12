@@ -249,7 +249,7 @@
 /* 骨架屏 */
 .skeletonCard {
   padding: 14px;
-  border-radius: var(--radius-card, 8px);
+  border-radius: var(--radius-sm, 8px);
   border: 1px solid var(--border-color, #e2e8f0);
   margin-bottom: 10px;
 }
