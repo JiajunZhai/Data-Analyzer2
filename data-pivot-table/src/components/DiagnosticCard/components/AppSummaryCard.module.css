@@ -1,4 +1,3 @@
-.card{background:var(--accent-surface-blue,#f8fafc);border:none;border-radius:var(--radius-inner-card,8px);padding:16px 16px 16px 20px;border-left:var(--accent-bar-width,4px) solid var(--accent-blue,#3b82f6);box-shadow:var(--shadow-card-subtle,0 4px 12px rgba(0,0,0,0.03))}
 .summaryCard{background:var(--color-background,#F8FAFC);border-radius:var(--radius-sm,8px);display:flex;overflow:hidden;box-shadow:var(--shadow-md,0 4px 12px rgba(0,0,0,0.03))}
 .accentBar{width:4px;background:var(--color-primary,#3B82F6);flex-shrink:0}
 .cardContent{flex:1;padding:16px}
