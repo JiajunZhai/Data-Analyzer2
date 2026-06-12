@@ -275,7 +275,7 @@
 .card {
   background: var(--bg-primary, #fff);
   border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-sm, 8px);
   padding: 14px 16px;
   box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.03));
 }
