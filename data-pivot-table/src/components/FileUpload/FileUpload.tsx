@@ -184,8 +184,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const progressText = parseProgress
       ? parseProgress.phase === 'parsing'
         ? `解析中 ${Math.round(parseProgress.progress * 100)}% (${parseProgress.rowCount.toLocaleString()} 行)`
-        : parseProgress.phase === 'reading'
-          ? `读取中 ${Math.round(parseProgress.progress * 100)}%`
+        : parseProgress.phase === 'preprocessing'
+          ? `预处理中 ${Math.round(parseProgress.progress * 100)}%`
           : `处理中 ${Math.round(parseProgress.progress * 100)}%`
       : null;
 
