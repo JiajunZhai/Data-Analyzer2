@@ -38,6 +38,7 @@ import './styles/global.css';
 import './App.css';
 
 const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
+  { icon: <Calendar size={14} />, label: '安装日期', fieldName: '安装日期', type: 'date' },
   { icon: <Calendar size={14} />, label: '日期', fieldName: '日期', type: 'date' },
   { icon: <Smartphone size={14} />, label: '应用', fieldName: '应用' },
   { icon: <Settings size={14} />, label: '版本', fieldName: '版本' },
@@ -45,6 +46,9 @@ const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
   { icon: <Globe size={14} />, label: '国家', fieldName: '国家' },
   { icon: <Film size={14} />, label: '标准广告场景', fieldName: '标准广告场景', group: 'more' },
   { icon: <Film size={14} />, label: '聚合广告场景', fieldName: '聚合广告场景', group: 'more' },
+  { icon: <Megaphone size={14} />, label: '广告类型', fieldName: '广告类型', group: 'more' },
+  { icon: <Megaphone size={14} />, label: '广告变现渠道', fieldName: '广告变现渠道', group: 'more' },
+  { icon: <Calendar size={14} />, label: '生命周期', fieldName: '生命周期', group: 'more' },
 ];
 
 const DEFAULT_ROW_FIELDS = ['日期'];

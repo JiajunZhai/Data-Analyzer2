@@ -143,10 +143,26 @@ const FilterChip: React.FC<FilterChipProps> = ({
   };
 
   const handleSelectAll = () => {
-    if (isAllSelected) {
-      setTempValues([]);
+    if (searchQuery) {
+      // 搜索状态下：全选/取消全选仅针对过滤后的选项
+      const filteredSet = new Set(filteredValues);
+      const allFilteredSelected = filteredValues.every((v) => tempValues.includes(v));
+      if (allFilteredSelected) {
+        setTempValues(tempValues.filter((v) => !filteredSet.has(v)));
+      } else {
+        const tempSet = new Set(tempValues);
+        const newValues = [...tempValues];
+        for (const v of filteredValues) {
+          if (!tempSet.has(v)) newValues.push(v);
+        }
+        setTempValues(newValues);
+      }
     } else {
-      setTempValues([...allValues]);
+      if (isAllSelected) {
+        setTempValues([]);
+      } else {
+        setTempValues([...allValues]);
+      }
     }
   };
 
@@ -319,6 +335,194 @@ function getLinkedFilterValues(
   return getRawUniqueValues(filtered, targetFieldName);
 }
 
+// "更多筛选" 中单个筛选器的子弹窗
+interface MoreFilterSubDropdownProps {
+  config: FilterChipConfig;
+  allValues: string[];
+  selectedValues: string[];
+  onSelectionChange: (values: string[]) => void;
+  dimensionHint?: string;
+}
+
+const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
+  config,
+  allValues,
+  selectedValues,
+  onSelectionChange,
+  dimensionHint,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [tempValues, setTempValues] = useState<string[]>(selectedValues);
+  const subRef = useRef<HTMLDivElement>(null);
+
+  const isActive = selectedValues.length < allValues.length && selectedValues.length > 0;
+
+  const filteredValues = useMemo(() => {
+    if (searchQuery) {
+      return allValues.filter((v) => v.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    return allValues;
+  }, [allValues, searchQuery]);
+
+  const isAllSelected = tempValues.length === allValues.length;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (subRef.current && !subRef.current.contains(event.target as Node)) {
+        setTempValues(selectedValues);
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedValues]);
+
+  useEffect(() => {
+    if (selectedValues.length > 0) {
+      const validValues = selectedValues.filter((v) => allValues.includes(v));
+      if (validValues.length !== selectedValues.length) {
+        onSelectionChange(validValues.length > 0 ? validValues : allValues);
+      }
+    }
+  }, [allValues]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleToggleValue = (value: string) => {
+    setTempValues((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (searchQuery) {
+      const filteredSet = new Set(filteredValues);
+      const allFilteredSelected = filteredValues.every((v) => tempValues.includes(v));
+      if (allFilteredSelected) {
+        setTempValues(tempValues.filter((v) => !filteredSet.has(v)));
+      } else {
+        const tempSet = new Set(tempValues);
+        const newValues = [...tempValues];
+        for (const v of filteredValues) {
+          if (!tempSet.has(v)) newValues.push(v);
+        }
+        setTempValues(newValues);
+      }
+    } else {
+      if (isAllSelected) {
+        setTempValues([]);
+      } else {
+        setTempValues([...allValues]);
+      }
+    }
+  };
+
+  const handleConfirm = () => {
+    onSelectionChange(tempValues);
+    setIsOpen(false);
+  };
+
+  const handleCancel = () => {
+    setTempValues(selectedValues);
+    setIsOpen(false);
+  };
+
+  const getDisplayValue = () => {
+    if (selectedValues.length === allValues.length) return `全部${config.label}`;
+    if (selectedValues.length === 0) return `未选${config.label}`;
+    if (selectedValues.length <= 2) return selectedValues.join(', ');
+    return `已选 ${selectedValues.length} 个`;
+  };
+
+  const handleReset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelectionChange(allValues);
+  };
+
+  return (
+    <div className="more-filter-sub-wrapper" ref={subRef}>
+      <span className="more-filter-label">
+        {config.icon}
+        <span>{config.label}</span>
+        {dimensionHint && (
+          <span className="more-filter-hint">{dimensionHint}</span>
+        )}
+      </span>
+      <button
+        type="button"
+        className={`more-filter-trigger ${isActive ? 'active' : ''} ${isOpen ? 'open' : ''}`}
+        onClick={() => {
+          if (!isOpen) {
+            setTempValues(selectedValues);
+            setSearchQuery('');
+          }
+          setIsOpen(!isOpen);
+        }}
+      >
+        <span className="more-filter-trigger-text">{getDisplayValue()}</span>
+        {isActive && (
+          <span className="more-filter-reset-icon" title={`重置${config.label}`} onClick={handleReset}>
+            <X size={11} />
+          </span>
+        )}
+        <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
+      </button>
+
+      {isOpen && (
+        <div className="filter-dropdown-menu more-filter-dropdown-menu" role="presentation" onClick={(e) => e.stopPropagation()}>
+          <div className="filter-dropdown-search">
+            <input
+              type="text"
+              placeholder={`搜索${config.label}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-dropdown-actions">
+            <button type="button" className="filter-dropdown-action-btn" onClick={handleSelectAll}>
+              {searchQuery
+                ? filteredValues.every((v) => tempValues.includes(v))
+                  ? '取消筛选全选'
+                  : '筛选全选'
+                : isAllSelected
+                  ? '取消全选'
+                  : '全选'}
+            </button>
+          </div>
+
+          <div className="filter-dropdown-options">
+            {filteredValues.map((value) => (
+              <label key={value} className="filter-dropdown-option">
+                <input
+                  type="checkbox"
+                  checked={tempValues.includes(value)}
+                  onChange={() => handleToggleValue(value)}
+                />
+                <span className="option-text">{value}</span>
+              </label>
+            ))}
+            {filteredValues.length === 0 && <div className="filter-dropdown-empty">无匹配项</div>}
+          </div>
+
+          <div className="filter-dropdown-footer">
+            <span className="filter-dropdown-count">
+              已选 {tempValues.length} / {allValues.length}
+            </span>
+            <div className="filter-dropdown-buttons">
+              <button type="button" className="filter-dropdown-btn filter-dropdown-btn-cancel" onClick={handleCancel}>
+                取消
+              </button>
+              <button type="button" className="filter-dropdown-btn filter-dropdown-btn-confirm" onClick={handleConfirm}>
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // "更多筛选" 下拉组件
 interface MoreFiltersDropdownProps {
   configs: FilterChipConfig[];
@@ -375,33 +579,17 @@ const MoreFiltersDropdown: React.FC<MoreFiltersDropdownProps> = ({
           {configs.map((config) => {
             const allValues = allFilterValues[config.fieldName] || [];
             const selectedValues = getSelectedValues(config.fieldName);
-            const isActive = selectedValues.length < allValues.length && selectedValues.length > 0;
             return (
-              <div key={config.fieldName} className="more-filter-row">
-                <span className="more-filter-label">
-                  {config.icon}
-                  <span>{config.label}</span>
-                  {activeDimensionNames?.has(config.fieldName) && (
-                    <span className="more-filter-hint">已作为维度</span>
-                  )}
-                </span>
-                <select
-                  className={`more-filter-select ${isActive ? 'active' : ''}`}
-                  value={selectedValues.length === allValues.length ? '__all__' : selectedValues.join(',')}
-                  onChange={(e) => {
-                    if (e.target.value === '__all__') {
-                      onFilterChange(config.fieldName, allValues);
-                    } else {
-                      onFilterChange(config.fieldName, e.target.value.split(','));
-                    }
-                  }}
-                >
-                  <option value="__all__">全部{config.label}</option>
-                  {allValues.map((v) => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </div>
+              <MoreFilterSubDropdown
+                key={config.fieldName}
+                config={config}
+                allValues={allValues}
+                selectedValues={selectedValues}
+                onSelectionChange={(values) => onFilterChange(config.fieldName, values)}
+                dimensionHint={
+                  activeDimensionNames?.has(config.fieldName) ? '已作为维度' : undefined
+                }
+              />
             );
           })}
         </div>

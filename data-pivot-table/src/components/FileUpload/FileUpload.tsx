@@ -13,6 +13,7 @@ import type React from 'react';
 import { useCallback, useState } from 'react';
 import type { DataRow } from '../../types';
 import { parseCSVFile, parseExcelFile, parseMappingCSV } from '../../utils/fileParser';
+import { parseCSVWithWorker, type WorkerParseProgress } from '../../workers/workerBridge';
 
 interface FileUploadProps {
   onDataLoaded?: (headers: string[], data: DataRow[], fileName: string) => void;
@@ -34,6 +35,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [fileSize, setFileSize] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [parseProgress, setParseProgress] = useState<WorkerParseProgress | null>(null);
   const isHeaderVariant = variant === 'header';
   const isMappingVariant = variant === 'mapping';
   const isCapsuleVariant = variant === 'capsule' || variant === 'capsule-mapping';
@@ -58,6 +60,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       try {
         setError('');
         setIsLoading(true);
+        setParseProgress(null);
 
         if (isMappingVariant || isCapsuleMapping) {
           if (!file.name.endsWith('.csv')) {
@@ -73,7 +76,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
           setFileSize(formatFileSize(file.size));
           let result;
           if (file.name.endsWith('.csv')) {
-            result = await parseCSVFile(file);
+            // 大于 10MB 的 CSV 使用 Web Worker 解析（不阻塞主线程）
+            if (file.size > 10 * 1024 * 1024) {
+              const workerResult = await parseCSVWithWorker(file, (progress) => {
+                setParseProgress(progress);
+              });
+              result = { headers: workerResult.headers, data: workerResult.data };
+            } else {
+              result = await parseCSVFile(file);
+            }
           } else {
             result = await parseExcelFile(file);
           }
@@ -89,6 +100,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         }
       } finally {
         setIsLoading(false);
+        setParseProgress(null);
       }
     },
     [isMappingVariant, isCapsuleMapping, onDataLoaded, onMappingLoaded]
@@ -169,6 +181,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
   }
 
   if (isCapsuleVariant) {
+    const progressText = parseProgress
+      ? parseProgress.phase === 'parsing'
+        ? `解析中 ${Math.round(parseProgress.progress * 100)}% (${parseProgress.rowCount.toLocaleString()} 行)`
+        : parseProgress.phase === 'reading'
+          ? `读取中 ${Math.round(parseProgress.progress * 100)}%`
+          : `处理中 ${Math.round(parseProgress.progress * 100)}%`
+      : null;
+
     return (
       <label
         className={`file-capsule ${isCapsuleMapping ? 'file-capsule-mapping' : ''} ${isDragging ? 'capsule-dragging' : ''} ${isLoading ? 'capsule-loading' : ''}`}
@@ -184,7 +204,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </span>
         <span className="capsule-name" title={fileName || (isCapsuleMapping ? '映射表' : '数据源')}>
           {isLoading
-            ? '正在加载解析引擎...'
+            ? progressText || '正在加载解析引擎...'
             : fileName
               ? truncateFileName(fileName, 18)
               : isCapsuleMapping
@@ -192,6 +212,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 : '导入新数据源'}
         </span>
         {fileSize && !isLoading && <span className="capsule-size">{fileSize}</span>}
+        {isLoading && parseProgress && (
+          <span className="capsule-size">{parseProgress.rowCount.toLocaleString()} 行</span>
+        )}
         <span className="capsule-action">{isLoading ? '' : fileName ? '更换' : '选择'}</span>
         <input
           type="file"

@@ -177,3 +177,72 @@ export function readAsTextWithAutoEncoding(
 
   reader.readAsArrayBuffer(file);
 }
+
+/**
+ * 分块读取文件，自动检测编码
+ * 只读取第一个块来检测编码，然后通过 yield 逐块返回文本
+ * 避免将整个文件加载到内存
+ */
+export async function* readFileChunked(
+  file: File,
+  chunkSize: number = 1024 * 1024 // 1MB
+): AsyncGenerator<{ text: string; progress: number }, void, unknown> {
+  const fileSize = file.size;
+  let decoder: TextDecoder | null = null;
+
+  // 读取第一个块来检测编码
+  const firstChunk = file.slice(0, Math.min(chunkSize, fileSize));
+  const firstBuffer = await firstChunk.arrayBuffer();
+  const firstBytes = new Uint8Array(firstBuffer);
+
+  // 检查 UTF-8 BOM
+  const hasUTF8BOM = firstBytes[0] === 0xef && firstBytes[1] === 0xbb && firstBytes[2] === 0xbf;
+
+  if (hasUTF8BOM) {
+    decoder = new TextDecoder('utf-8');
+  } else {
+    // 尝试 UTF-8
+    const utf8Decoder = new TextDecoder('utf-8', { fatal: false });
+    const sample = utf8Decoder.decode(firstBytes.slice(0, Math.min(8192, firstBytes.length)));
+
+    if (!hasGarbledText(sample)) {
+      decoder = new TextDecoder('utf-8');
+    } else {
+      // 尝试 GBK
+      try {
+        const gbkDecoder = new TextDecoder('gbk', { fatal: false });
+        const gbkSample = gbkDecoder.decode(firstBytes.slice(0, Math.min(8192, firstBytes.length)));
+        if (!hasGarbledText(gbkSample)) {
+          decoder = new TextDecoder('gbk');
+        }
+      } catch {
+        // GBK 失败
+      }
+    }
+
+    if (!decoder) {
+      decoder = new TextDecoder('utf-8');
+    }
+  }
+
+  // 返回第一个块
+  const firstText = decoder.decode(firstBytes, { stream: true });
+  const firstOffset = firstChunk.size;
+  yield { text: firstText, progress: firstOffset / fileSize };
+
+  let offset = firstOffset;
+
+  // 逐块读取剩余部分
+  while (offset < fileSize) {
+    const end = Math.min(offset + chunkSize, fileSize);
+    const chunk = file.slice(offset, end);
+    const buffer = await chunk.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    const isLast = end >= fileSize;
+    const text = decoder.decode(bytes, { stream: !isLast });
+    offset = end;
+
+    yield { text, progress: offset / fileSize };
+  }
+}

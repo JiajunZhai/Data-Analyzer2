@@ -135,7 +135,8 @@ export function aggregateData(
     });
   });
 
-  const sortedRowKeys = sortKeys(Array.from(rowKeys));
+  const isDateRow = rowFields.length > 0 && rowFields[0].field.name === '日期';
+  const sortedRowKeys = sortKeys(Array.from(rowKeys), isDateRow);
   const sortedColKeys = sortKeys(Array.from(colKeys));
 
   const rowTotalsByKey = buildRowTotals(sortedRowKeys, sortedColKeys, baseDataMap, metricNames);
@@ -837,7 +838,7 @@ function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLev
   return levels;
 }
 
-function sortKeys(keys: string[]): string[] {
+function sortKeys(keys: string[], desc = false): string[] {
   return [...keys].sort((a, b) => {
     const aParts = a.split(KEY_SEPARATOR);
     const bParts = b.split(KEY_SEPARATOR);
@@ -845,7 +846,7 @@ function sortKeys(keys: string[]): string[] {
 
     for (let i = 0; i < maxLength; i++) {
       const result = collator.compare(aParts[i] || '', bParts[i] || '');
-      if (result !== 0) return result;
+      if (result !== 0) return desc ? -result : result;
     }
 
     return 0;

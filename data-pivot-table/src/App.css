@@ -251,25 +251,79 @@ body {
   border-radius: 4px;
 }
 
-.more-filter-select {
-  padding: 3px 6px;
+/* 更多筛选 - 子弹窗样式 */
+.more-filter-sub-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  position: relative;
+}
+
+.more-filter-sub-wrapper:hover {
+  background: var(--zone-bg);
+}
+
+.more-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 11px;
   color: var(--text-color);
   background: white;
-  outline: none;
   cursor: pointer;
-  max-width: 120px;
+  max-width: 140px;
+  transition: border-color 0.15s;
 }
 
-.more-filter-select:focus {
+.more-filter-trigger:hover {
   border-color: var(--primary-light);
 }
 
-.more-filter-select.active {
+.more-filter-trigger.active {
   border-color: var(--primary-light);
   color: var(--primary-light);
+}
+
+.more-filter-trigger.open {
+  border-color: var(--primary-light);
+}
+
+.more-filter-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-filter-reset-icon {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 1px;
+  border-radius: 50%;
+  transition: color 0.15s;
+}
+
+.more-filter-reset-icon:hover {
+  color: var(--primary-light);
+}
+
+.more-filter-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 1001;
 }
 
 /* 单项重置按钮 */

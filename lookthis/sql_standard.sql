@@ -1410,7 +1410,7 @@ SELECT
   activity_kind,
   event_name
 FROM bi_ods.ods_user_adjust_log_rt
-WHERE dt >= CURRENT_DATE - INTERVAL '7 days'
+WHERE dt >= CURRENT_DATE - INTERVAL '10 days'
   AND dt = installed_at::date
   AND (LOWER(app_code) LIKE '%rm%' OR LOWER(app_code) LIKE '%r3%' OR LOWER(app_code) LIKE '%fr%' 
        OR LOWER(app_code) LIKE '%vd%' OR LOWER(app_code) LIKE '%vc%' OR LOWER(app_code) LIKE '%pt%' 
@@ -1426,7 +1426,6 @@ SELECT
   l.country_code,
   l.network_name,
   COALESCE(m.scene_l1_name, l.scene_name) AS standard_scene_name,
-  COALESCE(m.scene_l2_name, l.scene_name) AS aggregate_scene_name,
   l.ad_id,
   l.revenue_usd
 FROM base_log l
@@ -1443,19 +1442,18 @@ SELECT
   app_version,
   country_code,
   network_name,
-  CASE WHEN GROUPING(standard_scene_name) = 1 THEN 'ALL' ELSE standard_scene_name END AS standard_scene,
-  CASE WHEN GROUPING(aggregate_scene_name) = 1 THEN 'ALL' ELSE aggregate_scene_name END AS aggregate_scene,
+  standard_scene_name AS standard_scene,
   COUNT(DISTINCT ad_id) AS ad_user_count, -- Hologres 环境下若产生 NOTICE 告警可替换为 UNIQ(ad_id)
   COUNT(*) AS ad_count,
   COALESCE(SUM(revenue_usd), 0) AS ad_profit
 FROM scene_mapped
-GROUP BY 
-  dt, 
+GROUP BY
+  dt,
   app_code,
   app_version,
-  country_code, 
-  network_name, 
-  GROUPING SETS ((standard_scene_name, aggregate_scene_name), ())
+  country_code,
+  network_name,
+  standard_scene_name
 HAVING COUNT(DISTINCT ad_id) >= 10
 ),
 
@@ -1470,7 +1468,7 @@ SELECT
   COUNT(DISTINCT ad_id) AS user_count -- Hologres 环境下若产生告警可替换为 UNIQ(ad_id)
 FROM base_log
 GROUP BY dt, app_code, app_version, country_code, network_name
-HAVING COUNT(DISTINCT ad_id) >= 50
+HAVING COUNT(DISTINCT ad_id) >= 30
 ),
 
 -- 5. 点击数据独立映射与聚合
@@ -1481,8 +1479,7 @@ SELECT
   l.app_version,
   l.country_code,
   l.network_name,
-  COALESCE(m.scene_l1_name, l.scene_name) AS standard_scene_name,
-  COALESCE(m.scene_l2_name, l.scene_name) AS aggregate_scene_name
+  COALESCE(m.scene_l1_name, l.scene_name) AS standard_scene_name
 FROM base_log l
 LEFT JOIN dim_scene_mapping m
   ON LOWER(l.app_code) = m.app_code
@@ -1497,17 +1494,16 @@ SELECT
   app_version,
   country_code,
   network_name,
-  CASE WHEN GROUPING(standard_scene_name) = 1 THEN 'ALL' ELSE standard_scene_name END AS standard_scene,
-  CASE WHEN GROUPING(aggregate_scene_name) = 1 THEN 'ALL' ELSE aggregate_scene_name END AS aggregate_scene,
+  standard_scene_name AS standard_scene,
   COUNT(*) AS ad_click_count
 FROM click_mapped
-GROUP BY 
-  dt, 
+GROUP BY
+  dt,
   app_code,
   app_version,
-  country_code, 
-  network_name, 
-  GROUPING SETS ((standard_scene_name, aggregate_scene_name), ())
+  country_code,
+  network_name,
+  standard_scene_name
 )
 
 -- 6. 主查询多维并列关联
@@ -1519,24 +1515,22 @@ SELECT
   a.network_name AS "渠道",
   b.user_count AS "注册用户",
   a.standard_scene AS "标准广告场景",
-  a.aggregate_scene AS "聚合广告场景",
   a.ad_user_count AS "曝光人数",
   a.ad_count AS "曝光次数",
   a.ad_profit AS "广告收益",
   COALESCE(c.ad_click_count, 0) AS "点击次数"
 FROM scene_data a
-INNER JOIN new_user_data b 
-  ON a.dt = b.dt 
+INNER JOIN new_user_data b
+  ON a.dt = b.dt
   AND a.app_code = b.app_code
   AND a.app_version = b.app_version
-  AND a.country_code = b.country_code 
+  AND a.country_code = b.country_code
   AND a.network_name = b.network_name
-LEFT JOIN ad_click_data c 
-  ON a.dt = c.dt 
+LEFT JOIN ad_click_data c
+  ON a.dt = c.dt
   AND a.app_code = c.app_code
   AND a.app_version = c.app_version
-  AND a.country_code = c.country_code 
-  AND a.network_name = c.network_name 
+  AND a.country_code = c.country_code
+  AND a.network_name = c.network_name
   AND a.standard_scene = c.standard_scene
-  AND a.aggregate_scene = c.aggregate_scene
-ORDER BY a.dt DESC, a.country_code, a.app_code, a.standard_scene, a.aggregate_scene;
+ORDER BY a.dt DESC, a.country_code, a.app_code, a.standard_scene;

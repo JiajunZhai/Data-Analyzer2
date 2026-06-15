@@ -124,11 +124,14 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
     return parts.join('  ');
   };
 
-  // 一键保存（自动生成名称）
-  const handleQuickSave = useCallback(() => {
-    const name = `配置 ${savedConfigs.length + 1}`;
+  const [configName, setConfigName] = useState('');
+
+  // 保存配置（使用用户输入的名称）
+  const handleSave = useCallback(() => {
+    const name = configName.trim() || `配置 ${savedConfigs.length + 1}`;
     onConfigSave(name);
-  }, [savedConfigs, onConfigSave]);
+    setConfigName('');
+  }, [configName, savedConfigs, onConfigSave]);
 
   const handleDelete = useCallback(
     (id: string, e: React.MouseEvent) => {
@@ -176,36 +179,70 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
     [fields, onTemplateApply]
   );
 
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = useCallback((category: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  }, []);
+
   const templateBlocks = useMemo(() => {
     return Array.from(categories.entries()).map((entry) => {
       const category = entry[0];
       const items = entry[1];
+      const isCollapsed = collapsedCategories.has(category);
       return (
         <div key={category} className="template-category">
-          <div className="template-category-header">
+          <button
+            type="button"
+            className="template-category-header"
+            onClick={() => toggleCategory(category)}
+          >
             <span className="template-category-icon">{CATEGORY_ICONS[category] ?? null}</span>
             <span className="template-category-name">{category}</span>
-          </div>
-          {items.map((template) => (
-            <button
-              type="button"
-              key={template.id}
-              className="template-item"
-              onClick={() => handleTemplateSelect(template)}
-            >
-              <div className="template-item-header">
-                <span className="template-item-name">{template.name}</span>
-                {template.formula && (
-                  <span className="template-item-formula">{template.formula}</span>
-                )}
-              </div>
-              <div className="template-item-desc">{template.description}</div>
-            </button>
-          ))}
+            <span className="template-category-arrow">{isCollapsed ? '▶' : '▼'}</span>
+          </button>
+          {!isCollapsed &&
+            items.map((template) => {
+              // 解析维度标签：从 formula 中提取 "×" 分隔的维度
+              const dimensionTags = template.formula
+                ? template.formula.split('×').map((s) => s.trim())
+                : [];
+              return (
+                <button
+                  type="button"
+                  key={template.id}
+                  className="template-item"
+                  onClick={() => handleTemplateSelect(template)}
+                >
+                  <div className="template-item-main">
+                    <div className="template-item-title">{template.name}</div>
+                    {dimensionTags.length > 0 && (
+                      <div className="template-item-tags">
+                        {dimensionTags.map((tag, i) => (
+                          <span key={i} className="template-tag">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="template-item-desc">{template.description}</div>
+                  </div>
+                  <span className="template-item-apply">应用</span>
+                </button>
+              );
+            })}
         </div>
       );
     });
-  }, [categories, handleTemplateSelect]);
+  }, [categories, collapsedCategories, toggleCategory, handleTemplateSelect]);
 
   return (
     <div className="config-manager-wrapper" ref={dropdownRef}>
@@ -223,28 +260,31 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
 
       {isOpen && (
         <div className="config-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
-          {/* 一键保存按钮 */}
-          {currentDatasetId && (
+          {/* 保存配置 */}
+          {currentDatasetId && hasCurrentConfig && (
             <div className="config-save-section">
-              <button
-                type="button"
-                className="btn-quick-save"
-                onClick={handleQuickSave}
-                disabled={!hasCurrentConfig}
-              >
-                <Save size={14} style={{ marginRight: 6 }} /> 保存当前配置
-              </button>
-            </div>
-          )}
-
-          {/* 当前配置 */}
-          {hasCurrentConfig && (
-            <div className="config-section">
-              <div className="section-title">当前配置</div>
-              <div className="config-card current">
-                <div className="config-info">
-                  <div className="config-summary">{getConfigSummary(currentConfig)}</div>
-                </div>
+              <div className="section-title">保存当前配置</div>
+              <div className="config-save-row">
+                <input
+                  type="text"
+                  className="config-name-input"
+                  placeholder="请输入配置名称（如：核心数据看板）"
+                  value={configName}
+                  onChange={(e) => setConfigName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSave();
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-quick-save"
+                  onClick={handleSave}
+                >
+                  <Save size={14} /> 保存
+                </button>
+              </div>
+              <div className="config-current-summary">
+                {getConfigSummary(currentConfig)}
               </div>
             </div>
           )}

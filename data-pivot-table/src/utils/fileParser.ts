@@ -1,5 +1,5 @@
 import type { DataRow } from '../types';
-import { readAsTextWithAutoEncoding } from './encodingUtils';
+import { readFileChunked, readAsTextWithAutoEncoding } from './encodingUtils';
 
 /**
  * 解析CSV行，正确处理引号内的逗号
@@ -23,6 +23,12 @@ function parseCSVLine(line: string): string[] {
   }
   result.push(current.trim().replace(/^"|"$/g, ''));
   return result;
+}
+
+export interface ParseProgress {
+  phase: 'reading' | 'parsing' | 'done';
+  progress: number; // 0-1
+  rowCount: number;
 }
 
 export async function parseExcelFile(file: File): Promise<{ headers: string[]; data: DataRow[] }> {
@@ -65,7 +71,88 @@ export async function parseExcelFile(file: File): Promise<{ headers: string[]; d
   });
 }
 
+/**
+ * 流式解析 CSV 文件
+ * 分块读取文件，逐行解析，避免将整个文件加载到内存
+ */
+export async function parseCSVFileChunked(
+  file: File,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<{ headers: string[]; data: DataRow[] }> {
+  const lines: DataRow[] = [];
+  let headers: string[] = [];
+  let buffer = ''; // 跨块的不完整行缓冲
+  let isFirstChunk = true;
+  let rowCount = 0;
+
+  for await (const chunk of readFileChunked(file)) {
+    // 将上一个块的残留与当前块拼接
+    const fullText = buffer + chunk.text;
+
+    // 按换行分割，最后一行可能是不完整的（被截断）
+    const parts = fullText.split('\n');
+    buffer = parts.pop() || ''; // 最后一个元素可能不完整，留到下一块处理
+
+    for (const line of parts) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      if (isFirstChunk) {
+        headers = parseCSVLine(trimmed);
+        isFirstChunk = false;
+        continue;
+      }
+
+      const values = parseCSVLine(trimmed);
+      const obj: DataRow = {};
+      for (let i = 0; i < headers.length; i++) {
+        const val = values[i] ?? '';
+        obj[headers[i]] = isNaN(Number(val)) ? val : Number(val);
+      }
+      lines.push(obj);
+      rowCount++;
+
+      // 每处理 10000 行报告一次进度
+      if (rowCount % 10000 === 0) {
+        onProgress?.({ phase: 'parsing', progress: chunk.progress, rowCount });
+      }
+    }
+
+    onProgress?.({ phase: 'reading', progress: chunk.progress, rowCount });
+  }
+
+  // 处理最后一个残留行
+  if (buffer.trim()) {
+    if (isFirstChunk) {
+      headers = parseCSVLine(buffer.trim());
+    } else {
+      const values = parseCSVLine(buffer.trim());
+      const obj: DataRow = {};
+      for (let i = 0; i < headers.length; i++) {
+        const val = values[i] ?? '';
+        obj[headers[i]] = isNaN(Number(val)) ? val : Number(val);
+      }
+      lines.push(obj);
+    }
+  }
+
+  if (headers.length === 0) {
+    throw new Error('文件为空');
+  }
+
+  onProgress?.({ phase: 'done', progress: 1, rowCount: lines.length });
+  return { headers, data: lines };
+}
+
+/**
+ * 小文件使用原始方式解析（保持兼容）
+ */
 export function parseCSVFile(file: File): Promise<{ headers: string[]; data: DataRow[] }> {
+  // 大于 10MB 的文件使用分块解析
+  if (file.size > 10 * 1024 * 1024) {
+    return parseCSVFileChunked(file);
+  }
+
   return new Promise((resolve, reject) => {
     readAsTextWithAutoEncoding(
       file,

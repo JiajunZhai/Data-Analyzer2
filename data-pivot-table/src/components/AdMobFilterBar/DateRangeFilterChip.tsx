@@ -81,7 +81,6 @@ interface Preset {
 }
 
 const PRESETS: Preset[] = [
-  { label: '全部', getRange: () => null },
   {
     label: '今天',
     getRange: () => {
@@ -91,7 +90,52 @@ const PRESETS: Preset[] = [
     },
   },
   {
-    label: '最近7天',
+    label: '昨天',
+    getRange: () => {
+      const yesterday = new Date();
+      yesterday.setHours(0, 0, 0, 0);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return [yesterday, yesterday];
+    },
+  },
+  {
+    label: '上周',
+    getRange: () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay();
+      const diffToLastMon = dayOfWeek === 0 ? 13 : dayOfWeek + 6;
+      const lastMonday = new Date(today);
+      lastMonday.setDate(today.getDate() - diffToLastMon);
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      return [lastMonday, lastSunday];
+    },
+  },
+  {
+    label: '本周',
+    getRange: () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay();
+      const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - diffToMon);
+      return [monday, today];
+    },
+  },
+  {
+    label: '近3天',
+    getRange: (sorted) => {
+      if (sorted.length === 0) return null;
+      const end = sorted[sorted.length - 1];
+      const start = new Date(end);
+      start.setDate(start.getDate() - 2);
+      return [start < sorted[0] ? sorted[0] : start, end];
+    },
+  },
+  {
+    label: '近7天',
     getRange: (sorted) => {
       if (sorted.length === 0) return null;
       const end = sorted[sorted.length - 1];
@@ -101,7 +145,7 @@ const PRESETS: Preset[] = [
     },
   },
   {
-    label: '最近30天',
+    label: '近30天',
     getRange: (sorted) => {
       if (sorted.length === 0) return null;
       const end = sorted[sorted.length - 1];
