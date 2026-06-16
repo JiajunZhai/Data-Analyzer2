@@ -27,7 +27,8 @@ function computeRegistrationCounts(
 ): Map<string, number> {
   const dateFields = new Set(configs.filter((c) => c.type === 'date').map((c) => c.fieldName));
   const otherFilters = filterConfigs.filter(
-    (f) => f.fieldName !== targetFieldName && !dateFields.has(f.fieldName) && f.selectedValues.length > 0
+    (f) =>
+      f.fieldName !== targetFieldName && !dateFields.has(f.fieldName) && f.selectedValues.length > 0
   );
   const filterSets = otherFilters.map((f) => ({
     fieldName: f.fieldName,
@@ -35,7 +36,10 @@ function computeRegistrationCounts(
   }));
   const counts = new Map<string, number>();
   for (const row of data) {
-    if (filterSets.length > 0 && !filterSets.every((f) => f.valueSet.has(String(row[f.fieldName] ?? '').trim()))) {
+    if (
+      filterSets.length > 0 &&
+      !filterSets.every((f) => f.valueSet.has(String(row[f.fieldName] ?? '').trim()))
+    ) {
       continue;
     }
     const key = String(row[targetFieldName] ?? '').trim();
@@ -97,7 +101,9 @@ const FilterChip: React.FC<FilterChipProps> = ({
         }
       }
       if (sortByCount && registrationCounts && registrationCounts.size > 0) {
-        unselected.sort((a, b) => (registrationCounts.get(b) ?? 0) - (registrationCounts.get(a) ?? 0));
+        unselected.sort(
+          (a, b) => (registrationCounts.get(b) ?? 0) - (registrationCounts.get(a) ?? 0)
+        );
       }
       return [...selected, ...unselected];
     }
@@ -215,11 +221,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
           </span>
         )}
         {isActive && (
-          <span
-            className="chip-reset-icon"
-            title={`重置${config.label}`}
-            onClick={handleChipReset}
-          >
+          <span className="chip-reset-icon" title={`重置${config.label}`} onClick={handleChipReset}>
             <X size={11} />
           </span>
         )}
@@ -293,6 +295,7 @@ interface AdMobFilterBarProps {
   data: DataRow[];
   filterConfigs: FilterConfig[];
   onFilterChange: (fieldName: string, selectedValues: string[]) => void;
+  onResetAll?: () => void;
   activeDimensionNames?: Set<string>;
 }
 
@@ -443,9 +446,7 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
       <span className="more-filter-label">
         {config.icon}
         <span>{config.label}</span>
-        {dimensionHint && (
-          <span className="more-filter-hint">{dimensionHint}</span>
-        )}
+        {dimensionHint && <span className="more-filter-hint">{dimensionHint}</span>}
       </span>
       <button
         type="button"
@@ -460,7 +461,11 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
       >
         <span className="more-filter-trigger-text">{getDisplayValue()}</span>
         {isActive && (
-          <span className="more-filter-reset-icon" title={`重置${config.label}`} onClick={handleReset}>
+          <span
+            className="more-filter-reset-icon"
+            title={`重置${config.label}`}
+            onClick={handleReset}
+          >
             <X size={11} />
           </span>
         )}
@@ -468,7 +473,11 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="filter-dropdown-menu more-filter-dropdown-menu" role="presentation" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="filter-dropdown-menu more-filter-dropdown-menu"
+          role="presentation"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="filter-dropdown-search">
             <input
               type="text"
@@ -509,10 +518,18 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
               已选 {tempValues.length} / {allValues.length}
             </span>
             <div className="filter-dropdown-buttons">
-              <button type="button" className="filter-dropdown-btn filter-dropdown-btn-cancel" onClick={handleCancel}>
+              <button
+                type="button"
+                className="filter-dropdown-btn filter-dropdown-btn-cancel"
+                onClick={handleCancel}
+              >
                 取消
               </button>
-              <button type="button" className="filter-dropdown-btn filter-dropdown-btn-confirm" onClick={handleConfirm}>
+              <button
+                type="button"
+                className="filter-dropdown-btn filter-dropdown-btn-confirm"
+                onClick={handleConfirm}
+              >
                 确认
               </button>
             </div>
@@ -575,7 +592,11 @@ const MoreFiltersDropdown: React.FC<MoreFiltersDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="more-filters-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="more-filters-dropdown"
+          role="presentation"
+          onClick={(e) => e.stopPropagation()}
+        >
           {configs.map((config) => {
             const allValues = allFilterValues[config.fieldName] || [];
             const selectedValues = getSelectedValues(config.fieldName);
@@ -605,6 +626,7 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   data,
   filterConfigs,
   onFilterChange,
+  onResetAll,
   activeDimensionNames,
 }) => {
   // 日期筛选器始终使用全量数据的唯一值
@@ -638,15 +660,22 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   };
 
   const hasActiveFilters = filterConfigs.some(
-    (f) => f.selectedValues.length > 0 && f.selectedValues.length < (allFilterValues[f.fieldName]?.length ?? 0)
+    (f) =>
+      f.selectedValues.length > 0 &&
+      f.selectedValues.length < (allFilterValues[f.fieldName]?.length ?? 0)
   );
 
   const handleResetAll = () => {
-    filterConfigs.forEach((f) => {
-      if (f.selectedValues.length > 0) {
-        onFilterChange(f.fieldName, allFilterValues[f.fieldName] || []);
-      }
-    });
+    if (onResetAll) {
+      onResetAll();
+    } else {
+      // fallback: 逐个重置（兼容旧接口）
+      filterConfigs.forEach((f) => {
+        if (f.selectedValues.length > 0) {
+          onFilterChange(f.fieldName, allFilterValues[f.fieldName] || []);
+        }
+      });
+    }
   };
 
   // 分离主要筛选器和"更多"筛选器

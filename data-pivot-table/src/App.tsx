@@ -30,8 +30,8 @@ import type { StoredDataset } from './types/storage';
 import { hideConfigPanelTemporarily, showConfigPanelTemporarily } from './utils/animations';
 import { PRESET_CALCULATED_FIELDS } from './utils/calculatedField';
 import { preprocessData } from './utils/dataPreprocessor';
-import { createPivotField } from './utils/fieldHelpers';
 import { detectFieldTypes } from './utils/fieldDetector';
+import { createPivotField } from './utils/fieldHelpers';
 import { generateDatasetName } from './utils/storageUtils';
 import './styles/variables.css';
 import './styles/global.css';
@@ -47,7 +47,12 @@ const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
   { icon: <Film size={14} />, label: '标准广告场景', fieldName: '标准广告场景', group: 'more' },
   { icon: <Film size={14} />, label: '聚合广告场景', fieldName: '聚合广告场景', group: 'more' },
   { icon: <Megaphone size={14} />, label: '广告类型', fieldName: '广告类型', group: 'more' },
-  { icon: <Megaphone size={14} />, label: '广告变现渠道', fieldName: '广告变现渠道', group: 'more' },
+  {
+    icon: <Megaphone size={14} />,
+    label: '广告变现渠道',
+    fieldName: '广告变现渠道',
+    group: 'more',
+  },
   { icon: <Calendar size={14} />, label: '生命周期', fieldName: '生命周期', group: 'more' },
 ];
 
@@ -95,6 +100,7 @@ function App() {
     toggleRowField,
     toggleColField,
     handleFilterChange,
+    resetAllFilters,
     applyTemplate,
     reorderFields,
     moveFieldToIndex,
@@ -267,13 +273,7 @@ function App() {
         }
       }
     },
-    [
-      isStorageReady,
-      loadDatasets,
-      loadData,
-      resetConfig,
-      setCurrentDatasetId,
-    ]
+    [isStorageReady, loadDatasets, loadData, resetConfig, setCurrentDatasetId]
   );
 
   // 数据集选择
@@ -394,6 +394,7 @@ function App() {
               data={data}
               filterConfigs={filterConfigs}
               onFilterChange={handleFilterChange}
+              onResetAll={resetAllFilters}
               activeDimensionNames={activeDimensionNames}
             />
           )}
@@ -459,26 +460,28 @@ function App() {
                   isDragging={isDragging}
                   onToggle={toggleValueField}
                 />
-                {valueFields.length > 0 && (() => {
-                  const regField = measures.find((f) => f.name === '注册用户');
-                  const isDefault = valueFields.length === 1 && valueFields[0].field.name === '注册用户';
-                  if (isDefault) return null;
-                  return (
-                    <button
-                      type="button"
-                      className="value-reset-btn"
-                      onClick={() => {
-                        if (regField) {
-                          setValueFields([createPivotField(regField)]);
-                        }
-                      }}
-                      title="重置为仅注册用户"
-                    >
-                      <RotateCcw size={12} />
-                      <span>重置</span>
-                    </button>
-                  );
-                })()}
+                {valueFields.length > 0 &&
+                  (() => {
+                    const regField = measures.find((f) => f.name === '注册用户');
+                    const isDefault =
+                      valueFields.length === 1 && valueFields[0].field.name === '注册用户';
+                    if (isDefault) return null;
+                    return (
+                      <button
+                        type="button"
+                        className="value-reset-btn"
+                        onClick={() => {
+                          if (regField) {
+                            setValueFields([createPivotField(regField)]);
+                          }
+                        }}
+                        title="重置为仅注册用户"
+                      >
+                        <RotateCcw size={12} />
+                        <span>重置</span>
+                      </button>
+                    );
+                  })()}
               </div>
 
               <div className="spatial-rows">
@@ -559,7 +562,6 @@ function App() {
             onToggleColumnTotal={() => setShowColumnTotal(!showColumnTotal)}
           />
         )}
-
       </div>
       <DragOverlay>
         {activeDragField && (

@@ -77,12 +77,15 @@ export function usePivotState() {
   }, []);
 
   // 高级 API：获取当前配置
-  const getCurrentConfig = useCallback((): PivotConfig => ({
-    rowFields,
-    colFields,
-    valueFields,
-    filterConfigs,
-  }), [rowFields, colFields, valueFields, filterConfigs]);
+  const getCurrentConfig = useCallback(
+    (): PivotConfig => ({
+      rowFields,
+      colFields,
+      valueFields,
+      filterConfigs,
+    }),
+    [rowFields, colFields, valueFields, filterConfigs]
+  );
 
   const toggleValueField = useCallback((field: Field) => {
     setValueFields((prev) => {
@@ -134,6 +137,10 @@ export function usePivotState() {
         filter.fieldName === fieldName ? { ...filter, selectedValues } : filter
       );
     });
+  }, []);
+
+  const resetAllFilters = useCallback(() => {
+    setFilterConfigs([]);
   }, []);
 
   const applyTemplate = useCallback(
@@ -314,6 +321,7 @@ export function usePivotState() {
     toggleRowField,
     toggleColField,
     handleFilterChange,
+    resetAllFilters,
     applyTemplate,
     reorderFields,
     moveFieldToIndex,
