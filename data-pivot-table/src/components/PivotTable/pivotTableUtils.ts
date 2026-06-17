@@ -1,3 +1,4 @@
+import type { ValueFormatConfig } from '../../types';
 import { BASE_METRICS } from '../../utils/calculatedField';
 
 const KEY_SEPARATOR = '\u001f';
@@ -7,13 +8,37 @@ const KEY_SEPARATOR = '\u001f';
  */
 export function formatPivotValue(
   num: number,
-  metricName?: string
+  metricName?: string,
+  formatConfig?: ValueFormatConfig
 ): { text: string; isEmpty: boolean } {
   if (num === 0) return { text: '-', isEmpty: true };
 
   const val = Number(num);
   if (isNaN(val)) return { text: '-', isEmpty: true };
 
+  // 有自定义格式配置时，按配置格式化
+  if (formatConfig) {
+    const decimals = formatConfig.decimals ?? 2;
+    const useThousands = formatConfig.thousandsSeparator !== false;
+
+    if (formatConfig.displayAs === 'percentage') {
+      return { text: (val * 100).toFixed(decimals) + '%', isEmpty: false };
+    }
+
+    if (useThousands) {
+      const fixed = val.toFixed(decimals);
+      const [intPart, decPart] = fixed.split('.');
+      const formatted = Number(intPart).toLocaleString('en-US');
+      return {
+        text: decPart !== undefined ? `${formatted}.${decPart}` : formatted,
+        isEmpty: false,
+      };
+    }
+
+    return { text: val.toFixed(decimals), isEmpty: false };
+  }
+
+  // 默认格式化规则
   let text: string;
   if (metricName === '渗透率' || metricName === 'CTR') {
     text = (val * 100).toFixed(2) + '%';
@@ -83,6 +108,29 @@ export function getGroupBoundaryClass(
   }
 
   return '';
+}
+
+/**
+ * 获取排序图标
+ */
+export function getSortIcon(
+  type: 'column' | 'dimension' | 'total',
+  value: string,
+  sortConfig?: { type: string; value: string; direction: 'asc' | 'desc' } | null
+): string {
+  if (!sortConfig || sortConfig.type !== type || sortConfig.value !== value) return '↕';
+  return sortConfig.direction === 'asc' ? '↑' : '↓';
+}
+
+/**
+ * 判断排序是否激活
+ */
+export function isSortActive(
+  type: 'column' | 'dimension' | 'total',
+  value: string,
+  sortConfig?: { type: string; value: string; direction: 'asc' | 'desc' } | null
+): boolean {
+  return !!sortConfig && sortConfig.type === type && sortConfig.value === value;
 }
 
 /**

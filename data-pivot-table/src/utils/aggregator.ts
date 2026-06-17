@@ -18,6 +18,7 @@ const ALL_SCENARIO_VALUE = 'ALL';
 const REGISTERED_USERS_METRIC = '注册用户';
 const IMPRESSION_USERS_METRIC = '曝光人数';
 const SEMI_ADDITIVE_SUM_METRICS = new Set([REGISTERED_USERS_METRIC, IMPRESSION_USERS_METRIC]);
+const emptyMetricSeriesCache = new Map<string, MetricSeriesMap>();
 const SEMI_ADDITIVE_KEY_FIELD_GROUPS = [
   ['日期'],
   ['应用'],
@@ -349,6 +350,9 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     totalColumnHeaders,
     totalColumnValueFieldNames,
     totalRows,
+    valueFormats: Object.fromEntries(
+      valueFields.filter((vf) => vf.format).map((vf) => [vf.field.name, vf.format!])
+    ),
   };
 }
 
@@ -666,7 +670,7 @@ function getCellData(
   colKey: string,
   metricNames: string[]
 ): MetricSeriesMap {
-  return dataMap.get(rowKey)?.get(colKey) || createMetricSeries(metricNames);
+  return dataMap.get(rowKey)?.get(colKey) || getEmptyMetricSeries(metricNames);
 }
 
 function createMetricSeries(metricNames: string[]): MetricSeriesMap {
@@ -676,9 +680,19 @@ function createMetricSeries(metricNames: string[]): MetricSeriesMap {
   }, {});
 }
 
+function getEmptyMetricSeries(metricNames: string[]): MetricSeriesMap {
+  const cacheKey = metricNames.join(KEY_SEPARATOR);
+  let series = emptyMetricSeriesCache.get(cacheKey);
+  if (!series) {
+    series = createMetricSeries(metricNames);
+    emptyMetricSeriesCache.set(cacheKey, series);
+  }
+  return series;
+}
+
 function buildRowTotals(
   rowKeys: string[],
-  colKeys: string[],
+  _colKeys: string[],
   dataMap: Map<string, Map<string, MetricSeriesMap>>,
   metricNames: string[]
 ): Map<string, MetricSeriesMap> {
@@ -686,9 +700,12 @@ function buildRowTotals(
 
   rowKeys.forEach((rowKey) => {
     const rowTotal = createMetricSeries(metricNames);
-    colKeys.forEach((colKey) => {
-      mergeInto(rowTotal, getCellData(dataMap, rowKey, colKey, metricNames), metricNames);
-    });
+    const rowMap = dataMap.get(rowKey);
+    if (rowMap) {
+      for (const cellData of rowMap.values()) {
+        mergeInto(rowTotal, cellData, metricNames);
+      }
+    }
     totals.set(rowKey, rowTotal);
   });
 
@@ -696,7 +713,7 @@ function buildRowTotals(
 }
 
 function buildColumnTotals(
-  rowKeys: string[],
+  _rowKeys: string[],
   colKeys: string[],
   dataMap: Map<string, Map<string, MetricSeriesMap>>,
   metricNames: string[],
@@ -705,14 +722,22 @@ function buildColumnTotals(
   const totals = new Map<string, MetricSeriesMap>();
 
   colKeys.forEach((colKey) => {
-    const columnTotal = createMetricSeries(metricNames);
-    rowKeys.forEach((rowKey) => {
-      mergeInto(columnTotal, getCellData(dataMap, rowKey, colKey, metricNames), metricNames);
-    });
+    totals.set(colKey, createMetricSeries(metricNames));
+  });
+
+  for (const rowMap of dataMap.values()) {
+    for (const [colKey, cellData] of rowMap) {
+      const columnTotal = totals.get(colKey);
+      if (columnTotal) {
+        mergeInto(columnTotal, cellData, metricNames);
+      }
+    }
+  }
+
+  for (const columnTotal of totals.values()) {
     // 注入 ALL 行的半可加指标值，避免跨场景 SUM 导致数据翻倍
     injectAllRowSemiAdditiveValues(columnTotal, allRowSemiAdditiveLookup, metricNames);
-    totals.set(colKey, columnTotal);
-  });
+  }
 
   return totals;
 }
@@ -744,12 +769,12 @@ function injectAllRowSemiAdditiveValues(
 }
 
 function mergeInto(target: MetricSeriesMap, source: MetricSeriesMap, metricNames: string[]) {
-  metricNames.forEach((metricName) => {
+  for (const metricName of metricNames) {
     const sourcePoints = source[metricName] || [];
     for (const point of sourcePoints) {
       target[metricName].push(point);
     }
-  });
+  }
 }
 
 function getMetricValue(
@@ -786,7 +811,11 @@ function sumBaseMetrics(metricData: MetricSeriesMap): Record<string, number> {
 }
 
 function sumMetricPoints(points: MetricPoint[]): number {
-  return points.reduce((sum, point) => sum + point.value, 0);
+  let sum = 0;
+  for (const point of points) {
+    sum += point.value;
+  }
+  return sum;
 }
 
 function sumSemiAdditiveMetric(points: MetricPoint[]): number {
@@ -800,7 +829,11 @@ function sumSemiAdditiveMetric(points: MetricPoint[]): number {
     );
   });
 
-  return Array.from(maxByKey.values()).reduce((sum, value) => sum + value, 0);
+  let sum = 0;
+  for (const value of maxByKey.values()) {
+    sum += value;
+  }
+  return sum;
 }
 
 function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLevel[][] {
@@ -860,21 +893,31 @@ function formatParts(parts: string[]): string {
 function aggregateValues(points: MetricPoint[], type: AggregationType): number {
   if (points.length === 0) return 0;
 
-  const values = points.map((point) => point.value);
-
   switch (type) {
-    case 'sum':
-      return values.reduce((a, b) => a + b, 0);
-    case 'avg':
-      return values.reduce((a, b) => a + b, 0) / values.length;
+    case 'sum': {
+      return sumMetricPoints(points);
+    }
+    case 'avg': {
+      return sumMetricPoints(points) / points.length;
+    }
     case 'count':
-      return values.length;
-    case 'min':
-      return values.reduce((min, v) => Math.min(min, v), Infinity);
-    case 'max':
-      return values.reduce((max, v) => Math.max(max, v), -Infinity);
+      return points.length;
+    case 'min': {
+      let min = Infinity;
+      for (const point of points) {
+        if (point.value < min) min = point.value;
+      }
+      return min;
+    }
+    case 'max': {
+      let max = -Infinity;
+      for (const point of points) {
+        if (point.value > max) max = point.value;
+      }
+      return max;
+    }
     default:
-      return values.reduce((a, b) => a + b, 0);
+      return sumMetricPoints(points);
   }
 }
 

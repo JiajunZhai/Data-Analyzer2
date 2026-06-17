@@ -1,7 +1,9 @@
 import React from 'react';
-import type { PivotResult } from '../../types';
+import type { PivotResult, SortConfig } from '../../types';
 import FlatPivotTable from './FlatPivotTable';
 import TreePivotTable from './TreePivotTable';
+
+export type ToggleSortFn = (type: 'column' | 'dimension' | 'total', value: string) => void;
 
 interface PivotTableProps {
   result: PivotResult | null;
@@ -9,6 +11,8 @@ interface PivotTableProps {
   emptyMessage?: string;
   showRowTotal?: boolean;
   showColumnTotal?: boolean;
+  sortConfig?: SortConfig | null;
+  onToggleSort?: ToggleSortFn;
 }
 
 const PivotTable: React.FC<PivotTableProps> = React.memo(
@@ -17,6 +21,8 @@ const PivotTable: React.FC<PivotTableProps> = React.memo(
     emptyMessage = '请配置透视表字段以查看结果',
     showRowTotal = true,
     showColumnTotal = true,
+    sortConfig,
+    onToggleSort,
   }) => {
     if (!result) {
       return (
@@ -28,23 +34,25 @@ const PivotTable: React.FC<PivotTableProps> = React.memo(
 
     const canUseRowTree = result.valueAxis === 'columns' && Boolean(result.rowTree?.length);
 
-    // 树形模式
     if (canUseRowTree) {
       return (
         <TreePivotTable
           result={result}
           showRowTotal={showRowTotal}
           showColumnTotal={showColumnTotal}
+          sortConfig={sortConfig}
+          onToggleSort={onToggleSort}
         />
       );
     }
 
-    // 扁平模式
     return (
       <FlatPivotTable
         result={result}
         showRowTotal={showRowTotal}
         showColumnTotal={showColumnTotal}
+        sortConfig={sortConfig}
+        onToggleSort={onToggleSort}
       />
     );
   }

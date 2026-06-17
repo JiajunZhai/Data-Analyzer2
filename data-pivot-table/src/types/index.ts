@@ -19,9 +19,22 @@ export interface CalculatedField {
   fields: string[];
 }
 
+export interface ValueFormatConfig {
+  decimals?: number;            // 0-6, 不设置则使用默认值
+  thousandsSeparator?: boolean; // 千分位分隔符，默认 true
+  displayAs?: 'value' | 'percentage';
+}
+
+export interface SortConfig {
+  type: 'column' | 'dimension' | 'total';
+  value: string;       // 列索引字符串 或 维度名
+  direction: 'asc' | 'desc';
+}
+
 export interface PivotField {
   field: Field;
   aggregation?: AggregationType;
+  format?: ValueFormatConfig;   // 仅值字段有意义
 }
 
 export interface PivotConfig {
@@ -83,4 +96,5 @@ export interface PivotResult {
   totalColumnHeaders: string[];
   totalColumnValueFieldNames: string[];
   totalRows: PivotTotalRow[];
+  valueFormats?: Record<string, ValueFormatConfig>; // 指标名 → 格式配置
 }
