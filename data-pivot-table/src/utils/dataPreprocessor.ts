@@ -29,7 +29,9 @@ export function preprocessData(data: DataRow[]): DataRow[] {
   // 解决 SQL 导出中部分国家有曝光人数但无注册用户的问题
   const registeredUserLookup = new Map<string, number>();
   for (const row of data) {
-    const scene = String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '').trim().toUpperCase();
+    const scene = String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '')
+      .trim()
+      .toUpperCase();
     if (scene !== 'ALL') continue;
     const date = String(row['日期'] ?? '').trim();
     const app = String(row['应用'] ?? '').trim();
@@ -58,7 +60,12 @@ export function preprocessData(data: DataRow[]): DataRow[] {
 
     // 注册用户回填：子场景注册用户为 0 时，用同日期/应用/国家的 ALL 行值填充
     const regUsers = Number(row['注册用户']);
-    if ((!regUsers || regUsers === 0) && String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '').trim().toUpperCase() !== 'ALL') {
+    if (
+      (!regUsers || regUsers === 0) &&
+      String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '')
+        .trim()
+        .toUpperCase() !== 'ALL'
+    ) {
       const date = String(row['日期'] ?? '').trim();
       const app = String(row['应用'] ?? '').trim();
       const country = String(row['国家'] ?? '').trim();

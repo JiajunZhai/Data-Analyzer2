@@ -35,10 +35,13 @@ export async function parseCSVWithWorker(
       type: 'module',
     });
 
-    const timeout = setTimeout(() => {
-      worker.terminate();
-      reject(new Error('文件解析超时'));
-    }, 10 * 60 * 1000); // 10 分钟超时
+    const timeout = setTimeout(
+      () => {
+        worker.terminate();
+        reject(new Error('文件解析超时'));
+      },
+      10 * 60 * 1000
+    ); // 10 分钟超时
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;

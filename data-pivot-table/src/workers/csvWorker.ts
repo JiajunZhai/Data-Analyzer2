@@ -15,7 +15,13 @@ function hasGarbledText(text: string): boolean {
   for (let i = 0; i < sampleLength; i++) {
     const code = text.charCodeAt(i);
     if (code < 128) asciiCount++;
-    else if ((code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3400 && code <= 0x4dbf) || (code >= 0x3000 && code <= 0x303f) || (code >= 0xff00 && code <= 0xffef)) cjkCount++;
+    else if (
+      (code >= 0x4e00 && code <= 0x9fff) ||
+      (code >= 0x3400 && code <= 0x4dbf) ||
+      (code >= 0x3000 && code <= 0x303f) ||
+      (code >= 0xff00 && code <= 0xffef)
+    )
+      cjkCount++;
     else highByteCount++;
   }
   const nonAsciiLength = sampleLength - asciiCount;
@@ -36,7 +42,9 @@ function detectDecoder(firstBytes: Uint8Array): TextDecoder {
   try {
     const gbkDecoder = new TextDecoder('gbk', { fatal: false });
     if (!hasGarbledText(gbkDecoder.decode(sample))) return new TextDecoder('gbk');
-  } catch { /* fallback */ }
+  } catch {
+    /* fallback */
+  }
 
   return new TextDecoder('utf-8');
 }
@@ -50,8 +58,10 @@ function parseCSVLine(line: string): string[] {
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     if (char === '"') inQuotes = !inQuotes;
-    else if (char === ',' && !inQuotes) { result.push(current.trim().replace(/^"|"$/g, '')); current = ''; }
-    else current += char;
+    else if (char === ',' && !inQuotes) {
+      result.push(current.trim().replace(/^"|"$/g, ''));
+      current = '';
+    } else current += char;
   }
   result.push(current.trim().replace(/^"|"$/g, ''));
   return result;
@@ -78,7 +88,9 @@ function safeEval(expr: string): number {
   try {
     const result = Function(`"use strict"; return (${expr})`)();
     return typeof result === 'number' && isFinite(result) ? result : 0;
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
 }
 
 function escapeRegExp(s: string): string {
@@ -87,7 +99,12 @@ function escapeRegExp(s: string): string {
 
 const calculatedFieldRegexes = new Map<string, RegExp[]>();
 for (const [name, config] of Object.entries(CALCULATED_METRICS)) {
-  calculatedFieldRegexes.set(name, [...config.fields].sort((a, b) => b.length - a.length).map(f => new RegExp(escapeRegExp(f), 'g')));
+  calculatedFieldRegexes.set(
+    name,
+    [...config.fields]
+      .sort((a, b) => b.length - a.length)
+      .map((f) => new RegExp(escapeRegExp(f), 'g'))
+  );
 }
 
 // ============ 字段检测 ============
@@ -110,9 +127,12 @@ function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
     if (MEASURE_FIELDS.includes(header)) {
       return { name: header, type: 'measure', dataType: 'number' };
     }
-    const values = data.slice(0, 1000).map(r => r[header]).filter(v => v !== '' && v != null);
+    const values = data
+      .slice(0, 1000)
+      .map((r) => r[header])
+      .filter((v) => v !== '' && v != null);
     if (values.length === 0) return { name: header, type: 'dimension', dataType: 'string' };
-    const isNumeric = values.every(v => !isNaN(Number(v)));
+    const isNumeric = values.every((v) => !isNaN(Number(v)));
     const uniqueCount = new Set(values).size;
     const type = isNumeric && uniqueCount / values.length > 0.5 ? 'measure' : 'dimension';
     return { name: header, type, dataType: isNumeric ? 'number' : 'string' };
@@ -178,7 +198,9 @@ self.onmessage = async (e: MessageEvent) => {
         totalRevenue += Number(obj['广告收益']) || 0;
 
         // 收集 ALL 行注册用户
-        const scene = String(obj['标准广告场景'] ?? obj['聚合广告场景'] ?? '').trim().toUpperCase();
+        const scene = String(obj['标准广告场景'] ?? obj['聚合广告场景'] ?? '')
+          .trim()
+          .toUpperCase();
         if (scene === 'ALL') {
           const date = String(obj['日期'] ?? '').trim();
           const app = String(obj['应用'] ?? '').trim();
@@ -192,7 +214,12 @@ self.onmessage = async (e: MessageEvent) => {
         lineCount++;
 
         if (lineCount % 50000 === 0) {
-          self.postMessage({ type: 'progress', phase: 'parsing', progress: offset / fileSize, rowCount: lineCount });
+          self.postMessage({
+            type: 'progress',
+            phase: 'parsing',
+            progress: offset / fileSize,
+            rowCount: lineCount,
+          });
         }
       }
 
@@ -214,7 +241,12 @@ self.onmessage = async (e: MessageEvent) => {
       }
     }
 
-    self.postMessage({ type: 'progress', phase: 'preprocessing', progress: 0.9, rowCount: rows.length });
+    self.postMessage({
+      type: 'progress',
+      phase: 'preprocessing',
+      progress: 0.9,
+      rowCount: rows.length,
+    });
 
     // 第二遍：原地预处理（不创建新数组）
     for (let i = 0; i < rows.length; i++) {
@@ -228,7 +260,9 @@ self.onmessage = async (e: MessageEvent) => {
 
       // 注册用户回填
       const regUsers = Number(row['注册用户']);
-      const scene = String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '').trim().toUpperCase();
+      const scene = String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '')
+        .trim()
+        .toUpperCase();
       if ((!regUsers || regUsers === 0) && scene !== 'ALL') {
         const date = String(row['日期'] ?? '').trim();
         const app = String(row['应用'] ?? '').trim();
@@ -244,20 +278,25 @@ self.onmessage = async (e: MessageEvent) => {
         const regexes = calculatedFieldRegexes.get(metricName)!;
         let formula = config.formula;
         config.fields.forEach((fieldName, idx) => {
-          const value = fieldName === '总广告收益' ? totalRevenue : (Number(row[fieldName]) || 0);
+          const value = fieldName === '总广告收益' ? totalRevenue : Number(row[fieldName]) || 0;
           formula = formula.replace(regexes[idx], String(value));
         });
         row[metricName] = safeEval(formula);
       }
 
       if (i % 50000 === 0) {
-        self.postMessage({ type: 'progress', phase: 'preprocessing', progress: 0.9 + 0.1 * (i / rows.length), rowCount: rows.length });
+        self.postMessage({
+          type: 'progress',
+          phase: 'preprocessing',
+          progress: 0.9 + 0.1 * (i / rows.length),
+          rowCount: rows.length,
+        });
       }
     }
 
     // 字段检测
     const fields = detectFieldTypes(headers, rows);
-    const calculatedFields: Field[] = Object.keys(CALCULATED_METRICS).map(name => ({
+    const calculatedFields: Field[] = Object.keys(CALCULATED_METRICS).map((name) => ({
       name,
       type: 'measure' as const,
       dataType: 'number' as const,
@@ -272,8 +311,10 @@ self.onmessage = async (e: MessageEvent) => {
       data: rows,
       rowCount: rows.length,
     });
-
   } catch (error) {
-    self.postMessage({ type: 'error', message: error instanceof Error ? error.message : '文件解析失败' });
+    self.postMessage({
+      type: 'error',
+      message: error instanceof Error ? error.message : '文件解析失败',
+    });
   }
 };

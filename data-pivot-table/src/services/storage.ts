@@ -1,10 +1,5 @@
 import { type IDBPDatabase, openDB } from 'idb';
-import type {
-  StorageQuota,
-  StoredConfig,
-  StoredDataset,
-  UserPreferences,
-} from '../types/storage';
+import type { StorageQuota, StoredConfig, StoredDataset, UserPreferences } from '../types/storage';
 import { estimateDataSize, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
 
 const DB_NAME = 'data-pivot-table';

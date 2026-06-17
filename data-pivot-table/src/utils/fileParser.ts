@@ -1,5 +1,5 @@
 import type { DataRow } from '../types';
-import { readFileChunked, readAsTextWithAutoEncoding } from './encodingUtils';
+import { readAsTextWithAutoEncoding, readFileChunked } from './encodingUtils';
 
 /**
  * 解析CSV行，正确处理引号内的逗号

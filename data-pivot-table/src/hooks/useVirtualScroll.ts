@@ -33,6 +33,8 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
   const rafRef = useRef<number | null>(null);
+  const scrollTopRef = useRef(0);
+  const containerHeightRef = useRef(600);
 
   // 动态监听容器高度
   useEffect(() => {
@@ -40,7 +42,11 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
     if (!container) return;
 
     const updateHeight = () => {
-      setContainerHeight(container.clientHeight);
+      const nextHeight = container.clientHeight;
+      if (nextHeight !== containerHeightRef.current) {
+        containerHeightRef.current = nextHeight;
+        setContainerHeight(nextHeight);
+      }
     };
 
     updateHeight();
@@ -69,7 +75,11 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
       cancelAnimationFrame(rafRef.current);
     }
     rafRef.current = requestAnimationFrame(() => {
-      setScrollTop(target.scrollTop);
+      const nextScrollTop = target.scrollTop;
+      if (nextScrollTop !== scrollTopRef.current) {
+        scrollTopRef.current = nextScrollTop;
+        setScrollTop(nextScrollTop);
+      }
     });
   }, []);
 
