@@ -1,6 +1,5 @@
 WITH
 -- 1. 基础日志清洗
--- installed_at 作为 cohort 标识，lifecycle = dt - installed_at (day_X)
 base_log AS (
 SELECT
   CAST(installed_at AS date) AS install_date,
@@ -20,12 +19,14 @@ WHERE dt >= CURRENT_DATE - INTERVAL '17 days'
   AND dt <= CURRENT_DATE
   AND installed_at >= (CURRENT_DATE - INTERVAL '10 days')::text
   AND dt - CAST(installed_at AS date) <= 7
+  -- 同期小时对齐：只统计当前整点之前的数据，每天对比口径一致
+  AND date_trunc('hour', to_timestamp(created_at)) < date_trunc('hour', CURRENT_TIMESTAMP)
   AND (LOWER(app_code) LIKE '%rm%' OR LOWER(app_code) LIKE '%r3%' OR LOWER(app_code) LIKE '%fr%'
        OR LOWER(app_code) LIKE '%vd%' OR LOWER(app_code) LIKE '%vc%' OR LOWER(app_code) LIKE '%pt%'
        OR LOWER(app_code) LIKE '%rl%')
 ),
 
--- 2. 广告收益数据聚合（按 cohort + day_x + 广告维度分组）
+-- 2. 广告收益数据聚合
 ad_revenue_data AS (
 SELECT
   install_date,
@@ -38,10 +39,7 @@ SELECT
   day_x,
   COUNT(DISTINCT ad_id) AS ad_user_count,
   COUNT(*) AS ad_count,
-  COALESCE(SUM(revenue_usd), 0) AS ad_profit,
-  COALESCE(SUM(revenue_usd), 0) / NULLIF(COUNT(DISTINCT ad_id), 0) AS arpu,
-  COALESCE(SUM(revenue_usd), 0) / NULLIF(COUNT(*), 0) * 1000 AS ecpm,
-  ROUND(COUNT(*)::numeric / NULLIF(COUNT(DISTINCT ad_id), 0), 2) AS ipu
+  COALESCE(SUM(revenue_usd), 0) AS ad_profit
 FROM base_log
 WHERE activity_kind = 'ad_revenue'
 GROUP BY
@@ -56,7 +54,7 @@ GROUP BY
 HAVING COUNT(DISTINCT ad_id) >= 10
 ),
 
--- 3. 新用户数统计（仅按用户标识维度分组，避免按广告级维度拆分导致重复计数）
+-- 3. 新用户数统计
 new_user_data AS (
 SELECT
   install_date,
@@ -67,7 +65,7 @@ SELECT
   COUNT(DISTINCT ad_id) AS user_count
 FROM base_log
 GROUP BY install_date, app_code, app_version, country_code, network_name
-HAVING COUNT(DISTINCT ad_id) > 0
+HAVING COUNT(DISTINCT ad_id) > 30
 ),
 
 -- 4. 点击数据聚合
@@ -95,7 +93,7 @@ GROUP BY
   day_x
 )
 
--- 5. 主查询多维并列关联
+-- 5. 主查询
 SELECT
   a.install_date AS "安装日期",
   a.day_x AS "生命周期",
@@ -109,10 +107,7 @@ SELECT
   a.ad_user_count AS "曝光人数",
   a.ad_count AS "曝光次数",
   a.ad_profit AS "广告收益",
-  COALESCE(c.ad_click_count, 0) AS "点击次数",
-  a.arpu AS "ARPU",
-  a.ecpm AS "eCPM",
-  a.ipu AS "IPU"
+  COALESCE(c.ad_click_count, 0) AS "点击次数"
 FROM ad_revenue_data a
 INNER JOIN new_user_data b
   ON a.install_date = b.install_date

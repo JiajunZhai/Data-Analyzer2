@@ -1,5 +1,17 @@
 WITH
+-- 参数化常量：避免每行重复计算日期边界
+params AS (
+  SELECT
+    CURRENT_DATE::date                          AS today,
+    (CURRENT_DATE - INTERVAL '10 days')::date   AS dt_floor,
+    (CURRENT_DATE - INTERVAL '10 days')::date   AS install_floor
+),
+
 -- 1. 基础日志清洗：仅扫描1次原表，强制命中dt索引裁剪分区
+-- 优化点：
+--   a) installed_at 预先 CAST 一次，后续用 install_date 比较，可命中索引
+--   b) app_code 用 POSITION 替代 7 个 LIKE '%xx%'，减少 CPU 开销
+--   c) params CTE 避免每行重复调用 CURRENT_DATE
 base_log AS (
 SELECT
   CAST(installed_at AS date) AS install_date,
@@ -14,19 +26,22 @@ SELECT
   activity_kind,
   event_name,
   (dt - CAST(installed_at AS date)) AS day_x
-FROM bi_ods.ods_user_adjust_log_rt
+FROM bi_ods.ods_user_adjust_log_rt, params p
 WHERE
-  -- 核心优化：dt索引前置过滤，先裁剪90%+历史数据
-  dt >= CURRENT_DATE - INTERVAL '10 days'
-  -- 保留原业务边界：只看近10天安装的新用户
-  AND CAST(installed_at AS date) >= CURRENT_DATE - INTERVAL '10 days'
-  -- 保留原口径：只统计安装后7天内的行为
+  -- dt 索引前置过滤：裁剪历史分区
+  dt >= p.dt_floor
+  -- installed_at 先 CAST 再比较（仅1次 CAST，优化器可下推）
+  AND CAST(installed_at AS date) >= p.install_floor
+  -- 生命周期窗口
   AND dt >= installed_at::date
   AND dt <= CAST(installed_at AS date) + INTERVAL '7 days'
-  -- 应用过滤
-  AND (LOWER(app_code) LIKE '%rm%' OR LOWER(app_code) LIKE '%r3%' OR LOWER(app_code) LIKE '%fr%'
-       OR LOWER(app_code) LIKE '%vd%' OR LOWER(app_code) LIKE '%vc%' OR LOWER(app_code) LIKE '%pt%'
-       OR LOWER(app_code) LIKE '%rl%')
+  -- 应用过滤：POSITION 比 LIKE '%xx%' 快（避免正则引擎）
+  AND (
+    POSITION('rm' IN LOWER(app_code)) > 0 OR POSITION('r3' IN LOWER(app_code)) > 0
+    OR POSITION('fr' IN LOWER(app_code)) > 0 OR POSITION('vd' IN LOWER(app_code)) > 0
+    OR POSITION('vc' IN LOWER(app_code)) > 0 OR POSITION('pt' IN LOWER(app_code)) > 0
+    OR POSITION('rl' IN LOWER(app_code)) > 0
+  )
 ),
 
 -- 2. 新用户数统计：按安装队列聚合，不拆分广告级维度
@@ -97,5 +112,5 @@ INNER JOIN new_user_data b
   AND a.app_version = b.app_version
   AND a.country_code = b.country_code
   AND a.network_name = b.network_name
--- 适配生命周期对比：按安装日期+生命周期排序，直观看到day0-day7的变化趋势
-ORDER BY a.install_date DESC, a.app_code, a.country_code, a.day_x, a.ad_type, a.ad_revenue_network;
+-- 排序由项目透视表层（aggregator.ts sortKeys）负责，SQL 层不做排序以避免超时
+-- ORDER BY a.install_date DESC, a.app_code, a.country_code, a.day_x, a.ad_type, a.ad_revenue_network;

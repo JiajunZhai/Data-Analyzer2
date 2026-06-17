@@ -1410,7 +1410,7 @@ SELECT
   activity_kind,
   event_name
 FROM bi_ods.ods_user_adjust_log_rt
-WHERE dt >= CURRENT_DATE - INTERVAL '10 days'
+WHERE dt >= CURRENT_DATE - INTERVAL '8 days'
   AND dt = installed_at::date
   AND (LOWER(app_code) LIKE '%rm%' OR LOWER(app_code) LIKE '%r3%' OR LOWER(app_code) LIKE '%fr%' 
        OR LOWER(app_code) LIKE '%vd%' OR LOWER(app_code) LIKE '%vc%' OR LOWER(app_code) LIKE '%pt%' 
@@ -1468,7 +1468,7 @@ SELECT
   COUNT(DISTINCT ad_id) AS user_count -- Hologres 环境下若产生告警可替换为 UNIQ(ad_id)
 FROM base_log
 GROUP BY dt, app_code, app_version, country_code, network_name
-HAVING COUNT(DISTINCT ad_id) >= 30
+HAVING COUNT(DISTINCT ad_id) >= 50
 ),
 
 -- 5. 点击数据独立映射与聚合
