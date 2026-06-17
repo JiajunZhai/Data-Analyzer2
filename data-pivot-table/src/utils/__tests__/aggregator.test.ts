@@ -163,10 +163,7 @@ describe('aggregator', () => {
   });
 
   it('标准广告场景筛选候选值应该返回原始标准广告场景值', () => {
-    const data: DataRow[] = [
-      { 标准广告场景: '冷启动' },
-      { 标准广告场景: '热启动' },
-    ];
+    const data: DataRow[] = [{ 标准广告场景: '冷启动' }, { 标准广告场景: '热启动' }];
 
     expect(getUniqueValues(data, '标准广告场景')).toEqual(['冷启动', '热启动']);
   });

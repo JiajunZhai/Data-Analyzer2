@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('应用初始化', () => {
   test('应该显示应用标题', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1')).toContainText('数据透视表分析工具');
+    await expect(page.locator('h1')).toContainText('Pivot Analysis');
   });
 
   test('应该显示文件上传区域', async ({ page }) => {
