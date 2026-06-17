@@ -83,6 +83,9 @@ const FilterChip: React.FC<FilterChipProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isActive = selectedValues.length < allValues.length && selectedValues.length > 0;
+  const allValueSet = useMemo(() => new Set(allValues), [allValues]);
+  const selectedValueSet = useMemo(() => new Set(selectedValues), [selectedValues]);
+  const tempValueSet = useMemo(() => new Set(tempValues), [tempValues]);
 
   const filteredValues = useMemo(() => {
     if (searchQuery) {
@@ -90,11 +93,10 @@ const FilterChip: React.FC<FilterChipProps> = ({
     }
     const notAllSelected = selectedValues.length > 0 && selectedValues.length < allValues.length;
     if (notAllSelected) {
-      const selectedSet = new Set(selectedValues);
       const selected: string[] = [];
       const unselected: string[] = [];
       for (const v of allValues) {
-        if (selectedSet.has(v)) {
+        if (selectedValueSet.has(v)) {
           selected.push(v);
         } else {
           unselected.push(v);
@@ -113,7 +115,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
       );
     }
     return allValues;
-  }, [allValues, searchQuery, selectedValues, registrationCounts, sortByCount]);
+  }, [allValues, searchQuery, selectedValues, selectedValueSet, registrationCounts, sortByCount]);
 
   const isAllSelected = tempValues.length === allValues.length;
 
@@ -134,7 +136,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
   // 当可选值变化时，清理已选值中不在可选范围内的项
   useEffect(() => {
     if (selectedValues.length > 0) {
-      const validValues = selectedValues.filter((v) => allValues.includes(v));
+      const validValues = selectedValues.filter((v) => allValueSet.has(v));
       if (validValues.length !== selectedValues.length) {
         onSelectionChange(validValues.length > 0 ? validValues : allValues);
       }
@@ -152,14 +154,13 @@ const FilterChip: React.FC<FilterChipProps> = ({
     if (searchQuery) {
       // 搜索状态下：全选/取消全选仅针对过滤后的选项
       const filteredSet = new Set(filteredValues);
-      const allFilteredSelected = filteredValues.every((v) => tempValues.includes(v));
+      const allFilteredSelected = filteredValues.every((v) => tempValueSet.has(v));
       if (allFilteredSelected) {
         setTempValues(tempValues.filter((v) => !filteredSet.has(v)));
       } else {
-        const tempSet = new Set(tempValues);
         const newValues = [...tempValues];
         for (const v of filteredValues) {
-          if (!tempSet.has(v)) newValues.push(v);
+          if (!tempValueSet.has(v)) newValues.push(v);
         }
         setTempValues(newValues);
       }
@@ -254,7 +255,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
               <label key={value} className="filter-dropdown-option">
                 <input
                   type="checkbox"
-                  checked={tempValues.includes(value)}
+                  checked={tempValueSet.has(value)}
                   onChange={() => handleToggleValue(value)}
                 />
                 <span className="option-text">{value}</span>
@@ -331,11 +332,22 @@ function getLinkedFilterValues(
     valueSet: new Set(f.selectedValues),
   }));
 
-  const filtered = data.filter((row) =>
-    filterSets.every((filter) => filter.valueSet.has(String(row[filter.fieldName] ?? '').trim()))
-  );
+  const values = new Set<string>();
+  for (const row of data) {
+    if (
+      !filterSets.every((filter) =>
+        filter.valueSet.has(String(row[filter.fieldName] ?? '').trim())
+      )
+    ) {
+      continue;
+    }
+    const val = String(row[targetFieldName] ?? '').trim();
+    if (val && val !== 'undefined' && val !== 'null') {
+      values.add(val);
+    }
+  }
 
-  return getRawUniqueValues(filtered, targetFieldName);
+  return Array.from(values).sort((a, b) => collator.compare(a, b));
 }
 
 // "更多筛选" 中单个筛选器的子弹窗
@@ -360,6 +372,8 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
   const subRef = useRef<HTMLDivElement>(null);
 
   const isActive = selectedValues.length < allValues.length && selectedValues.length > 0;
+  const allValueSet = useMemo(() => new Set(allValues), [allValues]);
+  const tempValueSet = useMemo(() => new Set(tempValues), [tempValues]);
 
   const filteredValues = useMemo(() => {
     if (searchQuery) {
@@ -383,7 +397,7 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
 
   useEffect(() => {
     if (selectedValues.length > 0) {
-      const validValues = selectedValues.filter((v) => allValues.includes(v));
+      const validValues = selectedValues.filter((v) => allValueSet.has(v));
       if (validValues.length !== selectedValues.length) {
         onSelectionChange(validValues.length > 0 ? validValues : allValues);
       }
@@ -399,14 +413,13 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
   const handleSelectAll = () => {
     if (searchQuery) {
       const filteredSet = new Set(filteredValues);
-      const allFilteredSelected = filteredValues.every((v) => tempValues.includes(v));
+      const allFilteredSelected = filteredValues.every((v) => tempValueSet.has(v));
       if (allFilteredSelected) {
         setTempValues(tempValues.filter((v) => !filteredSet.has(v)));
       } else {
-        const tempSet = new Set(tempValues);
         const newValues = [...tempValues];
         for (const v of filteredValues) {
-          if (!tempSet.has(v)) newValues.push(v);
+          if (!tempValueSet.has(v)) newValues.push(v);
         }
         setTempValues(newValues);
       }
@@ -504,7 +517,7 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
               <label key={value} className="filter-dropdown-option">
                 <input
                   type="checkbox"
-                  checked={tempValues.includes(value)}
+                  checked={tempValueSet.has(value)}
                   onChange={() => handleToggleValue(value)}
                 />
                 <span className="option-text">{value}</span>

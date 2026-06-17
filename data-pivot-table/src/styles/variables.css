@@ -56,7 +56,8 @@
   --pivot-header-level-2-text: #747685;
   --pivot-data-border: rgba(196, 197, 214, 0.4);
   --pivot-data-separator: #c4c5d6;
-  --pivot-zebra-bg: #f8f9ff;
+  --pivot-zebra-bg: #f0f3fa;
+  --pivot-total-col-bg: #e8eefb;
   --pivot-empty-cell-text: #c4c5d6;
   --pivot-frozen-bg: #f8f9ff;
 
@@ -300,7 +301,8 @@
   --pivot-data-border: #2a4060;
   --pivot-data-separator: #476ce3;
   --pivot-zebra-bg: rgba(19, 42, 74, 0.5);
-  --pivot-empty-cell-text: #476ce3;
+  --pivot-total-col-bg: rgba(42, 64, 96, 0.3);
+  --pivot-empty-cell-text: rgba(116, 118, 133, 0.5);
   --pivot-frozen-bg: #132a4a;
 
   --filter-active-bg: rgba(41, 82, 201, 0.2);

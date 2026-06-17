@@ -206,6 +206,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       .filter((d): d is Date => d !== null)
       .sort((a, b) => a.getTime() - b.getTime());
   }, [allValues]);
+  const allValueSet = useMemo(() => new Set(allValues), [allValues]);
 
   const isAllSelected = selectedValues.length === allValues.length;
 
@@ -297,11 +298,11 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       setRangeStart(range[0]);
       setRangeEnd(range[1]);
       const dates = generateDateRange(range[0], range[1]);
-      const validDates = dates.filter((d) => allValues.includes(d));
+      const validDates = dates.filter((d) => allValueSet.has(d));
       onSelectionChange(validDates);
       setIsOpen(false);
     },
-    [sortedDates, allValues, onSelectionChange]
+    [sortedDates, allValues, allValueSet, onSelectionChange]
   );
 
   const handleConfirm = useCallback(() => {
@@ -311,11 +312,11 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       onSelectionChange([formatDate(rangeStart)]);
     } else {
       const dates = generateDateRange(rangeStart, rangeEnd);
-      const validDates = dates.filter((d) => allValues.includes(d));
+      const validDates = dates.filter((d) => allValueSet.has(d));
       onSelectionChange(validDates);
     }
     setIsOpen(false);
-  }, [rangeStart, rangeEnd, allValues, onSelectionChange]);
+  }, [rangeStart, rangeEnd, allValues, allValueSet, onSelectionChange]);
 
   const handleCancel = useCallback(() => {
     setIsOpen(false);
@@ -338,7 +339,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
     if (day === null) return <div key={`empty-${index}`} className="calendar-day empty" />;
     const date = new Date(year, month, day);
     const dateStr = formatDate(date);
-    const isInData = allValues.includes(dateStr);
+    const isInData = allValueSet.has(dateStr);
     const isToday = isSameDay(date, today);
 
     let isStart = false;

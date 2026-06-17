@@ -275,17 +275,11 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
                     if (e.key === 'Enter') handleSave();
                   }}
                 />
-                <button
-                  type="button"
-                  className="btn-quick-save"
-                  onClick={handleSave}
-                >
+                <button type="button" className="btn-quick-save" onClick={handleSave}>
                   <Save size={14} /> 保存
                 </button>
               </div>
-              <div className="config-current-summary">
-                {getConfigSummary(currentConfig)}
-              </div>
+              <div className="config-current-summary">{getConfigSummary(currentConfig)}</div>
             </div>
           )}
 

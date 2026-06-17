@@ -1,4 +1,4 @@
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import type React from 'react';
 
 interface ZenModeButtonProps {
@@ -12,19 +12,21 @@ const ZenModeButton: React.FC<ZenModeButtonProps> = ({
   isActive = false,
   onClick,
 }) => {
+  const label = disabled ? '请先加载数据' : isActive ? '退出沉浸模式' : '进入沉浸模式';
+  const Icon = isActive ? Minimize2 : Maximize2;
+
   return (
     <button
       type="button"
       className={`zen-toggle ${isActive ? 'zen-active' : ''}`}
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? '请先加载数据' : isActive ? '退出沉浸模式 (Esc)' : '进入沉浸模式 (F)'}
+      title={label}
+      aria-label={label}
     >
       <span className="capsule-icon">
-        <Maximize2 size={13} />
+        <Icon size={15} />
       </span>
-      <span>{isActive ? '沉浸中' : '沉浸'}</span>
-      {!isActive && <span className="capsule-shortcut">F</span>}
     </button>
   );
 };

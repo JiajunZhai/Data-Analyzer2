@@ -5,10 +5,11 @@ import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { Link2 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Field, PivotField } from '../types';
+import type { Field, PivotField, ValueFormatConfig } from '../types';
 import { animateCollapse, animateFieldEntry } from '../utils/animations';
 import type { SpatialZoneId } from '../utils/fieldHelpers';
 import { getFieldType, getSpatialSortableId } from '../utils/fieldHelpers';
+import ValueFieldSettings from './ValueFieldSettings';
 
 // 注册 useGSAP 插件
 gsap.registerPlugin(useGSAP);
@@ -27,6 +28,8 @@ interface SpatialFieldZoneProps {
   showColumnTotal?: boolean;
   onToggleColumnTotal?: () => void;
   isDragging?: boolean;
+  headerExtra?: React.ReactNode;
+  onFieldFormatChange?: (fieldName: string, format: ValueFormatConfig) => void;
   onToggle: (field: Field) => void;
 }
 
@@ -37,6 +40,8 @@ interface FieldCapsuleProps {
   disabled: boolean;
   sortable: boolean;
   disabledReason?: string;
+  showSettings?: boolean;
+  onSettingsClick?: (e: React.MouseEvent) => void;
   onToggle?: (field: Field) => void;
 }
 
@@ -47,6 +52,8 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
   disabled,
   sortable,
   disabledReason,
+  showSettings,
+  onSettingsClick,
 }) => {
   const innerRef = useRef<HTMLDivElement>(null);
   const prevActiveRef = useRef(active);
@@ -110,6 +117,17 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
           <span className="spatial-capsule-handle" aria-label="拖拽排序">
             ⋮⋮
           </span>
+        )}
+        {showSettings && active && onSettingsClick && (
+          <button
+            type="button"
+            className="capsule-settings-btn"
+            onClick={onSettingsClick}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="值格式设置"
+          >
+            ⚙
+          </button>
         )}
       </div>
     </div>
@@ -177,8 +195,11 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   showColumnTotal = true,
   onToggleColumnTotal,
   isDragging = false,
+  headerExtra,
+  onFieldFormatChange,
   onToggle,
 }) => {
+  const [settingsFieldName, setSettingsFieldName] = useState<string | null>(null);
   const [isInactiveExpanded, setIsInactiveExpanded] = useState(true);
   const containerRef = useRef<HTMLElement>(null);
   const inactiveContentRef = useRef<HTMLDivElement>(null);
@@ -258,6 +279,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
       <div className="spatial-zone-header">
         <span className="spatial-zone-title">{title}</span>
         <span className="spatial-zone-count">{activeFields.length}</span>
+        {headerExtra}
         {id === 'rows' && onToggleRowTotal && (
           <div className="spatial-zone-total-control">
             <span className="total-control-label">行总计</span>
@@ -346,7 +368,13 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
               >
                 <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
                   {usesPrioritySlots ? (
-                    <div className={id === 'rows' ? 'row-slots-track' : 'priority-slots-track priority-slots-rows'}>
+                    <div
+                      className={
+                        id === 'rows'
+                          ? 'row-slots-track'
+                          : 'priority-slots-track priority-slots-rows'
+                      }
+                    >
                       {slotItems.map((field, index) => (
                         <PrioritySlot
                           key={`${id}-slot-${index}`}
@@ -357,17 +385,30 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                       ))}
                     </div>
                   ) : (
-                    activeItems.map((field) => (
-                      <FieldCapsule
-                        key={field.name}
-                        field={field}
-                        zoneId={id}
-                        active={true}
-                        disabled={false}
-                        sortable={true}
-                        onToggle={onToggle}
-                      />
-                    ))
+                    activeItems.map((field) => {
+                      return (
+                        <FieldCapsule
+                          key={field.name}
+                          field={field}
+                          zoneId={id}
+                          active={true}
+                          disabled={false}
+                          sortable={true}
+                          showSettings={id === 'values' && !!onFieldFormatChange}
+                          onSettingsClick={
+                            id === 'values' && onFieldFormatChange
+                              ? (e) => {
+                                  e.stopPropagation();
+                                  setSettingsFieldName(
+                                    settingsFieldName === field.name ? null : field.name
+                                  );
+                                }
+                              : undefined
+                          }
+                          onToggle={onToggle}
+                        />
+                      );
+                    })
                   )}
                 </SortableContext>
                 {activeItems.length === 0 && (
@@ -416,6 +457,21 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
           </>
         )}
       </div>
+
+      {/* 值格式设置弹窗 */}
+      {settingsFieldName && onFieldFormatChange && (() => {
+        const pivotField = activeFields.find((pf) => pf.field.name === settingsFieldName);
+        if (!pivotField) return null;
+        return (
+          <ValueFieldSettings
+            pivotField={pivotField}
+            onFormatChange={(format) => {
+              onFieldFormatChange(settingsFieldName, format);
+            }}
+            onClose={() => setSettingsFieldName(null)}
+          />
+        );
+      })()}
     </section>
   );
 };

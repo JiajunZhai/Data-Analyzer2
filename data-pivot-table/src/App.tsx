@@ -1,4 +1,4 @@
-import { closestCenter, DndContext, DragOverlay } from '@dnd-kit/core';
+import { DndContext, DragOverlay } from '@dnd-kit/core';
 import {
   BarChart3,
   Calendar,
@@ -106,6 +106,9 @@ function App() {
     moveFieldToIndex,
     activateFieldAtIndex,
     transferField,
+    updateValueFieldFormat,
+    sortConfig,
+    toggleSort,
   } = pivotState;
 
   const {
@@ -146,18 +149,19 @@ function App() {
   });
 
   // 拖拽逻辑
-  const { activeDragField, handleDragStart, handleDragEnd } = useDragAndDrop({
-    fields,
-    measures,
-    dimensions,
-    toggleValueField,
-    toggleRowField,
-    toggleColField,
-    reorderFields,
-    moveFieldToIndex,
-    activateFieldAtIndex,
-    transferField,
-  });
+  const { activeDragField, handleDragStart, handleDragEnd, handleDragCancel, collisionDetection, sensors } =
+    useDragAndDrop({
+      fields,
+      measures,
+      dimensions,
+      toggleValueField,
+      toggleRowField,
+      toggleColField,
+      reorderFields,
+      moveFieldToIndex,
+      activateFieldAtIndex,
+      transferField,
+    });
 
   const isDragging = activeDragField !== null;
   // 应用默认配置
@@ -346,7 +350,8 @@ function App() {
 
   return (
     <DndContext
-      collisionDetection={closestCenter}
+      sensors={sensors}
+      collisionDetection={collisionDetection}
       onDragStart={(e) => {
         handleDragStart(e);
         handleZenDragStart();
@@ -355,7 +360,9 @@ function App() {
         handleDragEnd(e);
         handleZenDragEnd();
       }}
-      onDragCancel={() => {}}
+      onDragCancel={() => {
+        handleDragCancel();
+      }}
     >
       <div
         className={`app ${isZenMode ? 'zen-mode' : ''}`}
@@ -386,7 +393,7 @@ function App() {
               size={18}
               style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }}
             />{' '}
-            数据透视表分析工具
+            Pivot Analysis
           </h1>
           {data.length > 0 && (
             <AdMobFilterBar
@@ -458,30 +465,33 @@ function App() {
                   activeFields={valueFields}
                   orientation="vertical"
                   isDragging={isDragging}
+                  headerExtra={
+                    valueFields.length > 0 &&
+                    (() => {
+                      const regField = measures.find((f) => f.name === '注册用户');
+                      const isDefault =
+                        valueFields.length === 1 && valueFields[0].field.name === '注册用户';
+                      if (isDefault) return null;
+                      return (
+                        <button
+                          type="button"
+                          className="value-reset-btn"
+                          onClick={() => {
+                            if (regField) {
+                              setValueFields([createPivotField(regField)]);
+                            }
+                          }}
+                          title="重置为仅注册用户"
+                        >
+                          <RotateCcw size={11} />
+                          <span>重置</span>
+                        </button>
+                      );
+                    })()
+                  }
+                  onFieldFormatChange={updateValueFieldFormat}
                   onToggle={toggleValueField}
                 />
-                {valueFields.length > 0 &&
-                  (() => {
-                    const regField = measures.find((f) => f.name === '注册用户');
-                    const isDefault =
-                      valueFields.length === 1 && valueFields[0].field.name === '注册用户';
-                    if (isDefault) return null;
-                    return (
-                      <button
-                        type="button"
-                        className="value-reset-btn"
-                        onClick={() => {
-                          if (regField) {
-                            setValueFields([createPivotField(regField)]);
-                          }
-                        }}
-                        title="重置为仅注册用户"
-                      >
-                        <RotateCcw size={12} />
-                        <span>重置</span>
-                      </button>
-                    );
-                  })()}
               </div>
 
               <div className="spatial-rows">
@@ -543,6 +553,8 @@ function App() {
                   emptyMessage={emptyMessage}
                   showRowTotal={showRowTotal}
                   showColumnTotal={showColumnTotal}
+                  sortConfig={sortConfig}
+                  onToggleSort={toggleSort}
                 />
               </div>
             </div>
