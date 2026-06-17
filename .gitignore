@@ -37,5 +37,13 @@ Thumbs.db
 *.tmp
 *.temp
 
+# 根目录误生成文件
+/npm run dev -- --host
+/tailscale serve 5173
+/package-lock.json
+/UI参考.html
+
+# 缓存
+.npm-cache/
 
 # 保留数据文件和启动脚本（不忽略 *.csv, *.sql, *.bat）
