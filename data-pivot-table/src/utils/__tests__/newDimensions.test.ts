@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DataRow, Field, PivotField } from '../../types';
 import { aggregateData, getUniqueValues } from '../aggregator';
+import { preprocessData } from '../dataPreprocessor';
 import { detectFieldTypes } from '../fieldDetector';
 
 const createField = (name: string, type: Field['type']): Field => ({
@@ -14,7 +15,7 @@ const createPivotField = (name: string, type: Field['type']): PivotField => ({
   aggregation: type === 'measure' ? 'sum' : undefined,
 });
 
-describe('新维度字段验证：广告类型、广告变现渠道、生命周期', () => {
+describe('新维度字段验证：广告类型、变现渠道、生命周期', () => {
   // 模拟新 SQL 输出的数据
   const mockData: DataRow[] = [
     {
@@ -22,10 +23,10 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       应用: 'fr006b',
       国家: 'US',
       版本: '1.0',
-      渠道: 'google',
+      买量渠道: 'google',
       注册用户: 500,
       广告类型: 'banner',
-      广告变现渠道: 'admob',
+      变现渠道: 'admob',
       生命周期: 'D0',
       曝光人数: 300,
       曝光次数: 1000,
@@ -37,10 +38,10 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       应用: 'fr006b',
       国家: 'US',
       版本: '1.0',
-      渠道: 'google',
+      买量渠道: 'google',
       注册用户: 400,
       广告类型: 'interstitial',
-      广告变现渠道: 'admob',
+      变现渠道: 'admob',
       生命周期: 'D0',
       曝光人数: 250,
       曝光次数: 600,
@@ -52,10 +53,10 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       应用: 'fr006b',
       国家: 'US',
       版本: '1.0',
-      渠道: 'google',
+      买量渠道: 'google',
       注册用户: 300,
       广告类型: 'banner',
-      广告变现渠道: 'unity',
+      变现渠道: 'unity',
       生命周期: 'D0',
       曝光人数: 180,
       曝光次数: 500,
@@ -67,10 +68,10 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       应用: 'fr006b',
       国家: 'US',
       版本: '1.0',
-      渠道: 'google',
+      买量渠道: 'google',
       注册用户: 450,
       广告类型: 'banner',
-      广告变现渠道: 'admob',
+      变现渠道: 'admob',
       生命周期: 'D1',
       曝光人数: 280,
       曝光次数: 900,
@@ -82,10 +83,10 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       应用: 'fr006b',
       国家: 'DE',
       版本: '1.0',
-      渠道: 'facebook',
+      买量渠道: 'facebook',
       注册用户: 200,
       广告类型: 'rewarded',
-      广告变现渠道: 'applovin',
+      变现渠道: 'applovin',
       生命周期: 'D0',
       曝光人数: 150,
       曝光次数: 400,
@@ -96,23 +97,23 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
 
   describe('字段检测', () => {
     it('广告类型应被识别为维度字段', () => {
-      const headers = ['广告类型', '广告变现渠道', '生命周期', '注册用户', '广告收益'];
+      const headers = ['广告类型', '变现渠道', '生命周期', '注册用户', '广告收益'];
       const fields = detectFieldTypes(headers, mockData);
 
       expect(fields.find((f) => f.name === '广告类型')?.type).toBe('dimension');
       expect(fields.find((f) => f.name === '广告类型')?.dataType).toBe('string');
     });
 
-    it('广告变现渠道应被识别为维度字段', () => {
-      const headers = ['广告类型', '广告变现渠道', '生命周期', '注册用户'];
+    it('变现渠道应被识别为维度字段', () => {
+      const headers = ['广告类型', '变现渠道', '生命周期', '注册用户'];
       const fields = detectFieldTypes(headers, mockData);
 
-      expect(fields.find((f) => f.name === '广告变现渠道')?.type).toBe('dimension');
-      expect(fields.find((f) => f.name === '广告变现渠道')?.dataType).toBe('string');
+      expect(fields.find((f) => f.name === '变现渠道')?.type).toBe('dimension');
+      expect(fields.find((f) => f.name === '变现渠道')?.dataType).toBe('string');
     });
 
     it('生命周期应被识别为维度字段', () => {
-      const headers = ['广告类型', '广告变现渠道', '生命周期', '注册用户'];
+      const headers = ['广告类型', '变现渠道', '生命周期', '注册用户'];
       const fields = detectFieldTypes(headers, mockData);
 
       expect(fields.find((f) => f.name === '生命周期')?.type).toBe('dimension');
@@ -125,7 +126,7 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
         '应用',
         '标准广告场景',
         '广告类型',
-        '广告变现渠道',
+        '变现渠道',
         '生命周期',
         '注册用户',
         '广告收益',
@@ -134,14 +135,7 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
 
       const dimensions = fields.filter((f) => f.type === 'dimension');
       expect(dimensions.map((f) => f.name)).toEqual(
-        expect.arrayContaining([
-          '日期',
-          '应用',
-          '标准广告场景',
-          '广告类型',
-          '广告变现渠道',
-          '生命周期',
-        ])
+        expect.arrayContaining(['日期', '应用', '标准广告场景', '广告类型', '变现渠道', '生命周期'])
       );
 
       const measures = fields.filter((f) => f.type === 'measure');
@@ -175,17 +169,17 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
     });
   });
 
-  describe('广告变现渠道作为列维度', () => {
-    it('应按广告变现渠道正确生成列头', () => {
+  describe('变现渠道作为列维度', () => {
+    it('应按变现渠道正确生成列头', () => {
       const result = aggregateData(
         mockData,
         [createPivotField('广告类型', 'dimension')],
-        [createPivotField('广告变现渠道', 'dimension')],
+        [createPivotField('变现渠道', 'dimension')],
         [createPivotField('广告收益', 'measure')]
       );
 
       // 唯一渠道: admob, applovin, unity
-      expect(result.colFieldNames).toEqual(['广告变现渠道']);
+      expect(result.colFieldNames).toEqual(['变现渠道']);
       expect(result.columnHeaders.sort()).toEqual(['admob', 'applovin', 'unity']);
     });
   });
@@ -225,9 +219,9 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
           应用: 'fr006b',
           国家: 'US',
           版本: '1.0',
-          渠道: 'google',
+          买量渠道: 'google',
           广告类型: 'banner',
-          广告变现渠道: 'admob',
+          变现渠道: 'admob',
           生命周期: 'D0',
           注册用户: 500,
           广告收益: 12.5,
@@ -240,9 +234,9 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
           应用: 'fr006b',
           国家: 'US',
           版本: '1.0',
-          渠道: 'google',
+          买量渠道: 'google',
           广告类型: 'interstitial',
-          广告变现渠道: 'admob',
+          变现渠道: 'admob',
           生命周期: 'D0',
           注册用户: 500,
           广告收益: 25.0,
@@ -277,9 +271,9 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
           应用: 'fr006b',
           国家: 'US',
           版本: '1.0',
-          渠道: 'google',
+          买量渠道: 'google',
           广告类型: 'banner',
-          广告变现渠道: 'admob',
+          变现渠道: 'admob',
           生命周期: 'D0',
           注册用户: 500,
           广告收益: 12.5,
@@ -292,9 +286,9 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
           应用: 'fr006b',
           国家: 'US',
           版本: '1.0',
-          渠道: 'google',
+          买量渠道: 'google',
           广告类型: 'banner',
-          广告变现渠道: 'admob',
+          变现渠道: 'admob',
           生命周期: 'D1',
           注册用户: 450,
           广告收益: 10.0,
@@ -330,16 +324,16 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       expect(result.columnTotals[2]).toBe(300);
     });
 
-    it('跨广告变现渠道聚合时注册用户应取 max 而非 sum', () => {
+    it('跨变现渠道聚合时注册用户应取 max 而非 sum', () => {
       const data: DataRow[] = [
         {
           日期: '2026-06-10',
           应用: 'fr006b',
           国家: 'US',
           版本: '1.0',
-          渠道: 'google',
+          买量渠道: 'google',
           广告类型: 'banner',
-          广告变现渠道: 'admob',
+          变现渠道: 'admob',
           生命周期: 'D0',
           注册用户: 500,
           广告收益: 12.5,
@@ -352,9 +346,9 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
           应用: 'fr006b',
           国家: 'US',
           版本: '1.0',
-          渠道: 'google',
+          买量渠道: 'google',
           广告类型: 'banner',
-          广告变现渠道: 'unity',
+          变现渠道: 'unity',
           生命周期: 'D0',
           注册用户: 500,
           广告收益: 5.0,
@@ -367,7 +361,7 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       const result = aggregateData(
         data,
         [],
-        [createPivotField('广告变现渠道', 'dimension')],
+        [createPivotField('变现渠道', 'dimension')],
         [createPivotField('注册用户', 'measure'), createPivotField('广告收益', 'measure')]
       );
 
@@ -394,13 +388,13 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       expect(result.data[d1Row][0]).toBeCloseTo(10.0);
     });
 
-    it('广告变现渠道筛选应正确过滤数据', () => {
+    it('变现渠道筛选应正确过滤数据', () => {
       const result = aggregateData(
         mockData,
         [createPivotField('广告类型', 'dimension')],
         [],
         [createPivotField('广告收益', 'measure')],
-        [{ fieldName: '广告变现渠道', selectedValues: ['admob'] }]
+        [{ fieldName: '变现渠道', selectedValues: ['admob'] }]
       );
 
       const bannerRow = result.rowHeaders.findIndex((h) => h[0] === 'banner');
@@ -436,12 +430,8 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       ]);
     });
 
-    it('getUniqueValues 应返回广告变现渠道的唯一值', () => {
-      expect(getUniqueValues(mockData, '广告变现渠道').sort()).toEqual([
-        'admob',
-        'applovin',
-        'unity',
-      ]);
+    it('getUniqueValues 应返回变现渠道的唯一值', () => {
+      expect(getUniqueValues(mockData, '变现渠道').sort()).toEqual(['admob', 'applovin', 'unity']);
     });
 
     it('getUniqueValues 应返回生命周期的唯一值', () => {
@@ -524,6 +514,215 @@ describe('新维度字段验证：广告类型、广告变现渠道、生命周�
       // 注册用户半可加：google 渠道 max(500,400,300)=500, facebook 渠道 200 → 500+200=700
       // ARPU = 60.5 / 700
       expect(result.data[d0Row][0]).toBeCloseTo(60.5 / 700, 3);
+    });
+  });
+
+  describe('行为维度 ALL 行展示过滤与计算口径', () => {
+    // 模拟 SQL GROUPING SETS 输出：含 ALL 行的数据
+    const dataWithAllRows: DataRow[] = [
+      // ALL 汇总行（广告类型=ALL）
+      {
+        日期: '2026-06-10',
+        应用: 'fr006b',
+        国家: 'US',
+        版本: '1.0',
+        买量渠道: 'google',
+        广告类型: 'ALL',
+        注册用户: 500,
+        活跃用户: 800,
+        曝光人数: 300,
+        曝光次数: 1600,
+        广告收益: 37.5,
+        点击次数: 130,
+      },
+      // 拆分行 1：banner
+      {
+        日期: '2026-06-10',
+        应用: 'fr006b',
+        国家: 'US',
+        版本: '1.0',
+        买量渠道: 'google',
+        广告类型: 'banner',
+        注册用户: null as unknown as number,
+        活跃用户: null as unknown as number,
+        曝光人数: 150,
+        曝光次数: 1000,
+        广告收益: 12.5,
+        点击次数: 80,
+      },
+      // 拆分行 2：interstitial
+      {
+        日期: '2026-06-10',
+        应用: 'fr006b',
+        国家: 'US',
+        版本: '1.0',
+        买量渠道: 'google',
+        广告类型: 'interstitial',
+        注册用户: null as unknown as number,
+        活跃用户: null as unknown as number,
+        曝光人数: 200,
+        曝光次数: 600,
+        广告收益: 25.0,
+        点击次数: 50,
+      },
+    ];
+
+    it('广告类型作为行维度时 UI 仅展示拆分项', () => {
+      const result = aggregateData(
+        dataWithAllRows,
+        [createPivotField('广告类型', 'dimension')],
+        [],
+        [createPivotField('曝光人数', 'measure'), createPivotField('广告收益', 'measure')]
+      );
+
+      // UI 行头应该只有 banner 和 interstitial，没有 ALL
+      const adTypes = result.rowHeaders.map((h) => h[0]);
+      expect(adTypes).toContain('banner');
+      expect(adTypes).toContain('interstitial');
+      expect(adTypes).not.toContain('ALL');
+
+      // banner: 曝光人数=150, 广告收益=12.5
+      const bannerRow = adTypes.indexOf('banner');
+      expect(result.data[bannerRow][0]).toBe(150);
+      expect(result.data[bannerRow][1]).toBeCloseTo(12.5);
+
+      // interstitial: 曝光人数=200, 广告收益=25.0
+      const interstitialRow = adTypes.indexOf('interstitial');
+      expect(result.data[interstitialRow][0]).toBe(200);
+      expect(result.data[interstitialRow][1]).toBeCloseTo(25.0);
+    });
+
+    it('广告类型不作为维度时应使用 ALL 行口径', () => {
+      const result = aggregateData(
+        dataWithAllRows,
+        [createPivotField('日期', 'dimension')],
+        [],
+        [createPivotField('曝光人数', 'measure'), createPivotField('广告收益', 'measure')]
+      );
+
+      // 只有一个日期行，度量值来自 ALL 行口径
+      expect(result.rowHeaders).toEqual([['2026-06-10']]);
+      // 曝光人数：ALL 行的去重值 300（不是 150+200=350）
+      expect(result.data[0][0]).toBe(300);
+      // 广告收益：ALL 行的值 37.5
+      expect(result.data[0][1]).toBeCloseTo(37.5);
+    });
+
+    it('广告类型不作为维度时，列总计应使用 ALL 行去重值', () => {
+      const result = aggregateData(
+        dataWithAllRows,
+        [],
+        [],
+        [createPivotField('曝光人数', 'measure'), createPivotField('注册用户', 'measure')]
+      );
+
+      // 总计：曝光人数=300（ALL 行去重值），注册用户=500（ALL 行值）
+      expect(result.grandTotal).toBe(300);
+    });
+  });
+
+  describe('NULL 隔离保护：属性指标读取 ALL 大盘口径', () => {
+    it('detail 行属性指标为 NULL 时，聚合总计应使用 ALL 行的值', () => {
+      const data: DataRow[] = [
+        // ALL 行：注册用户=350
+        {
+          日期: '2026-06-10',
+          应用: 'fr006b',
+          国家: 'US',
+          广告类型: 'ALL',
+          注册用户: 350,
+          活跃用户: 800,
+          曝光人数: 180,
+          广告收益: 50,
+        },
+        // 拆分行 1：注册用户=NULL
+        {
+          日期: '2026-06-10',
+          应用: 'fr006b',
+          国家: 'US',
+          广告类型: 'banner',
+          注册用户: null as unknown as number,
+          活跃用户: null as unknown as number,
+          曝光人数: 100,
+          广告收益: 20,
+        },
+        // 拆分行 2：注册用户=NULL
+        {
+          日期: '2026-06-10',
+          应用: 'fr006b',
+          国家: 'US',
+          广告类型: 'interstitial',
+          注册用户: null as unknown as number,
+          活跃用户: null as unknown as number,
+          曝光人数: 150,
+          广告收益: 30,
+        },
+      ];
+
+      // 按广告类型展开 → 属性指标应通过剪枝读取 ALL 大盘值
+      const resultExpanded = aggregateData(
+        data,
+        [createPivotField('广告类型', 'dimension')],
+        [],
+        [createPivotField('注册用户', 'measure'), createPivotField('曝光人数', 'measure')]
+      );
+
+      const bannerRow = resultExpanded.rowHeaders.findIndex((h) => h[0] === 'banner');
+      const interstitialRow = resultExpanded.rowHeaders.findIndex((h) => h[0] === 'interstitial');
+
+      // detail 行注册用户为 NULL → 使用 ALL 行大盘值填充
+      expect(resultExpanded.data[bannerRow][0]).toBe(350);
+      expect(resultExpanded.data[interstitialRow][0]).toBe(350);
+
+      // detail 行曝光人数正常显示
+      expect(resultExpanded.data[bannerRow][1]).toBe(100);
+      expect(resultExpanded.data[interstitialRow][1]).toBe(150);
+
+      // 不按广告类型展开 → 使用 ALL 行
+      const resultCollapsed = aggregateData(
+        data,
+        [createPivotField('日期', 'dimension')],
+        [],
+        [createPivotField('注册用户', 'measure'), createPivotField('曝光人数', 'measure')]
+      );
+
+      // 注册用户=350（ALL 行值），曝光人数=180（ALL 行去重值）
+      expect(resultCollapsed.data[0][0]).toBe(350);
+      expect(resultCollapsed.data[0][1]).toBe(180);
+    });
+  });
+
+  describe('数据预处理口径', () => {
+    it('注册用户回填应使用映射后的国家键，避免大小写或国家名映射导致查找失败', () => {
+      const data: DataRow[] = [
+        {
+          日期: '2026-06-10',
+          应用: 'fr006b',
+          国家: 'br',
+          广告类型: 'ALL',
+          注册用户: 123,
+          曝光人数: 50,
+          曝光次数: 100,
+          广告收益: 10,
+        },
+        {
+          日期: '2026-06-10',
+          应用: 'fr006b',
+          国家: 'BR',
+          广告类型: 'banner',
+          注册用户: null as unknown as number,
+          曝光人数: 5,
+          曝光次数: 20,
+          广告收益: 2,
+        },
+      ];
+
+      const result = preprocessData(data);
+
+      expect(result[0].国家).toBe('巴西');
+      expect(result[1].国家).toBe('巴西');
+      expect(result[1].注册用户).toBe(123);
+      expect(result[1].IPU).toBeCloseTo(20 / 123, 5);
     });
   });
 });

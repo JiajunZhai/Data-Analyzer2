@@ -13,24 +13,78 @@ import { BASE_METRICS, calculateMetricFromAggregates, isCalculatedMetric } from 
 
 const KEY_SEPARATOR = '\u001f';
 const TOTAL_LABEL = '总计';
-const SCENARIO_FIELDS = ['标准广告场景', '聚合广告场景'];
+const ATTRIBUTE_DIMENSIONS = [
+  '安装日期',
+  '日期',
+  '国家',
+  '实际国家',
+  '应用',
+  'app_code',
+  '版本',
+  '买量渠道',
+  '渠道',
+  '生命周期',
+];
+const BEHAVIOR_DIMENSIONS = [
+  '标准广告场景',
+  'standard_scene',
+  '广告场景',
+  '聚合广告场景',
+  '广告类型',
+  '变现渠道',
+  '广告变现渠道',
+];
 const ALL_SCENARIO_VALUE = 'ALL';
 const REGISTERED_USERS_METRIC = '注册用户';
+const ACTIVE_USERS_METRIC = '活跃用户';
 const IMPRESSION_USERS_METRIC = '曝光人数';
-const SEMI_ADDITIVE_SUM_METRICS = new Set([REGISTERED_USERS_METRIC, IMPRESSION_USERS_METRIC]);
+const SEMI_ADDITIVE_SUM_METRICS = new Set([
+  REGISTERED_USERS_METRIC,
+  ACTIVE_USERS_METRIC,
+  IMPRESSION_USERS_METRIC,
+]);
+// 属性类半可加指标：计算时需剪枝行为维度过滤，显示大盘分母值
+const ATTRIBUTE_SEMI_ADDITIVE_METRICS = new Set([REGISTERED_USERS_METRIC, ACTIVE_USERS_METRIC]);
 const emptyMetricSeriesCache = new Map<string, MetricSeriesMap>();
 const SEMI_ADDITIVE_KEY_FIELD_GROUPS = [
   ['日期'],
-  ['应用'],
+  ['应用', 'app_code'],
   ['国家', '实际国家'],
   ['版本'],
-  ['渠道', '买量渠道'],
+  ['买量渠道', '渠道'],
 ];
 const collator = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
+const BEHAVIOR_DIMENSION_SET = new Set(BEHAVIOR_DIMENSIONS);
+const ATTRIBUTE_DIMENSION_SET = new Set(ATTRIBUTE_DIMENSIONS);
+
+function getDimensionTypeForFieldName(fieldName: string): 'Attribute' | 'Behavior' {
+  if (BEHAVIOR_DIMENSION_SET.has(fieldName)) return 'Behavior';
+  if (ATTRIBUTE_DIMENSION_SET.has(fieldName)) return 'Attribute';
+  return 'Attribute';
+}
+
+function isBehaviorDimension(fieldName: string): boolean {
+  return getDimensionTypeForFieldName(fieldName) === 'Behavior';
+}
+
+function isBehaviorPivotField(field: PivotField): boolean {
+  const dimensionType = field.field.dimensionType ?? field.field.dimensionCategory;
+  if (dimensionType) return dimensionType === 'Behavior';
+  return isBehaviorDimension(field.field.name);
+}
+
+function pruneBehaviorDimensions(fields: PivotField[]): PivotField[] {
+  return fields.filter((field) => !isBehaviorPivotField(field));
+}
+
+function isAllValue(value: string): boolean {
+  return value.trim().toUpperCase() === ALL_SCENARIO_VALUE;
+}
 
 interface MetricPoint {
   value: number;
   semiAdditiveKey: string;
+  isAllBehaviorRow: boolean;
 }
 
 type MetricSeriesMap = Record<string, MetricPoint[]>;
@@ -62,93 +116,152 @@ export function aggregateData(
   filterConfigs: FilterConfig[] = [],
   valueAxis: ValueAxis = 'columns'
 ): PivotResult {
-  let filteredData = data;
-
-  if (filterConfigs.length > 0) {
-    // 预构建 Set 以加速查找，单次遍历完成所有过滤
-    const filterSets = filterConfigs.map((filter) => ({
-      fieldName: filter.fieldName,
-      valueSet: new Set(filter.selectedValues),
-    }));
-
-    filteredData = data.filter((row) =>
-      filterSets.every((filter) => filter.valueSet.has(getDimensionValue(row, filter.fieldName)))
-    );
-  }
-
-  // 在过滤 ALL 行之前，提取 ALL 行的半可加指标值（曝光人数、注册用户）
-  // 用于在计算总计/小计时注入，避免数据翻倍
-  const metricNamesForLookup = getMetricNames(valueFields);
-  const allRowSemiAdditiveLookup = new Map<string, Map<string, number>>();
-  for (const row of filteredData) {
-    if (!isAllScenarioRow(row)) continue;
-    const key = getSemiAdditiveKey(row);
-    if (!allRowSemiAdditiveLookup.has(key)) {
-      allRowSemiAdditiveLookup.set(key, new Map());
-    }
-    const values = allRowSemiAdditiveLookup.get(key)!;
-    for (const metric of metricNamesForLookup) {
-      if (SEMI_ADDITIVE_SUM_METRICS.has(metric)) {
-        const value = Number(row[metric]);
-        if (!Number.isNaN(value)) {
-          values.set(metric, value);
-        }
-      }
-    }
-  }
-
-  filteredData = normalizeScenarioRows(filteredData, rowFields, colFields, filterConfigs);
-
   const metricNames = getMetricNames(valueFields);
 
-  const constants: Record<string, number> = {};
-  if (filteredData.length > 0) {
-    // 动态计算筛选后的总广告收益，确保收益占比逻辑正确
-    const filteredTotalRevenue = filteredData.reduce(
-      (sum, row) => sum + (Number(row.广告收益) || 0),
-      0
-    );
-    constants.总广告收益 = filteredTotalRevenue;
+  // 预构建过滤 Set（单次构建，多次使用）
+  const filterSets =
+    filterConfigs.length > 0
+      ? filterConfigs.map((filter) => ({
+          fieldName: filter.fieldName,
+          valueSet: new Set(filter.selectedValues),
+        }))
+      : [];
+
+  // 仅属性过滤集：排除行为维度过滤（用于属性类度量）
+  const attrFilterSets =
+    filterConfigs.length > 0
+      ? filterConfigs
+          .filter((filter) => !isBehaviorDimension(filter.fieldName))
+          .map((filter) => ({
+            fieldName: filter.fieldName,
+            valueSet: new Set(filter.selectedValues),
+          }))
+      : [];
+
+  const attrRowFields = pruneBehaviorDimensions(rowFields);
+  const attrColFields = pruneBehaviorDimensions(colFields);
+  const hasBehaviorDimension = [...rowFields, ...colFields].some((field) =>
+    isBehaviorPivotField(field)
+  );
+  const hasBehaviorFilter = filterConfigs.some((filter) => isBehaviorDimension(filter.fieldName));
+  const hasActiveBehaviorConditions = hasBehaviorDimension || hasBehaviorFilter;
+
+  // 检查数据中是否存在 ALL 行（始终需要检测，不论行为维度是否作为行/列）
+  let hasAllRows = false;
+  for (let i = 0; i < data.length; i++) {
+    if (isAllBehaviorRow(data[i])) {
+      hasAllRows = true;
+      break;
+    }
   }
+  const preferAllBehaviorRows = hasAllRows && !hasActiveBehaviorConditions;
 
   const rowKeyParts = new Map<string, string[]>();
   const colKeyParts = new Map<string, string[]>();
+  const attrRowKeyByRowKey = new Map<string, string>();
+  const attrColKeyByColKey = new Map<string, string>();
   const rowKeys = new Set<string>();
   const colKeys = new Set<string>();
   const baseDataMap = new Map<string, Map<string, MetricSeriesMap>>();
+  const attrBaseDataMap = new Map<string, Map<string, MetricSeriesMap>>();
 
-  filteredData.forEach((row) => {
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const rowIsAll = isAllBehaviorRow(row);
+
+    // 属性过滤用于属性类度量。行为过滤会在属性 key 中被剪枝。
+    if (attrFilterSets.length > 0) {
+      let pass = true;
+      for (let j = 0; j < attrFilterSets.length; j++) {
+        if (!attrFilterSets[j].valueSet.has(getDimensionValue(row, attrFilterSets[j].fieldName))) {
+          pass = false;
+          break;
+        }
+      }
+      if (!pass) continue;
+    }
+
+    const attrRowInfo = getKeyInfo(row, attrRowFields);
+    const attrColInfo = getKeyInfo(row, attrColFields);
+    const semiAdditiveKey = getSemiAdditiveKey(row);
+
+    const attrCellData = ensureCellData(
+      attrBaseDataMap,
+      attrRowInfo.key,
+      attrColInfo.key,
+      metricNames
+    );
+    appendMetricPoints(attrCellData, row, metricNames, semiAdditiveKey, rowIsAll);
+
+    let passesAllFilters = true;
+    if (filterSets.length > 0) {
+      for (let j = 0; j < filterSets.length; j++) {
+        if (!filterSets[j].valueSet.has(getDimensionValue(row, filterSets[j].fieldName))) {
+          passesAllFilters = false;
+          break;
+        }
+      }
+    }
+    if (!passesAllFilters) continue;
+
     const rowInfo = getKeyInfo(row, rowFields);
     const colInfo = getKeyInfo(row, colFields);
-    const semiAdditiveKey = getSemiAdditiveKey(row);
 
     rowKeys.add(rowInfo.key);
     colKeys.add(colInfo.key);
     rowKeyParts.set(rowInfo.key, rowInfo.parts);
     colKeyParts.set(colInfo.key, colInfo.parts);
+    attrRowKeyByRowKey.set(rowInfo.key, attrRowInfo.key);
+    attrColKeyByColKey.set(colInfo.key, attrColInfo.key);
 
     const cellData = ensureCellData(baseDataMap, rowInfo.key, colInfo.key, metricNames);
-    metricNames.forEach((metric) => {
-      const value = Number(row[metric]);
-      if (!Number.isNaN(value)) {
-        cellData[metric].push({ value, semiAdditiveKey });
-      }
-    });
-  });
+    appendMetricPoints(cellData, row, metricNames, semiAdditiveKey, rowIsAll);
+  }
 
   const isDateRow = rowFields.length > 0 && rowFields[0].field.name === '日期';
-  const sortedRowKeys = sortKeys(Array.from(rowKeys), isDateRow);
-  const sortedColKeys = sortKeys(Array.from(colKeys));
+  const sortedRowKeys = filterDisplayKeys(
+    sortKeys(Array.from(rowKeys), isDateRow),
+    rowFields,
+    rowKeyParts
+  );
+  const sortedColKeys = filterDisplayKeys(sortKeys(Array.from(colKeys)), colFields, colKeyParts);
 
   const rowTotalsByKey = buildRowTotals(sortedRowKeys, sortedColKeys, baseDataMap, metricNames);
+  const attrRowTotalsByKey = buildRowTotals(
+    sortedRowKeys,
+    sortedColKeys,
+    attrBaseDataMap,
+    metricNames,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey
+  );
   const columnTotalsByKey = buildColumnTotals(
     sortedRowKeys,
     sortedColKeys,
     baseDataMap,
-    metricNames,
-    allRowSemiAdditiveLookup
+    metricNames
   );
-  const grandTotalData = mergeMany(Array.from(columnTotalsByKey.values()), metricNames);
+  const attrColumnTotalsByKey = buildColumnTotals(
+    sortedRowKeys,
+    sortedColKeys,
+    attrBaseDataMap,
+    metricNames,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey
+  );
+  const behaviorGrandTotalData = mergeMany(Array.from(columnTotalsByKey.values()), metricNames);
+  const attrGrandTotalData = mergeMany(Array.from(attrColumnTotalsByKey.values()), metricNames);
+  const grandTotalData = mergeAggMetricMaps(
+    behaviorGrandTotalData,
+    attrGrandTotalData,
+    metricNames,
+    preferAllBehaviorRows
+  );
+  const constants: Record<string, number> = {
+    总广告收益: sumMetricPoints(
+      selectMetricPoints(behaviorGrandTotalData.广告收益 || [], preferAllBehaviorRows)
+    ),
+  };
 
   if (valueAxis === 'rows') {
     return buildRowsValueResult({
@@ -156,9 +269,14 @@ export function aggregateData(
       sortedColKeys,
       rowKeyParts,
       colKeyParts,
+      attrRowKeyByRowKey,
+      attrColKeyByColKey,
       baseDataMap,
+      attrBaseDataMap,
       rowTotalsByKey,
+      attrRowTotalsByKey,
       columnTotalsByKey,
+      attrColumnTotalsByKey,
       grandTotalData,
       metricNames,
       rowFields,
@@ -166,7 +284,7 @@ export function aggregateData(
       valueFields,
       valueAxis,
       constants,
-      allRowSemiAdditiveLookup,
+      preferAllBehaviorRows,
     });
   }
 
@@ -175,9 +293,14 @@ export function aggregateData(
     sortedColKeys,
     rowKeyParts,
     colKeyParts,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey,
     baseDataMap,
+    attrBaseDataMap,
     rowTotalsByKey,
+    attrRowTotalsByKey,
     columnTotalsByKey,
+    attrColumnTotalsByKey,
     grandTotalData,
     metricNames,
     rowFields,
@@ -185,44 +308,12 @@ export function aggregateData(
     valueFields,
     valueAxis,
     constants,
-    allRowSemiAdditiveLookup,
+    preferAllBehaviorRows,
   });
 }
 
-function normalizeScenarioRows(
-  data: DataRow[],
-  rowFields: PivotField[],
-  colFields: PivotField[],
-  filterConfigs: FilterConfig[]
-): DataRow[] {
-  if (data.length === 0 || !data.some((row) => isAllScenarioRow(row))) {
-    return data;
-  }
-
-  const scenarioFieldNames = new Set(SCENARIO_FIELDS);
-  const hasScenarioDimension = [...rowFields, ...colFields].some((field) =>
-    scenarioFieldNames.has(field.field.name)
-  );
-  const hasScenarioFilter = filterConfigs.some((filter) =>
-    scenarioFieldNames.has(filter.fieldName)
-  );
-
-  if (hasScenarioDimension) {
-    // 场景作为维度 → 过滤 ALL 行，仅展示子场景
-    return data.filter((row) => !isAllScenarioRow(row));
-  }
-
-  if (hasScenarioFilter) {
-    // 场景有筛选但不作为维度 → 过滤 ALL 行，避免与筛选的子场景求和翻倍
-    return data.filter((row) => !isAllScenarioRow(row));
-  }
-
-  // 场景既不是维度也没有筛选 → 仅保留 ALL 行
-  return data.filter((row) => isAllScenarioRow(row));
-}
-
-function isAllScenarioRow(row: DataRow): boolean {
-  return SCENARIO_FIELDS.some(
+function isAllBehaviorRow(row: DataRow): boolean {
+  return BEHAVIOR_DIMENSIONS.some(
     (field) =>
       String(row[field] ?? '')
         .trim()
@@ -236,9 +327,14 @@ interface BuildResultOptions {
   sortedColKeys: string[];
   rowKeyParts: Map<string, string[]>;
   colKeyParts: Map<string, string[]>;
+  attrRowKeyByRowKey: Map<string, string>;
+  attrColKeyByColKey: Map<string, string>;
   baseDataMap: Map<string, Map<string, MetricSeriesMap>>;
+  attrBaseDataMap: Map<string, Map<string, MetricSeriesMap>>;
   rowTotalsByKey: Map<string, MetricSeriesMap>;
+  attrRowTotalsByKey: Map<string, MetricSeriesMap>;
   columnTotalsByKey: Map<string, MetricSeriesMap>;
+  attrColumnTotalsByKey: Map<string, MetricSeriesMap>;
   grandTotalData: MetricSeriesMap;
   metricNames: string[];
   rowFields: PivotField[];
@@ -246,7 +342,7 @@ interface BuildResultOptions {
   valueFields: PivotField[];
   valueAxis: ValueAxis;
   constants: Record<string, number>;
-  allRowSemiAdditiveLookup: Map<string, Map<string, number>>;
+  preferAllBehaviorRows: boolean;
 }
 
 function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
@@ -255,9 +351,14 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     sortedColKeys,
     rowKeyParts,
     colKeyParts,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey,
     baseDataMap,
+    attrBaseDataMap,
     rowTotalsByKey,
+    attrRowTotalsByKey,
     columnTotalsByKey,
+    attrColumnTotalsByKey,
     grandTotalData,
     metricNames,
     colFields,
@@ -265,7 +366,7 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     valueFields,
     valueAxis,
     constants,
-    allRowSemiAdditiveLookup,
+    preferAllBehaviorRows,
   } = options;
 
   const displayColumns = buildDisplayColumns(
@@ -281,18 +382,36 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
   const columnLevels = generateColumnLevels(columnHeaders, columnDepth);
 
   const data = sortedRowKeys.map((rowKey) =>
-    displayColumns.map((column) =>
-      getMetricValue(
-        column.valueField,
-        getCellData(baseDataMap, rowKey, column.sourceColumnKey, metricNames),
-        constants
-      )
-    )
+    displayColumns.map((column) => {
+      const behaviorCellData = getCellData(
+        baseDataMap,
+        rowKey,
+        column.sourceColumnKey,
+        metricNames
+      );
+      const attrCellData = getMappedCellData(
+        attrBaseDataMap,
+        rowKey,
+        column.sourceColumnKey,
+        metricNames,
+        attrRowKeyByRowKey,
+        attrColKeyByColKey
+      );
+      const merged = mergeAggMetricMaps(
+        behaviorCellData,
+        attrCellData,
+        metricNames,
+        preferAllBehaviorRows
+      );
+      return getMetricValue(column.valueField, merged, constants);
+    })
   );
 
   const rowTotalValues = sortedRowKeys.map((rowKey) => {
-    const totalData = rowTotalsByKey.get(rowKey) || createMetricSeries(metricNames);
-    return valueFields.map((valueField) => getMetricValue(valueField, totalData, constants));
+    const behaviorTotal = rowTotalsByKey.get(rowKey) || createMetricSeries(metricNames);
+    const attrTotal = attrRowTotalsByKey.get(rowKey) || createMetricSeries(metricNames);
+    const merged = mergeAggMetricMaps(behaviorTotal, attrTotal, metricNames, preferAllBehaviorRows);
+    return valueFields.map((valueField) => getMetricValue(valueField, merged, constants));
   });
 
   const totalColumnHeaders = valueFieldNames.length > 1 ? valueFieldNames : ['行总计'];
@@ -300,13 +419,19 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
   const totalRows: PivotTotalRow[] = [
     {
       label: '列总计',
-      values: displayColumns.map((column) =>
-        getMetricValue(
-          column.valueField,
-          columnTotalsByKey.get(column.sourceColumnKey) || createMetricSeries(metricNames),
-          constants
-        )
-      ),
+      values: displayColumns.map((column) => {
+        const behaviorColTotal =
+          columnTotalsByKey.get(column.sourceColumnKey) || createMetricSeries(metricNames);
+        const attrColTotal =
+          attrColumnTotalsByKey.get(column.sourceColumnKey) || createMetricSeries(metricNames);
+        const merged = mergeAggMetricMaps(
+          behaviorColTotal,
+          attrColTotal,
+          metricNames,
+          preferAllBehaviorRows
+        );
+        return getMetricValue(column.valueField, merged, constants);
+      }),
       valueFieldNames: displayColumns.map((column) => column.valueField.field.name),
       totalValues: valueFields.map((valueField) =>
         getMetricValue(valueField, grandTotalData, constants)
@@ -319,8 +444,12 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     sortedRowKeys,
     sortedColKeys,
     rowKeyParts,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey,
     baseDataMap,
+    attrBaseDataMap,
     rowTotalsByKey,
+    attrRowTotalsByKey,
     metricNames,
     rowFields,
     valueFields,
@@ -328,7 +457,7 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     data,
     rowTotalValues,
     constants,
-    allRowSemiAdditiveLookup,
+    preferAllBehaviorRows,
   });
 
   return {
@@ -351,7 +480,7 @@ function buildColumnsValueResult(options: BuildResultOptions): PivotResult {
     totalColumnValueFieldNames,
     totalRows,
     valueFormats: Object.fromEntries(
-      valueFields.filter((vf) => vf.format).map((vf) => [vf.field.name, vf.format!])
+      valueFields.flatMap((vf) => (vf.format ? [[vf.field.name, vf.format]] : []))
     ),
   };
 }
@@ -360,8 +489,12 @@ interface BuildRowTreeOptions {
   sortedRowKeys: string[];
   sortedColKeys: string[];
   rowKeyParts: Map<string, string[]>;
+  attrRowKeyByRowKey: Map<string, string>;
+  attrColKeyByColKey: Map<string, string>;
   baseDataMap: Map<string, Map<string, MetricSeriesMap>>;
+  attrBaseDataMap: Map<string, Map<string, MetricSeriesMap>>;
   rowTotalsByKey: Map<string, MetricSeriesMap>;
+  attrRowTotalsByKey: Map<string, MetricSeriesMap>;
   metricNames: string[];
   rowFields: PivotField[];
   valueFields: PivotField[];
@@ -369,7 +502,7 @@ interface BuildRowTreeOptions {
   data: number[][];
   rowTotalValues: number[][];
   constants: Record<string, number>;
-  allRowSemiAdditiveLookup: Map<string, Map<string, number>>;
+  preferAllBehaviorRows: boolean;
 }
 
 function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
@@ -432,42 +565,72 @@ function buildPivotRowTree(options: BuildRowTreeOptions): PivotTreeNode[] {
 }
 
 function getDisplayValuesForRows(rowKeys: string[], options: BuildRowTreeOptions): number[] {
-  const { displayColumns, baseDataMap, metricNames, constants, allRowSemiAdditiveLookup } = options;
+  const {
+    displayColumns,
+    baseDataMap,
+    attrBaseDataMap,
+    metricNames,
+    constants,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey,
+    preferAllBehaviorRows,
+  } = options;
 
   return displayColumns.map((column) => {
-    const totalData = createMetricSeries(metricNames);
+    const behaviorTotal = createMetricSeries(metricNames);
+    const attrTotal = createMetricSeries(metricNames);
+    const seenAttrCells = new Set<string>();
 
     rowKeys.forEach((rowKey) => {
       mergeInto(
-        totalData,
+        behaviorTotal,
         getCellData(baseDataMap, rowKey, column.sourceColumnKey, metricNames),
         metricNames
       );
+      mergeMappedCellInto(
+        attrTotal,
+        attrBaseDataMap,
+        rowKey,
+        column.sourceColumnKey,
+        metricNames,
+        attrRowKeyByRowKey,
+        attrColKeyByColKey,
+        seenAttrCells
+      );
     });
 
-    // 注入 ALL 行的半可加指标值
-    injectAllRowSemiAdditiveValues(totalData, allRowSemiAdditiveLookup, metricNames);
-
-    return getMetricValue(column.valueField, totalData, constants);
+    const merged = mergeAggMetricMaps(behaviorTotal, attrTotal, metricNames, preferAllBehaviorRows);
+    return getMetricValue(column.valueField, merged, constants);
   });
 }
 
 function getRowTotalValuesForRows(rowKeys: string[], options: BuildRowTreeOptions): number[] {
-  const { rowTotalsByKey, metricNames, valueFields, constants, allRowSemiAdditiveLookup } = options;
-  const totalData = createMetricSeries(metricNames);
+  const {
+    rowTotalsByKey,
+    attrRowTotalsByKey,
+    metricNames,
+    valueFields,
+    constants,
+    preferAllBehaviorRows,
+  } = options;
+  const behaviorTotal = createMetricSeries(metricNames);
+  const attrTotal = createMetricSeries(metricNames);
 
   rowKeys.forEach((rowKey) => {
     mergeInto(
-      totalData,
+      behaviorTotal,
       rowTotalsByKey.get(rowKey) || createMetricSeries(metricNames),
+      metricNames
+    );
+    mergeInto(
+      attrTotal,
+      attrRowTotalsByKey.get(rowKey) || createMetricSeries(metricNames),
       metricNames
     );
   });
 
-  // 注入 ALL 行的半可加指标值
-  injectAllRowSemiAdditiveValues(totalData, allRowSemiAdditiveLookup, metricNames);
-
-  return valueFields.map((valueField) => getMetricValue(valueField, totalData, constants));
+  const merged = mergeAggMetricMaps(behaviorTotal, attrTotal, metricNames, preferAllBehaviorRows);
+  return valueFields.map((valueField) => getMetricValue(valueField, merged, constants));
 }
 
 function buildRowsValueResult(options: BuildResultOptions): PivotResult {
@@ -476,8 +639,13 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     sortedColKeys,
     rowKeyParts,
     baseDataMap,
+    attrBaseDataMap,
+    attrRowKeyByRowKey,
+    attrColKeyByColKey,
     rowTotalsByKey,
+    attrRowTotalsByKey,
     columnTotalsByKey,
+    attrColumnTotalsByKey,
     grandTotalData,
     metricNames,
     rowFields,
@@ -485,6 +653,7 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     valueFields,
     valueAxis,
     constants,
+    preferAllBehaviorRows,
   } = options;
 
   const displayRows = buildDisplayRows(sortedRowKeys, rowKeyParts, rowFields.length, valueFields);
@@ -493,18 +662,31 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
   const valueFieldNames = valueFields.map((field) => field.field.name);
 
   const data = displayRows.map((row) =>
-    sortedColKeys.map((colKey) =>
-      getMetricValue(
-        row.valueField,
-        getCellData(baseDataMap, row.sourceRowKey, colKey, metricNames),
-        constants
-      )
-    )
+    sortedColKeys.map((colKey) => {
+      const behaviorCellData = getCellData(baseDataMap, row.sourceRowKey, colKey, metricNames);
+      const attrCellData = getMappedCellData(
+        attrBaseDataMap,
+        row.sourceRowKey,
+        colKey,
+        metricNames,
+        attrRowKeyByRowKey,
+        attrColKeyByColKey
+      );
+      const merged = mergeAggMetricMaps(
+        behaviorCellData,
+        attrCellData,
+        metricNames,
+        preferAllBehaviorRows
+      );
+      return getMetricValue(row.valueField, merged, constants);
+    })
   );
 
   const rowTotalValues = displayRows.map((row) => {
-    const totalData = rowTotalsByKey.get(row.sourceRowKey) || createMetricSeries(metricNames);
-    return [getMetricValue(row.valueField, totalData, constants)];
+    const behaviorTotal = rowTotalsByKey.get(row.sourceRowKey) || createMetricSeries(metricNames);
+    const attrTotal = attrRowTotalsByKey.get(row.sourceRowKey) || createMetricSeries(metricNames);
+    const merged = mergeAggMetricMaps(behaviorTotal, attrTotal, metricNames, preferAllBehaviorRows);
+    return [getMetricValue(row.valueField, merged, constants)];
   });
 
   const totalRows = valueFields.map((valueField) => {
@@ -512,13 +694,17 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
 
     return {
       label: valueFields.length > 1 ? `列总计 - ${valueFieldName}` : '列总计',
-      values: sortedColKeys.map((colKey) =>
-        getMetricValue(
-          valueField,
-          columnTotalsByKey.get(colKey) || createMetricSeries(metricNames),
-          constants
-        )
-      ),
+      values: sortedColKeys.map((colKey) => {
+        const behaviorColTotal = columnTotalsByKey.get(colKey) || createMetricSeries(metricNames);
+        const attrColTotal = attrColumnTotalsByKey.get(colKey) || createMetricSeries(metricNames);
+        const merged = mergeAggMetricMaps(
+          behaviorColTotal,
+          attrColTotal,
+          metricNames,
+          preferAllBehaviorRows
+        );
+        return getMetricValue(valueField, merged, constants);
+      }),
       valueFieldNames: sortedColKeys.map(() => valueFieldName),
       totalValues: [getMetricValue(valueField, grandTotalData, constants)],
       totalValueFieldNames: [valueFieldName],
@@ -633,6 +819,23 @@ function getDimensionValue(row: DataRow, fieldName: string): string {
   return String(row[fieldName] ?? '').trim();
 }
 
+function filterDisplayKeys(
+  keys: string[],
+  fields: PivotField[],
+  keyParts: Map<string, string[]>
+): string[] {
+  if (!fields.some((field) => isBehaviorPivotField(field))) {
+    return keys;
+  }
+
+  return keys.filter((key) => {
+    const parts = keyParts.get(key) || [];
+    return !fields.some(
+      (field, index) => isBehaviorPivotField(field) && isAllValue(parts[index] || '')
+    );
+  });
+}
+
 function getSemiAdditiveKey(row: DataRow): string {
   return SEMI_ADDITIVE_KEY_FIELD_GROUPS.map((fieldNames) => {
     for (const fieldName of fieldNames) {
@@ -673,6 +876,56 @@ function getCellData(
   return dataMap.get(rowKey)?.get(colKey) || getEmptyMetricSeries(metricNames);
 }
 
+function getMappedCellData(
+  dataMap: Map<string, Map<string, MetricSeriesMap>>,
+  rowKey: string,
+  colKey: string,
+  metricNames: string[],
+  rowKeyMap?: Map<string, string>,
+  colKeyMap?: Map<string, string>
+): MetricSeriesMap {
+  const mappedRowKey = rowKeyMap?.get(rowKey) ?? rowKey;
+  const mappedColKey = colKeyMap?.get(colKey) ?? colKey;
+  return getCellData(dataMap, mappedRowKey, mappedColKey, metricNames);
+}
+
+function mergeMappedCellInto(
+  target: MetricSeriesMap,
+  dataMap: Map<string, Map<string, MetricSeriesMap>>,
+  rowKey: string,
+  colKey: string,
+  metricNames: string[],
+  rowKeyMap?: Map<string, string>,
+  colKeyMap?: Map<string, string>,
+  seenCells?: Set<string>
+): void {
+  const mappedRowKey = rowKeyMap?.get(rowKey) ?? rowKey;
+  const mappedColKey = colKeyMap?.get(colKey) ?? colKey;
+  const mappedCellKey = `${mappedRowKey}${KEY_SEPARATOR}${mappedColKey}`;
+  if (seenCells?.has(mappedCellKey)) return;
+  seenCells?.add(mappedCellKey);
+  mergeInto(target, getCellData(dataMap, mappedRowKey, mappedColKey, metricNames), metricNames);
+}
+
+function appendMetricPoints(
+  cellData: MetricSeriesMap,
+  row: DataRow,
+  metricNames: string[],
+  semiAdditiveKey: string,
+  isAllBehaviorRowValue: boolean
+): void {
+  for (let m = 0; m < metricNames.length; m++) {
+    const metric = metricNames[m];
+    const raw = row[metric];
+    if (raw != null && raw !== '') {
+      const value = Number(raw);
+      if (!Number.isNaN(value)) {
+        cellData[metric].push({ value, semiAdditiveKey, isAllBehaviorRow: isAllBehaviorRowValue });
+      }
+    }
+  }
+}
+
 function createMetricSeries(metricNames: string[]): MetricSeriesMap {
   return metricNames.reduce<MetricSeriesMap>((series, metricName) => {
     series[metricName] = [];
@@ -692,19 +945,28 @@ function getEmptyMetricSeries(metricNames: string[]): MetricSeriesMap {
 
 function buildRowTotals(
   rowKeys: string[],
-  _colKeys: string[],
+  colKeys: string[],
   dataMap: Map<string, Map<string, MetricSeriesMap>>,
-  metricNames: string[]
+  metricNames: string[],
+  rowKeyMap?: Map<string, string>,
+  colKeyMap?: Map<string, string>
 ): Map<string, MetricSeriesMap> {
   const totals = new Map<string, MetricSeriesMap>();
 
   rowKeys.forEach((rowKey) => {
     const rowTotal = createMetricSeries(metricNames);
-    const rowMap = dataMap.get(rowKey);
-    if (rowMap) {
-      for (const cellData of rowMap.values()) {
-        mergeInto(rowTotal, cellData, metricNames);
-      }
+    const seenCells = new Set<string>();
+    for (const colKey of colKeys) {
+      mergeMappedCellInto(
+        rowTotal,
+        dataMap,
+        rowKey,
+        colKey,
+        metricNames,
+        rowKeyMap,
+        colKeyMap,
+        seenCells
+      );
     }
     totals.set(rowKey, rowTotal);
   });
@@ -713,11 +975,12 @@ function buildRowTotals(
 }
 
 function buildColumnTotals(
-  _rowKeys: string[],
+  rowKeys: string[],
   colKeys: string[],
   dataMap: Map<string, Map<string, MetricSeriesMap>>,
   metricNames: string[],
-  allRowSemiAdditiveLookup: Map<string, Map<string, number>>
+  rowKeyMap?: Map<string, string>,
+  colKeyMap?: Map<string, string>
 ): Map<string, MetricSeriesMap> {
   const totals = new Map<string, MetricSeriesMap>();
 
@@ -725,19 +988,24 @@ function buildColumnTotals(
     totals.set(colKey, createMetricSeries(metricNames));
   });
 
-  for (const rowMap of dataMap.values()) {
-    for (const [colKey, cellData] of rowMap) {
-      const columnTotal = totals.get(colKey);
-      if (columnTotal) {
-        mergeInto(columnTotal, cellData, metricNames);
-      }
-    }
-  }
+  colKeys.forEach((colKey) => {
+    const columnTotal = totals.get(colKey);
+    if (!columnTotal) return;
 
-  for (const columnTotal of totals.values()) {
-    // 注入 ALL 行的半可加指标值，避免跨场景 SUM 导致数据翻倍
-    injectAllRowSemiAdditiveValues(columnTotal, allRowSemiAdditiveLookup, metricNames);
-  }
+    const seenCells = new Set<string>();
+    for (const rowKey of rowKeys) {
+      mergeMappedCellInto(
+        columnTotal,
+        dataMap,
+        rowKey,
+        colKey,
+        metricNames,
+        rowKeyMap,
+        colKeyMap,
+        seenCells
+      );
+    }
+  });
 
   return totals;
 }
@@ -750,22 +1018,32 @@ function mergeMany(seriesList: MetricSeriesMap[], metricNames: string[]): Metric
   return merged;
 }
 
-/**
- * 将 ALL 行的半可加指标值注入到 MetricSeriesMap 中
- * 场景作为维度时，ALL 行被过滤，但总计/小计需要使用 ALL 行的真实去重值
- */
-function injectAllRowSemiAdditiveValues(
-  metricData: MetricSeriesMap,
-  allRowLookup: Map<string, Map<string, number>>,
-  metricNames: string[]
-): void {
-  for (const [semiAddKey, values] of allRowLookup) {
-    for (const [metric, value] of values) {
-      if (metricNames.includes(metric) && metricData[metric]) {
-        metricData[metric].push({ value, semiAdditiveKey: semiAddKey });
-      }
+function mergeAggMetricMaps(
+  behavior: MetricSeriesMap,
+  attr: MetricSeriesMap,
+  metricNames: string[],
+  preferAllBehaviorRows: boolean
+): MetricSeriesMap {
+  const merged = createMetricSeries(metricNames);
+  for (const metric of metricNames) {
+    // 仅属性类半可加指标使用 attr 数据源（剪枝后的大盘值）
+    // 行为类半可加指标（曝光人数）和普通指标使用 behavior 数据源
+    if (ATTRIBUTE_SEMI_ADDITIVE_METRICS.has(metric)) {
+      merged[metric] = [...selectAllBehaviorPoints(attr[metric] || [])];
+    } else {
+      merged[metric] = [...selectMetricPoints(behavior[metric] || [], preferAllBehaviorRows)];
     }
   }
+  return merged;
+}
+
+function selectMetricPoints(points: MetricPoint[], preferAllBehaviorRows: boolean): MetricPoint[] {
+  return preferAllBehaviorRows ? selectAllBehaviorPoints(points) : points;
+}
+
+function selectAllBehaviorPoints(points: MetricPoint[]): MetricPoint[] {
+  const allPoints = points.filter((point) => point.isAllBehaviorRow);
+  return allPoints.length > 0 ? allPoints : points;
 }
 
 function mergeInto(target: MetricSeriesMap, source: MetricSeriesMap, metricNames: string[]) {
@@ -789,11 +1067,13 @@ function getMetricValue(
   }
 
   const points = metricData[fieldName] || [];
-  const aggregation = valueField.aggregation || 'sum';
-  if (aggregation === 'sum' && SEMI_ADDITIVE_SUM_METRICS.has(fieldName)) {
+  // 半可加指标始终使用 sumSemiAdditiveMetric，忽略配置的聚合类型
+  // 避免误用 COUNT 导致明细行计数而非值累加
+  if (SEMI_ADDITIVE_SUM_METRICS.has(fieldName)) {
     return sumSemiAdditiveMetric(points);
   }
 
+  const aggregation = valueField.aggregation || 'sum';
   return aggregateValues(points, aggregation);
 }
 
@@ -839,6 +1119,9 @@ function sumSemiAdditiveMetric(points: MetricPoint[]): number {
 function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLevel[][] {
   if (depth === 0) return [];
 
+  // 预分割所有列头，避免在内层循环中重复 split
+  const allParts = columnHeaders.map((h) => h.split(KEY_SEPARATOR));
+
   const levels: ColumnLevel[][] = [];
 
   for (let levelIdx = 0; levelIdx < depth; levelIdx++) {
@@ -846,15 +1129,19 @@ function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLev
     let i = 0;
 
     while (i < columnHeaders.length) {
-      const parts = columnHeaders[i].split(KEY_SEPARATOR);
+      const parts = allParts[i];
       const currentVal = parts[levelIdx] || TOTAL_LABEL;
       let colspan = 1;
 
       while (i + colspan < columnHeaders.length) {
-        const nextParts = columnHeaders[i + colspan].split(KEY_SEPARATOR);
-        const sameAncestors = parts
-          .slice(0, levelIdx)
-          .every((part, ancestorIdx) => part === nextParts[ancestorIdx]);
+        const nextParts = allParts[i + colspan];
+        let sameAncestors = true;
+        for (let a = 0; a < levelIdx; a++) {
+          if (parts[a] !== nextParts[a]) {
+            sameAncestors = false;
+            break;
+          }
+        }
         const nextVal = nextParts[levelIdx] || TOTAL_LABEL;
 
         if (!sameAncestors || nextVal !== currentVal) break;
@@ -872,18 +1159,17 @@ function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLev
 }
 
 function sortKeys(keys: string[], desc = false): string[] {
-  return [...keys].sort((a, b) => {
-    const aParts = a.split(KEY_SEPARATOR);
-    const bParts = b.split(KEY_SEPARATOR);
-    const maxLength = Math.max(aParts.length, bParts.length);
-
+  // 预分割键，避免在排序比较中重复 split
+  const entries = keys.map((key) => ({ key, parts: key.split(KEY_SEPARATOR) }));
+  entries.sort((a, b) => {
+    const maxLength = Math.max(a.parts.length, b.parts.length);
     for (let i = 0; i < maxLength; i++) {
-      const result = collator.compare(aParts[i] || '', bParts[i] || '');
+      const result = collator.compare(a.parts[i] || '', b.parts[i] || '');
       if (result !== 0) return desc ? -result : result;
     }
-
     return 0;
   });
+  return entries.map((e) => e.key);
 }
 
 function formatParts(parts: string[]): string {

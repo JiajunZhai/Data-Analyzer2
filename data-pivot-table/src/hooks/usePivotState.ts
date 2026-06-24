@@ -98,7 +98,9 @@ function createTreeNodeComparator(
 function sortTreeNodes(nodes: PivotTreeNode[], comparator: TreeNodeComparator): PivotTreeNode[] {
   return nodes
     .map((node) =>
-      node.children.length > 0 ? { ...node, children: sortTreeNodes(node.children, comparator) } : node
+      node.children.length > 0
+        ? { ...node, children: sortTreeNodes(node.children, comparator) }
+        : node
     )
     .sort(comparator);
 }
@@ -174,8 +176,12 @@ export function usePivotState() {
 
   const activeDimensionNames = useMemo(() => {
     const set = new Set<string>();
-    rowFields.forEach((f) => set.add(f.field.name));
-    colFields.forEach((f) => set.add(f.field.name));
+    rowFields.forEach((f) => {
+      set.add(f.field.name);
+    });
+    colFields.forEach((f) => {
+      set.add(f.field.name);
+    });
     return set;
   }, [rowFields, colFields]);
 
@@ -314,14 +320,11 @@ export function usePivotState() {
     []
   );
 
-  const updateValueFieldFormat = useCallback(
-    (fieldName: string, format: ValueFormatConfig) => {
-      setValueFields((prev) =>
-        prev.map((pf) => (pf.field.name === fieldName ? { ...pf, format } : pf))
-      );
-    },
-    []
-  );
+  const updateValueFieldFormat = useCallback((fieldName: string, format: ValueFormatConfig) => {
+    setValueFields((prev) =>
+      prev.map((pf) => (pf.field.name === fieldName ? { ...pf, format } : pf))
+    );
+  }, []);
 
   const reorderFields = useCallback(
     (zoneId: string, activeName: string, overName: string, targetIndex?: number) => {

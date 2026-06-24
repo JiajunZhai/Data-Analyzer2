@@ -16,12 +16,31 @@ import { parseCSVFile, parseExcelFile, parseMappingCSV } from '../../utils/fileP
 import { parseCSVWithWorker, type WorkerParseProgress } from '../../workers/workerBridge';
 
 interface FileUploadProps {
-  onDataLoaded?: (headers: string[], data: DataRow[], fileName: string) => void;
+  onDataLoaded?: (
+    headers: string[],
+    data: DataRow[],
+    fileName: string,
+    preprocessed?: boolean
+  ) => void;
   onMappingLoaded?: (headers: string[], rows: string[][], fileName: string) => void;
   variant?: 'card' | 'header' | 'mapping' | 'capsule' | 'capsule-mapping';
   mappingResult?: { scenarioCount: number; mappedRowCount: number };
   mappingWarnings?: string[];
 }
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const truncateFileName = (name: string, maxLength: number = 25): string => {
+  if (name.length <= maxLength) return name;
+  const ext = name.split('.').pop() || '';
+  const nameWithoutExt = name.slice(0, name.lastIndexOf('.'));
+  const truncated = `${nameWithoutExt.slice(0, maxLength - ext.length - 4)}...`;
+  return `${truncated}.${ext}`;
+};
 
 const FileUpload: React.FC<FileUploadProps> = ({
   onDataLoaded,
@@ -40,20 +59,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const isMappingVariant = variant === 'mapping';
   const isCapsuleVariant = variant === 'capsule' || variant === 'capsule-mapping';
   const isCapsuleMapping = variant === 'capsule-mapping';
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
-  const truncateFileName = (name: string, maxLength: number = 25): string => {
-    if (name.length <= maxLength) return name;
-    const ext = name.split('.').pop() || '';
-    const nameWithoutExt = name.slice(0, name.lastIndexOf('.'));
-    const truncated = nameWithoutExt.slice(0, maxLength - ext.length - 4) + '...';
-    return truncated + '.' + ext;
-  };
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -74,7 +79,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         } else {
           setFileName(file.name);
           setFileSize(formatFileSize(file.size));
-          let result;
+          let result: { headers: string[]; data: DataRow[] };
+          let preprocessed = false;
           if (file.name.endsWith('.csv')) {
             // 大于 10MB 的 CSV 使用 Web Worker 解析（不阻塞主线程）
             if (file.size > 10 * 1024 * 1024) {
@@ -82,13 +88,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 setParseProgress(progress);
               });
               result = { headers: workerResult.headers, data: workerResult.data };
+              preprocessed = workerResult.preprocessed ?? false;
             } else {
               result = await parseCSVFile(file);
             }
           } else {
             result = await parseExcelFile(file);
           }
-          onDataLoaded?.(result.headers, result.data, file.name);
+          onDataLoaded?.(result.headers, result.data, file.name, preprocessed);
         }
       } catch (err) {
         console.error('文件解析失败:', err);
@@ -138,6 +145,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   );
 
   const handleClear = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setFileName('');
     setFileSize('');
@@ -229,7 +237,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className={`file-upload ${isHeaderVariant ? 'file-upload-header' : ''}`}>
-      <div
+      <label
         className={`drop-zone ${isDragging ? 'dragging' : ''} ${isHeaderVariant ? 'header-drop-zone' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -257,6 +265,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               <p className="upload-hint">{fileSize}</p>
             </div>
             <button
+              type="button"
               onClick={handleClear}
               style={{
                 background: 'none',
@@ -294,7 +303,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           onChange={handleFileInput}
           className="file-input"
         />
-      </div>
+      </label>
     </div>
   );
 };

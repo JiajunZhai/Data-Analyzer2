@@ -2,15 +2,17 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import { shouldUseVirtualScroll, useVirtualScroll } from '../../hooks/useVirtualScroll';
 import type { PivotResult, SortConfig } from '../../types';
 import { calculateAllRowSpans } from '../../utils/rowSpanCalculator';
+import type { ToggleSortFn } from './PivotTable';
 import {
   formatColumnHeader,
   formatPivotValue,
   getGroupBoundaryClass,
   getSortIcon,
   isSortActive,
+  KEY_SEPARATOR,
+  makeStableKeys,
   ROW_HEIGHT,
 } from './pivotTableUtils';
-import type { ToggleSortFn } from './PivotTable';
 
 interface FlatPivotTableProps {
   result: PivotResult;
@@ -78,6 +80,50 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       () => calculateAllRowSpans(rowHeaders, rowDimensions.length),
       [rowHeaders, rowDimensions]
     );
+    const rowKeys = useMemo(
+      () =>
+        makeStableKeys(
+          rowHeaders.map((row) => row.join(KEY_SEPARATOR)),
+          'row'
+        ),
+      [rowHeaders]
+    );
+    const columnKeys = useMemo(
+      () =>
+        makeStableKeys(
+          columnHeaders.map((header) => header || '总计'),
+          'col'
+        ),
+      [columnHeaders]
+    );
+    const totalColumnKeys = useMemo(
+      () =>
+        makeStableKeys(
+          totalColumnHeaders.map((header) => header || '行总计'),
+          'total'
+        ),
+      [totalColumnHeaders]
+    );
+    const columnLevelRowKeys = useMemo(
+      () =>
+        makeStableKeys(
+          columnLevels.map((level) =>
+            level.map((col) => `${col.value || '总计'}:${col.colspan}`).join(KEY_SEPARATOR)
+          ),
+          'col-level'
+        ),
+      [columnLevels]
+    );
+    const columnLevelCellKeys = useMemo(
+      () =>
+        columnLevels.map((level) =>
+          makeStableKeys(
+            level.map((col) => `${col.value || '总计'}:${col.colspan}`),
+            'col-level-cell'
+          )
+        ),
+      [columnLevels]
+    );
 
     const frozenColumnStyles = useMemo(
       () =>
@@ -127,12 +173,44 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     const hasColumnLevels = columnLevels.length > 0;
     const hasMultipleTotalColumns = totalColumnHeaders.length > 1;
     const dimensionCount = rowDimensions.length;
+    const containerStyle = useMemo(
+      () =>
+        ({
+          '--pivot-total-col-width': '96px',
+        }) as React.CSSProperties,
+      []
+    );
+
+    const totalColumnStickyStyles = useMemo(
+      () =>
+        totalColumnHeaders.map((_, index) => {
+          const offset = Math.max(0, totalColumnHeaders.length - index - 1);
+          return {
+            right: offset === 0 ? 0 : `calc(var(--pivot-total-col-width) * ${offset})`,
+          } as React.CSSProperties;
+        }),
+      [totalColumnHeaders]
+    );
+
+    const getStickyRightStyle = useCallback(
+      (index: number, count: number): React.CSSProperties => {
+        if (count === totalColumnHeaders.length && totalColumnStickyStyles[index]) {
+          return totalColumnStickyStyles[index];
+        }
+        const offset = Math.max(0, count - index - 1);
+        return {
+          right: offset === 0 ? 0 : `calc(var(--pivot-total-col-width) * ${offset})`,
+        };
+      },
+      [totalColumnHeaders.length, totalColumnStickyStyles]
+    );
 
     // 渲染列头
     const renderColumnHeader = (
       col: { value: string; colspan: number },
       levelIdx: number,
-      colIdx: number
+      colIdx: number,
+      headerKey: string
     ) => {
       const isBoundary = getGroupBoundaryClass(columnLevels, colIdx) !== '';
       const isSticky = levelIdx === 0 && col.colspan > 1;
@@ -148,7 +226,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
       return (
         <th
-          key={`${col.value}-${colIdx}`}
+          key={headerKey}
           className={`col-header col-header-level-${levelIdx} ${isBoundary ? 'group-boundary-col' : ''} ${canSort ? 'sortable' : ''}`}
           colSpan={col.colspan}
         >
@@ -158,7 +236,12 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
             <>
               {col.value || '总计'}
               {canSort && (
-                <SortButton type="column" value={colIdxStr} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                <SortButton
+                  type="column"
+                  value={colIdxStr}
+                  sortConfig={sortConfig}
+                  onToggleSort={onToggleSort}
+                />
               )}
             </>
           )}
@@ -176,7 +259,12 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
           style={frozenColumnStyles[index]}
         >
           {dim}
-          <SortButton type="dimension" value={dim} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+          <SortButton
+            type="dimension"
+            value={dim}
+            sortConfig={sortConfig}
+            onToggleSort={onToggleSort}
+          />
         </th>
       ));
 
@@ -189,14 +277,23 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
         return levelIndex === 0 ? (
           <th className={`total-header ${stickyRight} sortable`} rowSpan={depth}>
             行总计
-            <SortButton type="total" value="total" sortConfig={sortConfig} onToggleSort={onToggleSort} />
+            <SortButton
+              type="total"
+              value="total"
+              sortConfig={sortConfig}
+              onToggleSort={onToggleSort}
+            />
           </th>
         ) : null;
       }
 
       if (depth === 1) {
         return totalColumnHeaders.map((header, index) => (
-          <th key={header} className={`total-header total-header-leaf ${stickyRight}`}>
+          <th
+            key={totalColumnKeys[index]}
+            className={`total-header total-header-leaf ${stickyRight}`}
+            style={getStickyRightStyle(index, totalColumnHeaders.length)}
+          >
             {header || `总计 ${index + 1}`}
           </th>
         ));
@@ -212,14 +309,21 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
       if (levelIndex === depth - 1) {
         return totalColumnHeaders.map((header, index) => (
-          <th key={header} className={`total-header total-header-leaf ${stickyRight}`}>
+          <th
+            key={totalColumnKeys[index]}
+            className={`total-header total-header-leaf ${stickyRight}`}
+            style={getStickyRightStyle(index, totalColumnHeaders.length)}
+          >
             {header || `总计 ${index + 1}`}
           </th>
         ));
       }
 
       return (
-        <th className={`total-header total-header-spacer ${stickyRight}`} colSpan={totalColumnHeaders.length}>
+        <th
+          className={`total-header total-header-spacer ${stickyRight}`}
+          colSpan={totalColumnHeaders.length}
+        >
           &nbsp;
         </th>
       );
@@ -231,14 +335,18 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       const totalRow = isTotalRow(ri);
 
       return (
-        <tr key={ri} style={useVirtual ? getRowStyle(ri) : undefined}>
+        <tr key={rowKeys[ri]} style={useVirtual ? getRowStyle(ri) : undefined}>
           {row.map((cellValue, ci) => {
             const span = rowSpans[ci]?.[ri] ?? 1;
             if (span === 0) return null;
 
             if (totalRow && ci === 0) {
               return (
-                <td key={ci} className="row-header total-label" colSpan={dimensionCount}>
+                <td
+                  key={rowDimensions[ci] || 'total-label'}
+                  className="row-header total-label"
+                  colSpan={dimensionCount}
+                >
                   <div className="frozen-cell-inner">列总计</div>
                 </td>
               );
@@ -247,7 +355,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
             const isLastDimCol = ci === row.length - 1;
             return (
               <td
-                key={ci}
+                key={rowDimensions[ci] || cellValue}
                 className={`row-header frozen-row-header ${isLastDimCol ? 'dimension-col-end frozen-row-header-last' : ''}`}
                 rowSpan={span}
                 style={frozenColumnStyles[ci]}
@@ -262,18 +370,32 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
             const boundaryClass = getGroupBoundaryClass(columnLevels, ci);
             return (
-              <td key={ci} className={`data-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}>
+              <td
+                key={columnKeys[ci]}
+                className={`data-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+              >
                 {text}
               </td>
             );
           })}
 
           {showRowTotal &&
-            (rowTotalValues[ri] || []).map((val, ti) => {
+            Array.from(
+              { length: totalColumnHeaders.length },
+              (_, index) => rowTotalValues[ri]?.[index] ?? 0
+            ).map((val, ti) => {
               const totalMetricName = getRowTotalMetricName(ri, ti);
-              const { text, isEmpty } = formatPivotValue(val, totalMetricName, valueFormats?.[totalMetricName]);
+              const { text, isEmpty } = formatPivotValue(
+                val,
+                totalMetricName,
+                valueFormats?.[totalMetricName]
+              );
               return (
-                <td key={ti} className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>
+                <td
+                  key={totalColumnKeys[ti]}
+                  className={`total-cell total-cell-sticky ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                  style={getStickyRightStyle(ti, totalColumnHeaders.length)}
+                >
                   {text}
                 </td>
               );
@@ -295,8 +417,15 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     const renderTotalRows = () => {
       if (!showColumnTotal || totalRows.length === 0) return null;
       return totalRows.map((totalRow, totalRowIdx) => (
-        <tr key={totalRow.label} className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}>
-          <td className="total-label frozen-row-header" colSpan={dimensionCount} style={frozenColumnStyles[0]}>
+        <tr
+          key={totalRow.label}
+          className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}
+        >
+          <td
+            className="total-label frozen-row-header"
+            colSpan={dimensionCount}
+            style={frozenColumnStyles[0]}
+          >
             <div className="frozen-cell-inner">{totalRow.label}</div>
           </td>
           {totalRow.values.map((val, idx) => {
@@ -304,16 +433,24 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
             const boundaryClass = getGroupBoundaryClass(columnLevels, idx);
             return (
-              <td key={idx} className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}>
+              <td
+                key={columnKeys[idx]}
+                className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+              >
                 {text}
               </td>
             );
           })}
           {totalRow.totalValues.map((val, idx) => {
-            const metricName = totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx];
+            const metricName =
+              totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx];
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
             return (
-              <td key={idx} className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>
+              <td
+                key={totalColumnKeys[idx]}
+                className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                style={getStickyRightStyle(idx, totalRow.totalValues.length)}
+              >
                 {text}
               </td>
             );
@@ -325,30 +462,54 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     // 虚拟滚动模式
     if (useVirtual) {
       return (
-        <div className="pivot-table-container" ref={containerRef} onScroll={onScroll} style={{ overflow: 'auto', height: '100%' }}>
+        <div
+          className="pivot-table-container"
+          ref={containerRef}
+          onScroll={onScroll}
+          style={{ ...containerStyle, overflow: 'auto', height: '100%' }}
+        >
           <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
             <table className="pivot-table" style={{ position: 'absolute', top: 0, width: '100%' }}>
               <thead>
                 <tr>
                   {renderCornerCells()}
                   {columnHeaders.map((col, idx) => (
-                    <th key={idx} className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''} sortable`}>
+                    <th
+                      key={columnKeys[idx]}
+                      className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''} sortable`}
+                    >
                       {formatColumnHeader(col)}
-                      <SortButton type="column" value={String(idx)} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                      <SortButton
+                        type="column"
+                        value={String(idx)}
+                        sortConfig={sortConfig}
+                        onToggleSort={onToggleSort}
+                      />
                     </th>
                   ))}
-                  {showRowTotal && totalColumnHeaders.length > 0 && (
-                    hasMultipleTotalColumns ? (
+                  {showRowTotal &&
+                    totalColumnHeaders.length > 0 &&
+                    (hasMultipleTotalColumns ? (
                       totalColumnHeaders.map((header, idx) => (
-                        <th key={idx} className="total-header total-header-leaf total-header-sticky">{header}</th>
+                        <th
+                          key={totalColumnKeys[idx]}
+                          className="total-header total-header-leaf total-header-sticky"
+                          style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                        >
+                          {header}
+                        </th>
                       ))
                     ) : (
                       <th className="total-header total-header-sticky sortable">
                         行总计
-                        <SortButton type="total" value="total" sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                        <SortButton
+                          type="total"
+                          value="total"
+                          sortConfig={sortConfig}
+                          onToggleSort={onToggleSort}
+                        />
                       </th>
-                    )
-                  )}
+                    ))}
                 </tr>
               </thead>
               <tbody>{renderVisibleRows()}</tbody>
@@ -360,14 +521,21 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
     // 非虚拟滚动模式
     return (
-      <div className="pivot-table-container" ref={containerRef}>
+      <div className="pivot-table-container" ref={containerRef} style={containerStyle}>
         <table className="pivot-table">
           <thead>
             {hasColumnLevels ? (
               columnLevels.map((level, levelIdx) => (
-                <tr key={levelIdx}>
+                <tr key={columnLevelRowKeys[levelIdx]}>
                   {levelIdx === 0 && renderCornerCells()}
-                  {level.map((col, colIdx) => renderColumnHeader(col, levelIdx, colIdx))}
+                  {level.map((col, colIdx) =>
+                    renderColumnHeader(
+                      col,
+                      levelIdx,
+                      colIdx,
+                      columnLevelCellKeys[levelIdx]?.[colIdx] || `${col.value}:${col.colspan}`
+                    )
+                  )}
                   {renderTotalHeaderCells(levelIdx, columnLevels.length)}
                 </tr>
               ))
@@ -375,19 +543,28 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
               <tr>
                 {renderCornerCells()}
                 {columnHeaders.map((col, idx) => (
-                  <th key={idx} className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}>
+                  <th
+                    key={columnKeys[idx]}
+                    className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                  >
                     {formatColumnHeader(col)}
                   </th>
                 ))}
-                {showRowTotal && totalColumnHeaders.length > 0 && (
-                  hasMultipleTotalColumns ? (
+                {showRowTotal &&
+                  totalColumnHeaders.length > 0 &&
+                  (hasMultipleTotalColumns ? (
                     totalColumnHeaders.map((header, idx) => (
-                      <th key={idx} className="total-header total-header-leaf total-header-sticky">{header}</th>
+                      <th
+                        key={totalColumnKeys[idx]}
+                        className="total-header total-header-leaf total-header-sticky"
+                        style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                      >
+                        {header}
+                      </th>
                     ))
                   ) : (
                     <th className="total-header total-header-sticky">行总计</th>
-                  )
-                )}
+                  ))}
               </tr>
             )}
           </thead>

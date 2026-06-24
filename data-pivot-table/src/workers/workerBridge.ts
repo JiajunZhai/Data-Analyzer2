@@ -15,6 +15,7 @@ export interface WorkerParseResult {
   fields: Field[];
   data: DataRow[];
   rowCount: number;
+  preprocessed?: boolean;
 }
 
 export async function parseCSVWithWorker(
@@ -63,6 +64,7 @@ export async function parseCSVWithWorker(
           fields: msg.fields,
           data: msg.data,
           rowCount: msg.rowCount,
+          preprocessed: msg.preprocessed,
         });
         return;
       }

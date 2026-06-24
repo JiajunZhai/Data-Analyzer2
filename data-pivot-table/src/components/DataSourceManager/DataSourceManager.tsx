@@ -126,11 +126,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
       </button>
 
       {isOpen && (
-        <div
-          className="datasource-dropdown"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="datasource-dropdown" role="menu">
           {/* 存储容量 */}
           <div className="datasource-quota">
             <div className="quota-bar">

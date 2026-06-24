@@ -1,21 +1,49 @@
-import type { DataRow, Field, FieldType } from '../types';
+import type { DataRow, DimensionType, Field, FieldType } from '../types';
+
+const ATTRIBUTE_DIMENSIONS = new Set([
+  '安装日期',
+  '日期',
+  '国家',
+  '应用',
+  'app_code',
+  '买量渠道',
+  '渠道',
+  '版本',
+  '生命周期',
+]);
+
+const BEHAVIOR_DIMENSIONS_SET = new Set([
+  '标准广告场景',
+  'standard_scene',
+  '广告场景',
+  '聚合广告场景',
+  '广告类型',
+  '变现渠道',
+  '广告变现渠道',
+]);
 
 const DIMENSION_FIELDS = [
   '安装日期',
   '日期',
   '国家',
   '应用',
+  'app_code',
+  '买量渠道',
   '渠道',
   '版本',
   '标准广告场景',
+  'standard_scene',
+  '广告场景',
   '聚合广告场景',
   '广告类型',
+  '变现渠道',
   '广告变现渠道',
   '生命周期',
 ];
 
 const MEASURE_FIELDS = [
   '注册用户',
+  '活跃用户',
   '曝光人数',
   '曝光次数',
   '广告收益',
@@ -29,7 +57,19 @@ export function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
   return headers.map((header) => {
     if (DIMENSION_FIELDS.includes(header)) {
       const dataType = header === '日期' ? ('date' as const) : ('string' as const);
-      return { name: header, type: 'dimension' as FieldType, dataType };
+      let dimensionType: DimensionType | undefined;
+      if (ATTRIBUTE_DIMENSIONS.has(header)) {
+        dimensionType = 'Attribute';
+      } else if (BEHAVIOR_DIMENSIONS_SET.has(header)) {
+        dimensionType = 'Behavior';
+      }
+      return {
+        name: header,
+        type: 'dimension' as FieldType,
+        dataType,
+        dimensionType,
+        dimensionCategory: dimensionType,
+      };
     }
 
     if (MEASURE_FIELDS.includes(header)) {
@@ -44,7 +84,7 @@ export function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
       return { name: header, type: 'dimension' as FieldType, dataType: 'string' as const };
     }
 
-    const isNumeric = values.every((v) => !isNaN(Number(v)));
+    const isNumeric = values.every((v) => !Number.isNaN(Number(v)));
     const isDate = values.every((v) => isValidDate(String(v)));
 
     let dataType: 'string' | 'number' | 'date' = 'string';
@@ -69,7 +109,7 @@ export function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
 function isValidDate(str: string): boolean {
   if (!str) return false;
   const date = new Date(str);
-  return !isNaN(date.getTime()) && str.length >= 8;
+  return !Number.isNaN(date.getTime()) && str.length >= 8;
 }
 
 export function getDimensions(fields: Field[]): Field[] {

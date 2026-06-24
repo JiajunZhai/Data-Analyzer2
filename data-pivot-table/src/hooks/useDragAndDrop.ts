@@ -4,7 +4,7 @@ import type {
   DragStartEvent,
   DroppableContainer,
 } from '@dnd-kit/core';
-import { closestCenter, pointerWithin, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { closestCenter, PointerSensor, pointerWithin, useSensor, useSensors } from '@dnd-kit/core';
 import { useCallback, useRef, useState } from 'react';
 import type { Field } from '../types';
 import { canDropToZone, type SpatialZoneId } from '../utils/fieldHelpers';
@@ -33,7 +33,12 @@ interface UseDragAndDropProps {
   toggleValueField: (field: Field, targetIndex?: number) => void;
   toggleRowField: (field: Field, targetIndex?: number) => void;
   toggleColField: (field: Field, targetIndex?: number) => void;
-  reorderFields: (zoneId: SpatialZoneId, activeName: string, overName: string, targetIndex?: number) => void;
+  reorderFields: (
+    zoneId: SpatialZoneId,
+    activeName: string,
+    overName: string,
+    targetIndex?: number
+  ) => void;
   moveFieldToIndex: (zoneId: SpatialZoneId, fieldName: string, targetIndex: number) => void;
   activateFieldAtIndex: (zoneId: SpatialZoneId, fieldName: string, targetIndex: number) => void;
   transferField: (
@@ -72,106 +77,95 @@ export function useDragAndDrop({
   );
 
   // Custom collision detection with left/right half positioning
-  const collisionDetection: CollisionDetection = useCallback(
-    (args) => {
-      const pointerPos = pointerPosRef.current;
-      const activeId = activeDragIdRef.current;
-      if (!pointerPos || !activeId) return closestCenter(args);
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const pointerPos = pointerPosRef.current;
+    const activeId = activeDragIdRef.current;
+    if (!pointerPos || !activeId) return closestCenter(args);
 
-      const pointerCollisions = pointerWithin(args);
-      if (pointerCollisions.length === 0) return closestCenter(args);
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length === 0) return closestCenter(args);
 
-      const containers = args.droppableContainers;
+    const containers = args.droppableContainers;
 
-      const activeContainer = containers.find((dc) => dc.id === activeId);
-      if (!activeContainer) return pointerCollisions;
+    const activeContainer = containers.find((dc) => dc.id === activeId);
+    if (!activeContainer) return pointerCollisions;
 
-      const activeData = getSpatialDragData(activeContainer);
-      if (!activeData) return pointerCollisions;
+    const activeData = getSpatialDragData(activeContainer);
+    if (!activeData) return pointerCollisions;
 
-      const sortableCollisions = pointerCollisions
-        .filter((c) => {
-          const container = containers.find((dc) => dc.id === c.id);
-          return getSpatialDragData(container)?.type === 'spatial-capsule';
-        })
-        .map((collision) => {
-          const container = containers.find((dc) => dc.id === collision.id);
-          const containerData = getSpatialDragData(container);
-          const rect = collision.data?.droppableRect;
-          if (!rect || !container) return collision;
+    const sortableCollisions = pointerCollisions
+      .filter((c) => {
+        const container = containers.find((dc) => dc.id === c.id);
+        return getSpatialDragData(container)?.type === 'spatial-capsule';
+      })
+      .map((collision) => {
+        const container = containers.find((dc) => dc.id === collision.id);
+        const containerData = getSpatialDragData(container);
+        const rect = collision.data?.droppableRect;
+        if (!rect || !container) return collision;
 
-          const centerX = rect.left + rect.width / 2;
-          const isRight = pointerPos.x >= centerX;
+        const centerX = rect.left + rect.width / 2;
+        const isRight = pointerPos.x >= centerX;
 
-          // For reordering (same zone): determine insertion position
-          if (
-            activeData.type === 'spatial-capsule' &&
-            activeData.zoneId === containerData?.zoneId &&
-            activeData.isActive &&
-            containerData?.isActive
-          ) {
-            const overSortable = containers.filter((dc) => {
-              const d = getSpatialDragData(dc);
-              return (
-                d?.type === 'spatial-capsule' &&
-                d.zoneId === activeData.zoneId &&
-                d.isActive
-              );
-            });
-            const overIndex = overSortable.findIndex((dc) => dc.id === collision.id);
-            const activeIndex = overSortable.findIndex((dc) => dc.id === activeId);
+        // For reordering (same zone): determine insertion position
+        if (
+          activeData.type === 'spatial-capsule' &&
+          activeData.zoneId === containerData?.zoneId &&
+          activeData.isActive &&
+          containerData?.isActive
+        ) {
+          const overSortable = containers.filter((dc) => {
+            const d = getSpatialDragData(dc);
+            return d?.type === 'spatial-capsule' && d.zoneId === activeData.zoneId && d.isActive;
+          });
+          const overIndex = overSortable.findIndex((dc) => dc.id === collision.id);
+          const activeIndex = overSortable.findIndex((dc) => dc.id === activeId);
 
-            if (overIndex >= 0 && activeIndex >= 0) {
-              let adjustedIndex = overIndex;
-              if (isRight && overIndex < overSortable.length - 1) {
-                adjustedIndex = overIndex + 1;
-              } else if (!isRight && overIndex > 0) {
-                adjustedIndex = overIndex - 1;
-              }
-              return {
-                ...collision,
-                data: { ...collision.data, targetIndex: adjustedIndex },
-              };
+          if (overIndex >= 0 && activeIndex >= 0) {
+            let adjustedIndex = overIndex;
+            if (isRight && overIndex < overSortable.length - 1) {
+              adjustedIndex = overIndex + 1;
+            } else if (!isRight && overIndex > 0) {
+              adjustedIndex = overIndex - 1;
             }
-          }
-
-          // For activation: insert before/after the target
-          if (
-            activeData.type === 'spatial-capsule' &&
-            !activeData.isActive &&
-            containerData?.isActive
-          ) {
-            const activeSortable = containers.filter((dc) => {
-              const d = getSpatialDragData(dc);
-              return (
-                d?.type === 'spatial-capsule' &&
-                d.zoneId === containerData?.zoneId &&
-                d.isActive
-              );
-            });
-            const overIndex = activeSortable.findIndex((dc) => dc.id === collision.id);
-            const targetIndex = isRight ? overIndex + 1 : overIndex;
-
             return {
               ...collision,
-              data: { ...collision.data, targetIndex },
+              data: { ...collision.data, targetIndex: adjustedIndex },
             };
           }
+        }
 
-          return collision;
-        });
+        // For activation: insert before/after the target
+        if (
+          activeData.type === 'spatial-capsule' &&
+          !activeData.isActive &&
+          containerData?.isActive
+        ) {
+          const activeSortable = containers.filter((dc) => {
+            const d = getSpatialDragData(dc);
+            return (
+              d?.type === 'spatial-capsule' && d.zoneId === containerData?.zoneId && d.isActive
+            );
+          });
+          const overIndex = activeSortable.findIndex((dc) => dc.id === collision.id);
+          const targetIndex = isRight ? overIndex + 1 : overIndex;
 
-      if (sortableCollisions.length > 0) {
-        sortableCollisions.sort(
-          (a, b) => (a.data?.distance ?? 0) - (b.data?.distance ?? 0)
-        );
-        return sortableCollisions;
-      }
+          return {
+            ...collision,
+            data: { ...collision.data, targetIndex },
+          };
+        }
 
-      return pointerCollisions;
-    },
-    []
-  );
+        return collision;
+      });
+
+    if (sortableCollisions.length > 0) {
+      sortableCollisions.sort((a, b) => (a.data?.distance ?? 0) - (b.data?.distance ?? 0));
+      return sortableCollisions;
+    }
+
+    return pointerCollisions;
+  }, []);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {

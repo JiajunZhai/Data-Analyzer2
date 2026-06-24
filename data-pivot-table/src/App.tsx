@@ -2,6 +2,7 @@ import { DndContext, DragOverlay } from '@dnd-kit/core';
 import {
   BarChart3,
   Calendar,
+  Database,
   Film,
   Globe,
   Link2,
@@ -9,15 +10,18 @@ import {
   RotateCcw,
   Settings,
   Smartphone,
+  TrendingUp,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FilterChipConfig } from './components/AdMobFilterBar/AdMobFilterBar';
 import AdMobFilterBar from './components/AdMobFilterBar/AdMobFilterBar';
+import AlgorithmAnalysisModal from './components/AlgorithmAnalysis/AlgorithmAnalysisModal';
 import ConfigManager from './components/ConfigManager/ConfigManager';
 import DataSourceManager from './components/DataSourceManager/DataSourceManager';
 import FloatingControlBar from './components/FloatingControlBar';
 import PivotTable from './components/PivotTable/PivotTable';
 import SpatialFieldZone from './components/SpatialFieldZone';
+import SQLTemplateModal from './components/SQLTemplateManager/SQLTemplateModal';
 import ZenModeButton from './components/ZenModeButton';
 import { useConfigs } from './hooks/useConfigs';
 import { useDatasetManager } from './hooks/useDatasetManager';
@@ -28,7 +32,7 @@ import { storageService } from './services/storage';
 import type { DataRow, Field } from './types';
 import type { StoredDataset } from './types/storage';
 import { hideConfigPanelTemporarily, showConfigPanelTemporarily } from './utils/animations';
-import { PRESET_CALCULATED_FIELDS } from './utils/calculatedField';
+import { getDefaultUserMetric, getPresetCalculatedFields } from './utils/calculatedField';
 import { preprocessData } from './utils/dataPreprocessor';
 import { detectFieldTypes } from './utils/fieldDetector';
 import { createPivotField } from './utils/fieldHelpers';
@@ -42,15 +46,15 @@ const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
   { icon: <Calendar size={14} />, label: '日期', fieldName: '日期', type: 'date' },
   { icon: <Smartphone size={14} />, label: '应用', fieldName: '应用' },
   { icon: <Settings size={14} />, label: '版本', fieldName: '版本' },
-  { icon: <Megaphone size={14} />, label: '渠道', fieldName: '渠道' },
+  { icon: <Megaphone size={14} />, label: '买量渠道', fieldName: '买量渠道' },
   { icon: <Globe size={14} />, label: '国家', fieldName: '国家' },
   { icon: <Film size={14} />, label: '标准广告场景', fieldName: '标准广告场景', group: 'more' },
   { icon: <Film size={14} />, label: '聚合广告场景', fieldName: '聚合广告场景', group: 'more' },
   { icon: <Megaphone size={14} />, label: '广告类型', fieldName: '广告类型', group: 'more' },
   {
     icon: <Megaphone size={14} />,
-    label: '广告变现渠道',
-    fieldName: '广告变现渠道',
+    label: '变现渠道',
+    fieldName: '变现渠道',
     group: 'more',
   },
   { icon: <Calendar size={14} />, label: '生命周期', fieldName: '生命周期', group: 'more' },
@@ -130,6 +134,8 @@ function App() {
     handleConfigRename: handleConfigRenameBase,
   } = configsManager;
 
+  const [isAlgorithmModalOpen, setIsAlgorithmModalOpen] = useState(false);
+  const [isSQLModalOpen, setIsSQLModalOpen] = useState(false);
   const [shouldApplyDefault, setShouldApplyDefault] = useState(false);
   const loadDatasetRef = useRef<(dataset: StoredDataset) => Promise<void>>(async () => {});
 
@@ -149,19 +155,25 @@ function App() {
   });
 
   // 拖拽逻辑
-  const { activeDragField, handleDragStart, handleDragEnd, handleDragCancel, collisionDetection, sensors } =
-    useDragAndDrop({
-      fields,
-      measures,
-      dimensions,
-      toggleValueField,
-      toggleRowField,
-      toggleColField,
-      reorderFields,
-      moveFieldToIndex,
-      activateFieldAtIndex,
-      transferField,
-    });
+  const {
+    activeDragField,
+    handleDragStart,
+    handleDragEnd,
+    handleDragCancel,
+    collisionDetection,
+    sensors,
+  } = useDragAndDrop({
+    fields,
+    measures,
+    dimensions,
+    toggleValueField,
+    toggleRowField,
+    toggleColField,
+    reorderFields,
+    moveFieldToIndex,
+    activateFieldAtIndex,
+    transferField,
+  });
 
   const isDragging = activeDragField !== null;
   // 应用默认配置
@@ -233,10 +245,16 @@ function App() {
 
   // 处理数据加载
   const handleDataLoaded = useCallback(
-    async (headers: string[], rawData: DataRow[], fileName: string) => {
+    async (headers: string[], rawData: DataRow[], fileName: string, preprocessed?: boolean) => {
       const detectedFields = detectFieldTypes(headers, rawData);
-      const dataWithCalculated = preprocessData(rawData);
-      const newCalculatedFields: Field[] = PRESET_CALCULATED_FIELDS.map((calculatedField) => ({
+      // Worker 路径已完成预处理，跳过主线程重复处理
+      const dataWithCalculated = preprocessed ? rawData : preprocessData(rawData);
+
+      // 自动检测用户指标分母
+      const userMetric = getDefaultUserMetric(dataWithCalculated);
+      const presetFields = getPresetCalculatedFields(userMetric);
+
+      const newCalculatedFields: Field[] = presetFields.map((calculatedField) => ({
         name: calculatedField.name,
         type: 'measure',
         dataType: 'number',
@@ -257,8 +275,7 @@ function App() {
             fieldCount: {
               dimensions: detectedFields.filter((f) => f.type === 'dimension').length,
               measures:
-                detectedFields.filter((f) => f.type === 'measure').length +
-                PRESET_CALCULATED_FIELDS.length,
+                detectedFields.filter((f) => f.type === 'measure').length + presetFields.length,
             },
             fields: allFields,
             data: dataWithCalculated,
@@ -429,6 +446,19 @@ function App() {
               />
             )}
             <div className="toolbar-divider" />
+            {data.length > 0 && (
+              <button
+                type="button"
+                className="algorithm-entry-btn"
+                onClick={() => setIsAlgorithmModalOpen(true)}
+                title="一键启动多维度差异、阶梯环比及算法归因分析"
+              >
+                <span className="algorithm-entry-icon">
+                  <TrendingUp size={15} />
+                </span>
+                <span className="algorithm-entry-label">分析</span>
+              </button>
+            )}
             <ZenModeButton
               disabled={data.length === 0}
               isActive={isZenMode}
@@ -510,6 +540,18 @@ function App() {
                   onToggle={toggleRowField}
                 />
               </div>
+
+              <div className="sql-entry-section">
+                <button
+                  type="button"
+                  className="sql-entry-btn"
+                  onClick={() => setIsSQLModalOpen(true)}
+                  title="管理与导出各分析模块所需的标准 SQL 查询模板"
+                >
+                  <Database size={14} />
+                  <span>原始数据 SQL 库</span>
+                </button>
+              </div>
             </div>
 
             <div className="spatial-right-rail">
@@ -588,6 +630,14 @@ function App() {
           </div>
         )}
       </DragOverlay>
+      <AlgorithmAnalysisModal
+        isOpen={isAlgorithmModalOpen}
+        onClose={() => setIsAlgorithmModalOpen(false)}
+        fields={fields}
+        dimensions={dimensions}
+        measures={measures}
+      />
+      <SQLTemplateModal isOpen={isSQLModalOpen} onClose={() => setIsSQLModalOpen(false)} />
     </DndContext>
   );
 }

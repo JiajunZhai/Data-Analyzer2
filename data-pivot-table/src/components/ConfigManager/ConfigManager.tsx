@@ -226,8 +226,8 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
                     <div className="template-item-title">{template.name}</div>
                     {dimensionTags.length > 0 && (
                       <div className="template-item-tags">
-                        {dimensionTags.map((tag, i) => (
-                          <span key={i} className="template-tag">
+                        {dimensionTags.map((tag) => (
+                          <span key={tag} className="template-tag">
                             {tag}
                           </span>
                         ))}
@@ -259,7 +259,7 @@ const ConfigManager: React.FC<ConfigManagerProps> = ({
       </button>
 
       {isOpen && (
-        <div className="config-dropdown" role="presentation" onClick={(e) => e.stopPropagation()}>
+        <div className="config-dropdown" role="menu">
           {/* 保存配置 */}
           {currentDatasetId && hasCurrentConfig && (
             <div className="config-save-section">

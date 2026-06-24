@@ -1,11 +1,13 @@
 import react from '@vitejs/plugin-react';
 // import basicSsl from '@vitejs/plugin-basic-ssl';
 import { defineConfig } from 'vite';
+import { sqlTemplatesPlugin } from './src/plugins/sqlTemplatesPlugin';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()
-   //   basicSsl()
+  plugins: [react(),
+   //   basicSsl(),
+    sqlTemplatesPlugin()
   ],
   server: {
     host: true, // 监听所有地址，包括局域网 IP

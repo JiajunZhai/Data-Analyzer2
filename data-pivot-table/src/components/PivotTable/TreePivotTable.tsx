@@ -1,7 +1,17 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { shouldUseVirtualScroll, useVirtualScroll } from '../../hooks/useVirtualScroll';
 import type { PivotResult, PivotTreeNode, SortConfig } from '../../types';
-import { formatColumnHeader, formatPivotValue, getGroupBoundaryClass, getSortIcon, isSortActive } from './pivotTableUtils';
 import type { ToggleSortFn } from './PivotTable';
+import {
+  formatColumnHeader,
+  formatPivotValue,
+  getGroupBoundaryClass,
+  getSortIcon,
+  isSortActive,
+  KEY_SEPARATOR,
+  makeStableKeys,
+  ROW_HEIGHT,
+} from './pivotTableUtils';
 
 type TreeRowType = 'group' | 'leaf' | 'subtotal';
 
@@ -75,16 +85,27 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           const hasChildren = node.children.length > 0;
           const isExpanded = !collapsedNodeIds.has(node.id);
           rows.push({
-            id: node.id, label: node.label, depth: node.depth,
-            type: hasChildren ? 'group' : 'leaf', hasChildren, isExpanded,
-            data: node.data, rowTotalValues: node.rowTotalValues, rowIndex: node.rowIndex,
+            id: node.id,
+            label: node.label,
+            depth: node.depth,
+            type: hasChildren ? 'group' : 'leaf',
+            hasChildren,
+            isExpanded,
+            data: node.data,
+            rowTotalValues: node.rowTotalValues,
+            rowIndex: node.rowIndex,
           });
           if (hasChildren && isExpanded) {
             walk(node.children);
             rows.push({
-              id: `subtotal:${node.id}`, label: '小计', depth: node.depth + 1,
-              type: 'subtotal', hasChildren: false, isExpanded: false,
-              data: node.data, rowTotalValues: node.rowTotalValues,
+              id: `subtotal:${node.id}`,
+              label: '小计',
+              depth: node.depth + 1,
+              type: 'subtotal',
+              hasChildren: false,
+              isExpanded: false,
+              data: node.data,
+              rowTotalValues: node.rowTotalValues,
             });
           }
         });
@@ -112,23 +133,93 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
         : dimensionCount === 2
           ? 'clamp(148px, 9vw, 176px)'
           : 'clamp(168px, 11vw, 208px)';
-    const containerStyle = {
-      '--pivot-tree-dimension-col-width': treeDimensionWidth,
-    } as React.CSSProperties;
+    const containerStyle = useMemo(
+      () =>
+        ({
+          '--pivot-tree-dimension-col-width': treeDimensionWidth,
+          '--pivot-total-col-width': '96px',
+        }) as React.CSSProperties,
+      [treeDimensionWidth]
+    );
     const rowHeaderTitle = rowDimensions.filter(Boolean).join(' / ') || '维度';
+    const columnKeys = useMemo(
+      () =>
+        makeStableKeys(
+          columnHeaders.map((header) => header || '总计'),
+          'col'
+        ),
+      [columnHeaders]
+    );
+    const totalColumnKeys = useMemo(
+      () =>
+        makeStableKeys(
+          totalColumnHeaders.map((header) => header || '行总计'),
+          'total'
+        ),
+      [totalColumnHeaders]
+    );
+    const columnLevelRowKeys = useMemo(
+      () =>
+        makeStableKeys(
+          columnLevels.map((level) =>
+            level.map((col) => `${col.value || '总计'}:${col.colspan}`).join(KEY_SEPARATOR)
+          ),
+          'col-level'
+        ),
+      [columnLevels]
+    );
+    const columnLevelCellKeys = useMemo(
+      () =>
+        columnLevels.map((level) =>
+          makeStableKeys(
+            level.map((col) => `${col.value || '总计'}:${col.colspan}`),
+            'col-level-cell'
+          )
+        ),
+      [columnLevels]
+    );
+
+    const totalColumnStickyStyles = useMemo(
+      () =>
+        totalColumnHeaders.map((_, index) => {
+          const offset = Math.max(0, totalColumnHeaders.length - index - 1);
+          return {
+            right: offset === 0 ? 0 : `calc(var(--pivot-total-col-width) * ${offset})`,
+          } as React.CSSProperties;
+        }),
+      [totalColumnHeaders]
+    );
+
+    const getStickyRightStyle = useCallback(
+      (index: number, count: number): React.CSSProperties => {
+        if (count === totalColumnHeaders.length && totalColumnStickyStyles[index]) {
+          return totalColumnStickyStyles[index];
+        }
+        const offset = Math.max(0, count - index - 1);
+        return {
+          right: offset === 0 ? 0 : `calc(var(--pivot-total-col-width) * ${offset})`,
+        };
+      },
+      [totalColumnHeaders.length, totalColumnStickyStyles]
+    );
 
     const getTreeRowTotalMetricName = useCallback(
-      (totalIndex: number): string => totalColumnValueFieldNames[totalIndex] || valueFieldNames[totalIndex] || '',
+      (totalIndex: number): string =>
+        totalColumnValueFieldNames[totalIndex] || valueFieldNames[totalIndex] || '',
       [totalColumnValueFieldNames, valueFieldNames]
     );
 
     const getDataMetricName = useCallback(
-      (_rowIndex: number, colIndex: number): string => columnValueFieldNames[colIndex] || valueFieldNames[0] || '',
+      (_rowIndex: number, colIndex: number): string =>
+        columnValueFieldNames[colIndex] || valueFieldNames[0] || '',
       [columnValueFieldNames, valueFieldNames]
     );
 
     const renderColumnHeader = (
-      col: { value: string; colspan: number }, levelIdx: number, colIdx: number
+      col: { value: string; colspan: number },
+      levelIdx: number,
+      colIdx: number,
+      headerKey: string
     ) => {
       const isBoundary = getGroupBoundaryClass(columnLevels, colIdx) !== '';
       const isSticky = levelIdx === 0 && col.colspan > 1;
@@ -140,7 +231,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       const canSort = isLeaf && onToggleSort && col.value && col.value !== '总计';
       return (
         <th
-          key={`${col.value}-${colIdx}`}
+          key={headerKey}
           className={`col-header col-header-level-${levelIdx} ${isBoundary ? 'group-boundary-col' : ''} ${canSort ? 'sortable' : ''}`}
           colSpan={col.colspan}
         >
@@ -150,7 +241,12 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
             col.value || '总计'
           )}
           {canSort && (
-            <SortButton type="column" value={String(dataColIdx)} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+            <SortButton
+              type="column"
+              value={String(dataColIdx)}
+              sortConfig={sortConfig}
+              onToggleSort={onToggleSort}
+            />
           )}
         </th>
       );
@@ -163,115 +259,318 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
         return levelIndex === 0 ? (
           <th className={`total-header ${stickyRight} sortable`} rowSpan={depth}>
             行总计
-            <SortButton type="total" value="total" sortConfig={sortConfig} onToggleSort={onToggleSort} />
+            <SortButton
+              type="total"
+              value="total"
+              sortConfig={sortConfig}
+              onToggleSort={onToggleSort}
+            />
           </th>
         ) : null;
       }
       if (depth === 1) {
         return totalColumnHeaders.map((header, index) => (
-          <th key={header} className={`total-header total-header-leaf ${stickyRight}`}>
+          <th
+            key={totalColumnKeys[index]}
+            className={`total-header total-header-leaf ${stickyRight}`}
+            style={getStickyRightStyle(index, totalColumnHeaders.length)}
+          >
             {header || `总计 ${index + 1}`}
           </th>
         ));
       }
       if (levelIndex === 0) {
         return (
-          <th className={`total-header ${stickyRight}`} colSpan={totalColumnHeaders.length}>行总计</th>
+          <th className={`total-header ${stickyRight}`} colSpan={totalColumnHeaders.length}>
+            行总计
+          </th>
         );
       }
       if (levelIndex === depth - 1) {
         return totalColumnHeaders.map((header, index) => (
-          <th key={header} className={`total-header total-header-leaf ${stickyRight}`}>
+          <th
+            key={totalColumnKeys[index]}
+            className={`total-header total-header-leaf ${stickyRight}`}
+            style={getStickyRightStyle(index, totalColumnHeaders.length)}
+          >
             {header || `总计 ${index + 1}`}
           </th>
         ));
       }
       return (
-        <th className={`total-header total-header-spacer ${stickyRight}`} colSpan={totalColumnHeaders.length}>&nbsp;</th>
+        <th
+          className={`total-header total-header-spacer ${stickyRight}`}
+          colSpan={totalColumnHeaders.length}
+        >
+          &nbsp;
+        </th>
       );
     };
 
     const renderTreeRowHeader = (treeRow: VisibleTreeRow) => (
-      <td className={`row-header frozen-row-header frozen-row-header-last dimension-col-end tree-row-header tree-row-header-${treeRow.type}`}>
+      <td
+        className={`row-header frozen-row-header frozen-row-header-last dimension-col-end tree-row-header tree-row-header-${treeRow.type}`}
+      >
         <div className="frozen-cell-inner tree-cell-inner">
-          <div className="tree-label" style={{ paddingLeft: hasTreeHierarchy ? `${treeRow.depth * 14}px` : undefined }}>
+          <div
+            className="tree-label"
+            style={{ paddingLeft: hasTreeHierarchy ? `${treeRow.depth * 14}px` : undefined }}
+          >
             {treeRow.hasChildren ? (
-              <button type="button" className="tree-toggle"
+              <button
+                type="button"
+                className="tree-toggle"
                 aria-label={treeRow.isExpanded ? `折叠 ${treeRow.label}` : `展开 ${treeRow.label}`}
-                onClick={(event) => { event.stopPropagation(); handleTreeToggle(treeRow.id); }}>
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleTreeToggle(treeRow.id);
+                }}
+              >
                 {treeRow.isExpanded ? '▼' : '▶'}
               </button>
             ) : hasTreeHierarchy ? (
               <span className="tree-toggle-spacer" />
-            ) : (
-              null
-            )}
+            ) : null}
             <span className="tree-label-text">{treeRow.label || '总计'}</span>
           </div>
         </div>
       </td>
     );
 
-    const renderTreeRows = () => {
+    // 虚拟滚动支持
+    const rowCount = visibleTreeRows.length;
+    const useVirtual = shouldUseVirtualScroll(rowCount);
+    const { startIndex, endIndex, onScroll, totalHeight, getRowStyle } = useVirtualScroll({
+      rowCount: useVirtual ? rowCount : 0,
+      rowHeight: ROW_HEIGHT,
+      containerRef,
+      overscan: 10,
+    });
+
+    const renderSingleTreeRow = (treeRow: VisibleTreeRow, ri: number) => {
       const dataColumnCount = columnHeaders.length;
-      return visibleTreeRows.map((treeRow) => {
-        const isExpandedGroup = treeRow.type === 'group' && treeRow.isExpanded;
-        const dataValues = treeRow.data.length > 0 ? treeRow.data : Array.from({ length: dataColumnCount }, () => 0);
-        const totalValues = treeRow.rowTotalValues.length > 0 ? treeRow.rowTotalValues : Array.from({ length: totalColumnHeaders.length }, () => 0);
-        return (
-          <tr key={treeRow.id} className={`tree-table-row tree-row-${treeRow.type} ${treeRow.isExpanded ? 'tree-row-expanded' : ''}`}>
-            {renderTreeRowHeader(treeRow)}
-            {dataValues.map((val, ci) => {
-              const boundaryClass = getGroupBoundaryClass(columnLevels, ci);
-              if (isExpandedGroup) {
-                return <td key={ci} className={`data-cell tree-group-placeholder ${boundaryClass}`}>&nbsp;</td>;
-              }
-              const metricName = getDataMetricName(treeRow.rowIndex ?? 0, ci);
-              const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
+      const isExpandedGroup = treeRow.type === 'group' && treeRow.isExpanded;
+      const dataValues =
+        treeRow.data.length > 0 ? treeRow.data : Array.from({ length: dataColumnCount }, () => 0);
+      const totalValues = Array.from(
+        { length: totalColumnHeaders.length },
+        (_, index) => treeRow.rowTotalValues[index] ?? 0
+      );
+      return (
+        <tr
+          key={treeRow.id}
+          className={`tree-table-row tree-row-${treeRow.type} ${treeRow.isExpanded ? 'tree-row-expanded' : ''}`}
+          style={useVirtual ? getRowStyle(ri) : undefined}
+        >
+          {renderTreeRowHeader(treeRow)}
+          {dataValues.map((val, ci) => {
+            const boundaryClass = getGroupBoundaryClass(columnLevels, ci);
+            if (isExpandedGroup) {
               return (
-                <td key={ci} className={`data-cell ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}>
-                  {text}
+                <td
+                  key={columnKeys[ci]}
+                  className={`data-cell tree-group-placeholder ${boundaryClass}`}
+                >
+                  &nbsp;
                 </td>
               );
-            })}
-            {showRowTotal && totalValues.map((val, ti) => {
+            }
+            const metricName = getDataMetricName(treeRow.rowIndex ?? 0, ci);
+            const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
+            return (
+              <td
+                key={columnKeys[ci]}
+                className={`data-cell ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+              >
+                {text}
+              </td>
+            );
+          })}
+          {showRowTotal &&
+            totalValues.map((val, ti) => {
               if (isExpandedGroup) {
-                return <td key={ti} className="total-cell total-cell-sticky tree-group-placeholder">&nbsp;</td>;
+                return (
+                  <td
+                    key={totalColumnKeys[ti]}
+                    className="total-cell total-cell-sticky tree-group-placeholder"
+                    style={getStickyRightStyle(ti, totalValues.length)}
+                  >
+                    &nbsp;
+                  </td>
+                );
               }
               const totalMetricName = getTreeRowTotalMetricName(ti);
-              const { text, isEmpty } = formatPivotValue(val, totalMetricName, valueFormats?.[totalMetricName]);
+              const { text, isEmpty } = formatPivotValue(
+                val,
+                totalMetricName,
+                valueFormats?.[totalMetricName]
+              );
               return (
-                <td key={ti} className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>
+                <td
+                  key={totalColumnKeys[ti]}
+                  className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                  style={getStickyRightStyle(ti, totalValues.length)}
+                >
                   {text}
                 </td>
               );
             })}
-          </tr>
-        );
-      });
+        </tr>
+      );
+    };
+
+    const renderTreeRows = () => {
+      if (useVirtual) {
+        const rows = [];
+        for (let ri = startIndex; ri <= endIndex && ri < rowCount; ri++) {
+          rows.push(renderSingleTreeRow(visibleTreeRows[ri], ri));
+        }
+        return rows;
+      }
+      return visibleTreeRows.map((treeRow, ri) => renderSingleTreeRow(treeRow, ri));
     };
 
     const renderTotalRows = () => {
       if (!showColumnTotal || totalRows.length === 0) return null;
       return totalRows.map((totalRow, totalRowIdx) => (
-        <tr key={totalRow.label} className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}>
-          <td className="row-header total-label frozen-row-header frozen-row-header-last dimension-col-end tree-row-header" colSpan={1}>
+        <tr
+          key={totalRow.label}
+          className={`total-row total-row-sticky ${totalRowIdx > 0 ? 'total-row-secondary' : ''}`}
+        >
+          <td
+            className="row-header total-label frozen-row-header frozen-row-header-last dimension-col-end tree-row-header"
+            colSpan={1}
+          >
             <div className="frozen-cell-inner">{totalRow.label}</div>
           </td>
           {totalRow.values.map((val, idx) => {
             const metricName = totalRow.valueFieldNames[idx] || columnValueFieldNames[idx];
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
             const boundaryClass = getGroupBoundaryClass(columnLevels, idx);
-            return <td key={idx} className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}>{text}</td>;
+            return (
+              <td
+                key={columnKeys[idx]}
+                className={`total-cell ${isEmpty ? 'empty-cell' : 'number-formatted'} ${boundaryClass}`}
+              >
+                {text}
+              </td>
+            );
           })}
           {totalRow.totalValues.map((val, idx) => {
-            const metricName = totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx];
+            const metricName =
+              totalRow.totalValueFieldNames[idx] || totalColumnValueFieldNames[idx];
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
-            return <td key={idx} className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}>{text}</td>;
+            return (
+              <td
+                key={totalColumnKeys[idx]}
+                className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                style={getStickyRightStyle(idx, totalRow.totalValues.length)}
+              >
+                {text}
+              </td>
+            );
           })}
         </tr>
       ));
     };
+
+    // 虚拟滚动模式
+    if (useVirtual) {
+      return (
+        <div
+          className={`pivot-table-container ${hasTreeHierarchy ? 'pivot-tree-hierarchical' : 'pivot-tree-flat'} pivot-tree-depth-${Math.min(dimensionCount, 4)}`}
+          ref={containerRef}
+          style={{ ...containerStyle, overflow: 'auto', height: '100%' }}
+          onScroll={onScroll}
+        >
+          <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
+            <table className="pivot-table" style={{ position: 'absolute', top: 0, width: '100%' }}>
+              <thead>
+                {hasColumnLevels ? (
+                  columnLevels.map((level, levelIdx) => (
+                    <tr key={columnLevelRowKeys[levelIdx]}>
+                      {levelIdx === 0 && (
+                        <th
+                          className="corner-cell tree-corner-cell sortable"
+                          rowSpan={columnLevels.length}
+                        >
+                          {rowHeaderTitle}
+                          <SortButton
+                            type="dimension"
+                            value={rowDimensions[0] || ''}
+                            sortConfig={sortConfig}
+                            onToggleSort={onToggleSort}
+                          />
+                        </th>
+                      )}
+                      {level.map((col, colIdx) =>
+                        renderColumnHeader(
+                          col,
+                          levelIdx,
+                          colIdx,
+                          columnLevelCellKeys[levelIdx]?.[colIdx] || `${col.value}:${col.colspan}`
+                        )
+                      )}
+                      {renderTotalHeaderCells(levelIdx, columnLevels.length)}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <th className="corner-cell tree-corner-cell sortable">
+                      {rowHeaderTitle}
+                      <SortButton
+                        type="dimension"
+                        value={rowDimensions[0] || ''}
+                        sortConfig={sortConfig}
+                        onToggleSort={onToggleSort}
+                      />
+                    </th>
+                    {columnHeaders.map((col, idx) => (
+                      <th
+                        key={columnKeys[idx]}
+                        className={`col-header sortable ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                      >
+                        {formatColumnHeader(col)}
+                        <SortButton
+                          type="column"
+                          value={String(idx)}
+                          sortConfig={sortConfig}
+                          onToggleSort={onToggleSort}
+                        />
+                      </th>
+                    ))}
+                    {showRowTotal &&
+                      totalColumnHeaders.length > 0 &&
+                      (hasMultipleTotalColumns ? (
+                        totalColumnHeaders.map((header, idx) => (
+                          <th
+                            key={totalColumnKeys[idx]}
+                            className="total-header total-header-leaf total-header-sticky"
+                            style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                          >
+                            {header}
+                          </th>
+                        ))
+                      ) : (
+                        <th className="total-header total-header-sticky sortable">
+                          行总计
+                          <SortButton
+                            type="total"
+                            value="total"
+                            sortConfig={sortConfig}
+                            onToggleSort={onToggleSort}
+                          />
+                        </th>
+                      ))}
+                  </tr>
+                )}
+              </thead>
+              <tbody>{renderTreeRows()}</tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div
@@ -283,14 +582,29 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           <thead>
             {hasColumnLevels ? (
               columnLevels.map((level, levelIdx) => (
-                <tr key={levelIdx}>
+                <tr key={columnLevelRowKeys[levelIdx]}>
                   {levelIdx === 0 && (
-                    <th className="corner-cell tree-corner-cell sortable" rowSpan={columnLevels.length}>
+                    <th
+                      className="corner-cell tree-corner-cell sortable"
+                      rowSpan={columnLevels.length}
+                    >
                       {rowHeaderTitle}
-                      <SortButton type="dimension" value={rowDimensions[0] || ''} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                      <SortButton
+                        type="dimension"
+                        value={rowDimensions[0] || ''}
+                        sortConfig={sortConfig}
+                        onToggleSort={onToggleSort}
+                      />
                     </th>
                   )}
-                  {level.map((col, colIdx) => renderColumnHeader(col, levelIdx, colIdx))}
+                  {level.map((col, colIdx) =>
+                    renderColumnHeader(
+                      col,
+                      levelIdx,
+                      colIdx,
+                      columnLevelCellKeys[levelIdx]?.[colIdx] || `${col.value}:${col.colspan}`
+                    )
+                  )}
                   {renderTotalHeaderCells(levelIdx, columnLevels.length)}
                 </tr>
               ))
@@ -298,26 +612,50 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
               <tr>
                 <th className="corner-cell tree-corner-cell sortable">
                   {rowHeaderTitle}
-                  <SortButton type="dimension" value={rowDimensions[0] || ''} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                  <SortButton
+                    type="dimension"
+                    value={rowDimensions[0] || ''}
+                    sortConfig={sortConfig}
+                    onToggleSort={onToggleSort}
+                  />
                 </th>
                 {columnHeaders.map((col, idx) => (
-                  <th key={idx} className={`col-header sortable ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}>
+                  <th
+                    key={columnKeys[idx]}
+                    className={`col-header sortable ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                  >
                     {formatColumnHeader(col)}
-                    <SortButton type="column" value={String(idx)} sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                    <SortButton
+                      type="column"
+                      value={String(idx)}
+                      sortConfig={sortConfig}
+                      onToggleSort={onToggleSort}
+                    />
                   </th>
                 ))}
-                {showRowTotal && totalColumnHeaders.length > 0 && (
-                  hasMultipleTotalColumns ? (
+                {showRowTotal &&
+                  totalColumnHeaders.length > 0 &&
+                  (hasMultipleTotalColumns ? (
                     totalColumnHeaders.map((header, idx) => (
-                      <th key={idx} className="total-header total-header-leaf total-header-sticky">{header}</th>
+                      <th
+                        key={totalColumnKeys[idx]}
+                        className="total-header total-header-leaf total-header-sticky"
+                        style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                      >
+                        {header}
+                      </th>
                     ))
                   ) : (
                     <th className="total-header total-header-sticky sortable">
                       行总计
-                      <SortButton type="total" value="total" sortConfig={sortConfig} onToggleSort={onToggleSort} />
+                      <SortButton
+                        type="total"
+                        value="total"
+                        sortConfig={sortConfig}
+                        onToggleSort={onToggleSort}
+                      />
                     </th>
-                  )
-                )}
+                  ))}
               </tr>
             )}
           </thead>

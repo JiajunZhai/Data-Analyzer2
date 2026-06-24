@@ -40,3 +40,12 @@ export interface StorageQuota {
   datasetCount: number;
   datasetLimit: number;
 }
+
+export interface StoredSQLTemplate {
+  id: string;
+  name: string;
+  category: string;
+  sql: string;
+  createdAt: number;
+  updatedAt: number;
+}

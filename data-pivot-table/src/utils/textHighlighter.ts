@@ -1,4 +1,13 @@
-const DIMENSION_KEYWORDS = ['应用', '国家', '渠道', '版本', '日期', '标准广告场景', '聚合广告场景'];
+const DIMENSION_KEYWORDS = [
+  '应用',
+  '国家',
+  '买量渠道',
+  '渠道',
+  '版本',
+  '日期',
+  '标准广告场景',
+  '聚合广告场景',
+];
 
 const HIGHLIGHT_PATTERN = new RegExp(
   `(${DIMENSION_KEYWORDS.join('|')})\\s+([\\w\\u4e00-\\u9fa5\\-\\.]+)`,

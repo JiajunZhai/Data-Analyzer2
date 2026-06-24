@@ -25,6 +25,19 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
+function parseCellValue(value: string): string | number {
+  const numericValue = Number(value);
+  return Number.isNaN(numericValue) ? value : numericValue;
+}
+
+function createDataRow(headers: string[], values: string[]): DataRow {
+  const obj: DataRow = {};
+  for (let i = 0; i < headers.length; i++) {
+    obj[headers[i]] = parseCellValue(values[i] ?? '');
+  }
+  return obj;
+}
+
 export interface ParseProgress {
   phase: 'reading' | 'parsing' | 'done';
   progress: number; // 0-1
@@ -103,13 +116,7 @@ export async function parseCSVFileChunked(
         continue;
       }
 
-      const values = parseCSVLine(trimmed);
-      const obj: DataRow = {};
-      for (let i = 0; i < headers.length; i++) {
-        const val = values[i] ?? '';
-        obj[headers[i]] = isNaN(Number(val)) ? val : Number(val);
-      }
-      lines.push(obj);
+      lines.push(createDataRow(headers, parseCSVLine(trimmed)));
       rowCount++;
 
       // 每处理 10000 行报告一次进度
@@ -126,13 +133,7 @@ export async function parseCSVFileChunked(
     if (isFirstChunk) {
       headers = parseCSVLine(buffer.trim());
     } else {
-      const values = parseCSVLine(buffer.trim());
-      const obj: DataRow = {};
-      for (let i = 0; i < headers.length; i++) {
-        const val = values[i] ?? '';
-        obj[headers[i]] = isNaN(Number(val)) ? val : Number(val);
-      }
-      lines.push(obj);
+      lines.push(createDataRow(headers, parseCSVLine(buffer.trim())));
     }
   }
 
@@ -168,12 +169,7 @@ export function parseCSVFile(file: File): Promise<{ headers: string[]; data: Dat
           const headers = parseCSVLine(lines[0]);
           const rows = lines.slice(1).map((line) => {
             const values = parseCSVLine(line);
-            const obj: DataRow = {};
-            headers.forEach((header, index) => {
-              const val = values[index] ?? '';
-              obj[header] = isNaN(Number(val)) ? val : Number(val);
-            });
-            return obj;
+            return createDataRow(headers, values);
           });
 
           resolve({ headers, data: rows });

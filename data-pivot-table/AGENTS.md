@@ -15,6 +15,7 @@ npm run test:run     # vitest run
 npm run test:coverage # vitest run --coverage
 npm run test:e2e     # playwright test
 npm run test:e2e:ui  # playwright test --ui
+npm run test:e2e:debug # playwright test --debug
 npm run preview      # 预览构建产物
 ```
 

@@ -4,6 +4,7 @@ import {
   addCalculatedFields,
   calculateField,
   calculateMetricFromAggregates,
+  getDefaultUserMetric,
   PRESET_CALCULATED_FIELDS,
   precomputeGlobalRevenue,
 } from '../calculatedField';
@@ -81,6 +82,12 @@ describe('calculatedField', () => {
       // safeEval 在结果为 Infinity 或 NaN 时返回 0
       expect(result).toBe(0);
     });
+
+    it('默认分母应固定使用注册用户，即使数据包含活跃用户', () => {
+      const data: DataRow[] = [{ 注册用户: 100, 活跃用户: 500 }];
+
+      expect(getDefaultUserMetric(data)).toBe('注册用户');
+    });
   });
 
   describe('calculateField', () => {
@@ -126,9 +133,9 @@ describe('calculatedField', () => {
 
       const result = precomputeGlobalRevenue(data);
 
-      expect(result[0]['总广告收益']).toBe(600);
-      expect(result[1]['总广告收益']).toBe(600);
-      expect(result[2]['总广告收益']).toBe(600);
+      expect(result[0].总广告收益).toBe(600);
+      expect(result[1].总广告收益).toBe(600);
+      expect(result[2].总广告收益).toBe(600);
     });
 
     it('应该处理空数据', () => {
@@ -144,8 +151,8 @@ describe('calculatedField', () => {
 
       const result = precomputeGlobalRevenue(data);
 
-      expect(result[0]['总广告收益']).toBe(200);
-      expect(result[1]['总广告收益']).toBe(200);
+      expect(result[0].总广告收益).toBe(200);
+      expect(result[1].总广告收益).toBe(200);
     });
   });
 
@@ -163,11 +170,11 @@ describe('calculatedField', () => {
 
       const result = addCalculatedFields(data, PRESET_CALCULATED_FIELDS);
 
-      expect(result[0]['eCPM']).toBe(10);
-      expect(result[0]['CTR']).toBeCloseTo(0.005, 5);
-      expect(result[0]['ARPU']).toBe(1);
-      expect(result[0]['渗透率']).toBeCloseTo(0.8, 5);
-      expect(result[0]['IPU']).toBe(100);
+      expect(result[0].eCPM).toBe(10);
+      expect(result[0].CTR).toBeCloseTo(0.005, 5);
+      expect(result[0].ARPU).toBe(1);
+      expect(result[0].渗透率).toBeCloseTo(0.8, 5);
+      expect(result[0].IPU).toBe(100);
     });
   });
 });

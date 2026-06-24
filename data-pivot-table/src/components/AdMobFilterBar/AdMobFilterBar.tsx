@@ -44,8 +44,8 @@ function computeRegistrationCounts(
     }
     const key = String(row[targetFieldName] ?? '').trim();
     if (!key || key === 'undefined' || key === 'null') continue;
-    const reg = Number(row['\u6ce8\u518c\u7528\u6237'] ?? 0);
-    counts.set(key, (counts.get(key) ?? 0) + (isNaN(reg) ? 0 : reg));
+    const reg = Number(row.注册用户 ?? 0);
+    counts.set(key, (counts.get(key) ?? 0) + (Number.isNaN(reg) ? 0 : reg));
   }
   return counts;
 }
@@ -141,7 +141,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
         onSelectionChange(validValues.length > 0 ? validValues : allValues);
       }
     }
-  }, [allValues]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allValues, allValueSet, onSelectionChange, selectedValues]);
 
   const handleToggleValue = (value: string) => {
     const newValues = tempValues.includes(value)
@@ -200,7 +200,6 @@ const FilterChip: React.FC<FilterChipProps> = ({
     e.stopPropagation();
     onSelectionChange(allValues);
   };
-
   return (
     <div className="filter-chip-wrapper" ref={dropdownRef}>
       <button
@@ -221,20 +220,21 @@ const FilterChip: React.FC<FilterChipProps> = ({
             <BarChart3 size={11} />
           </span>
         )}
-        {isActive && (
-          <span className="chip-reset-icon" title={`重置${config.label}`} onClick={handleChipReset}>
-            <X size={11} />
-          </span>
-        )}
         <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
+      {isActive && (
+        <button
+          type="button"
+          className="chip-reset-icon"
+          title={`重置${config.label}`}
+          onClick={handleChipReset}
+        >
+          <X size={11} />
+        </button>
+      )}
 
       {isOpen && (
-        <div
-          className="filter-dropdown-menu"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="filter-dropdown-menu" role="menu">
           <div className="filter-dropdown-search">
             <input
               type="text"
@@ -335,9 +335,7 @@ function getLinkedFilterValues(
   const values = new Set<string>();
   for (const row of data) {
     if (
-      !filterSets.every((filter) =>
-        filter.valueSet.has(String(row[filter.fieldName] ?? '').trim())
-      )
+      !filterSets.every((filter) => filter.valueSet.has(String(row[filter.fieldName] ?? '').trim()))
     ) {
       continue;
     }
@@ -402,7 +400,7 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
         onSelectionChange(validValues.length > 0 ? validValues : allValues);
       }
     }
-  }, [allValues]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allValues, allValueSet, onSelectionChange, selectedValues]);
 
   const handleToggleValue = (value: string) => {
     setTempValues((prev) =>
@@ -453,7 +451,6 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
     e.stopPropagation();
     onSelectionChange(allValues);
   };
-
   return (
     <div className="more-filter-sub-wrapper" ref={subRef}>
       <span className="more-filter-label">
@@ -473,24 +470,21 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
         }}
       >
         <span className="more-filter-trigger-text">{getDisplayValue()}</span>
-        {isActive && (
-          <span
-            className="more-filter-reset-icon"
-            title={`重置${config.label}`}
-            onClick={handleReset}
-          >
-            <X size={11} />
-          </span>
-        )}
         <span className="chip-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
+      {isActive && (
+        <button
+          type="button"
+          className="more-filter-reset-icon"
+          title={`重置${config.label}`}
+          onClick={handleReset}
+        >
+          <X size={11} />
+        </button>
+      )}
 
       {isOpen && (
-        <div
-          className="filter-dropdown-menu more-filter-dropdown-menu"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="filter-dropdown-menu more-filter-dropdown-menu" role="menu">
           <div className="filter-dropdown-search">
             <input
               type="text"
@@ -605,11 +599,7 @@ const MoreFiltersDropdown: React.FC<MoreFiltersDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div
-          className="more-filters-dropdown"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="more-filters-dropdown" role="menu">
           {configs.map((config) => {
             const allValues = allFilterValues[config.fieldName] || [];
             const selectedValues = getSelectedValues(config.fieldName);
@@ -632,7 +622,7 @@ const MoreFiltersDropdown: React.FC<MoreFiltersDropdownProps> = ({
   );
 };
 
-const SORT_BY_REG_FIELDS = new Set(['渠道', '国家']);
+const SORT_BY_REG_FIELDS = new Set(['买量渠道', '渠道', '国家']);
 
 const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   configs,
@@ -705,7 +695,7 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   const appFilterActive = useMemo(() => {
     const appFilter = filterConfigs.find((f) => f.fieldName === '应用');
     if (!appFilter) return false;
-    const total = allFilterValues['应用']?.length ?? 0;
+    const total = allFilterValues.应用?.length ?? 0;
     return appFilter.selectedValues.length > 0 && appFilter.selectedValues.length < total;
   }, [filterConfigs, allFilterValues]);
 

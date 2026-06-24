@@ -1,9 +1,15 @@
 import { type IDBPDatabase, openDB } from 'idb';
-import type { StorageQuota, StoredConfig, StoredDataset, UserPreferences } from '../types/storage';
+import type {
+  StorageQuota,
+  StoredConfig,
+  StoredDataset,
+  StoredSQLTemplate,
+  UserPreferences,
+} from '../types/storage';
 import { estimateDataSize, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
 
 const DB_NAME = 'data-pivot-table';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 interface PivotTableDB {
   datasets: {
@@ -19,6 +25,11 @@ interface PivotTableDB {
   preferences: {
     key: string;
     value: UserPreferences;
+  };
+  sqlTemplates: {
+    key: string;
+    value: StoredSQLTemplate;
+    indexes: { category: string; name: string };
   };
 }
 
@@ -49,6 +60,12 @@ class StorageService {
 
         if (!db.objectStoreNames.contains('preferences')) {
           db.createObjectStore('preferences', { keyPath: 'id' });
+        }
+
+        if (!db.objectStoreNames.contains('sqlTemplates')) {
+          const sqlStore = db.createObjectStore('sqlTemplates', { keyPath: 'id' });
+          sqlStore.createIndex('category', 'category');
+          sqlStore.createIndex('name', 'name');
         }
 
         // 清理已移除的 anomalies 表
@@ -219,6 +236,79 @@ class StorageService {
       datasetCount: datasets.length,
       datasetLimit: STORAGE_LIMITS.MAX_DATASETS,
     };
+  }
+
+  // ============ SQL 模板操作 ============
+
+  async getAllSQLTemplates(): Promise<StoredSQLTemplate[]> {
+    const db = this.getDb();
+    return await db.getAll('sqlTemplates');
+  }
+
+  async getSQLTemplatesByCategory(category: string): Promise<StoredSQLTemplate[]> {
+    const db = this.getDb();
+    return await db.getAllFromIndex('sqlTemplates', 'category', category);
+  }
+
+  async saveSQLTemplate(
+    template: Omit<StoredSQLTemplate, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<string> {
+    const db = this.getDb();
+    const id = generateId();
+    const now = Date.now();
+
+    await db.put('sqlTemplates', {
+      ...template,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return id;
+  }
+
+  async updateSQLTemplate(id: string, updates: Partial<StoredSQLTemplate>): Promise<void> {
+    const db = this.getDb();
+    const template = await db.get('sqlTemplates', id);
+    if (!template) {
+      throw new Error('SQL template not found');
+    }
+
+    await db.put('sqlTemplates', {
+      ...template,
+      ...updates,
+      updatedAt: Date.now(),
+    });
+  }
+
+  async deleteSQLTemplate(id: string): Promise<void> {
+    const db = this.getDb();
+    await db.delete('sqlTemplates', id);
+  }
+
+  async exportSQLTemplates(): Promise<string> {
+    const templates = await this.getAllSQLTemplates();
+    return JSON.stringify(templates, null, 2);
+  }
+
+  async importSQLTemplates(json: string): Promise<number> {
+    const db = this.getDb();
+    const templates: StoredSQLTemplate[] = JSON.parse(json);
+    let count = 0;
+
+    for (const template of templates) {
+      if (template.name && template.sql && template.category) {
+        await db.put('sqlTemplates', {
+          ...template,
+          id: template.id || generateId(),
+          createdAt: template.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        });
+        count++;
+      }
+    }
+
+    return count;
   }
 }
 

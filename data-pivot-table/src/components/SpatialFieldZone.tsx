@@ -11,6 +11,8 @@ import type { SpatialZoneId } from '../utils/fieldHelpers';
 import { getFieldType, getSpatialSortableId } from '../utils/fieldHelpers';
 import ValueFieldSettings from './ValueFieldSettings';
 
+const PRIORITY_SLOT_KEYS = ['one', 'two', 'three', 'four', 'five'];
+
 // 注册 useGSAP 插件
 gsap.registerPlugin(useGSAP);
 
@@ -114,7 +116,7 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
           </span>
         )}
         {sortable && (
-          <span className="spatial-capsule-handle" aria-label="拖拽排序">
+          <span className="spatial-capsule-handle" role="img" aria-label="拖拽排序">
             ⋮⋮
           </span>
         )}
@@ -377,7 +379,11 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                     >
                       {slotItems.map((field, index) => (
                         <PrioritySlot
-                          key={`${id}-slot-${index}`}
+                          key={
+                            field
+                              ? `${id}-slot-${field.name}`
+                              : `${id}-slot-empty-${PRIORITY_SLOT_KEYS[index]}`
+                          }
                           zoneId={id}
                           index={index}
                           field={field}
@@ -421,10 +427,10 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
 
             {/* 备选区 */}
             <div className="sub-zone">
-              <div className="sub-zone-header" onClick={toggleInactive}>
+              <button type="button" className="sub-zone-header" onClick={toggleInactive}>
                 <span className="sub-zone-title">备选字段 ({inactiveItems.length})</span>
                 <span className="sub-zone-toggle">{isInactiveExpanded ? '▾' : '▸'}</span>
-              </div>
+              </button>
               <div
                 ref={inactiveContentRef}
                 className={`sub-zone-content ${isInactiveExpanded ? '' : 'collapsed'}`}
@@ -459,19 +465,21 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
       </div>
 
       {/* 值格式设置弹窗 */}
-      {settingsFieldName && onFieldFormatChange && (() => {
-        const pivotField = activeFields.find((pf) => pf.field.name === settingsFieldName);
-        if (!pivotField) return null;
-        return (
-          <ValueFieldSettings
-            pivotField={pivotField}
-            onFormatChange={(format) => {
-              onFieldFormatChange(settingsFieldName, format);
-            }}
-            onClose={() => setSettingsFieldName(null)}
-          />
-        );
-      })()}
+      {settingsFieldName &&
+        onFieldFormatChange &&
+        (() => {
+          const pivotField = activeFields.find((pf) => pf.field.name === settingsFieldName);
+          if (!pivotField) return null;
+          return (
+            <ValueFieldSettings
+              pivotField={pivotField}
+              onFormatChange={(format) => {
+                onFieldFormatChange(settingsFieldName, format);
+              }}
+              onClose={() => setSettingsFieldName(null)}
+            />
+          );
+        })()}
     </section>
   );
 };

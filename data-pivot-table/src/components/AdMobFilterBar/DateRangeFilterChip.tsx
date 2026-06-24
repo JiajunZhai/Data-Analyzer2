@@ -327,16 +327,22 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  const calendarDays: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
-  for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
-  while (calendarDays.length < 42) calendarDays.push(null);
+  const calendarDays: Array<{ day: number | null; key: string }> = [];
+  for (let i = 0; i < firstDay; i++) {
+    calendarDays.push({ day: null, key: `${year}-${month}-leading-${i}` });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarDays.push({ day: d, key: `${year}-${month}-day-${d}` });
+  }
+  while (calendarDays.length < 42) {
+    calendarDays.push({ day: null, key: `${year}-${month}-trailing-${calendarDays.length}` });
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const renderDay = (day: number | null, index: number) => {
-    if (day === null) return <div key={`empty-${index}`} className="calendar-day empty" />;
+  const renderDay = ({ day, key }: { day: number | null; key: string }) => {
+    if (day === null) return <div key={key} className="calendar-day empty" />;
     const date = new Date(year, month, day);
     const dateStr = formatDate(date);
     const isInData = allValueSet.has(dateStr);
@@ -370,7 +376,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
     return (
       <button
         type="button"
-        key={`day-${day}`}
+        key={key}
         className={classNames}
         onClick={() => isInData && handleDayClick(date)}
         onMouseEnter={() => isInData && setHoverDate(date)}
@@ -403,11 +409,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
       </button>
 
       {isOpen && (
-        <div
-          className="date-range-dropdown"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="date-range-dropdown" role="menu">
           <div className="date-range-presets">
             {PRESETS.map((preset, i) => (
               <button
@@ -447,7 +449,7 @@ const DateRangeFilterChip: React.FC<DateRangeFilterChipProps> = ({
                 </div>
               ))}
             </div>
-            <div className="calendar-grid">{calendarDays.map((day, i) => renderDay(day, i))}</div>
+            <div className="calendar-grid">{calendarDays.map(renderDay)}</div>
             <div className="calendar-footer">
               <span className="calendar-footer-hint">
                 {rangeStart && !rangeEnd ? '请点击结束日期' : '点击选择开始日期'}

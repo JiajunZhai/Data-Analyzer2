@@ -25,19 +25,21 @@ const ValueFieldSettings: React.FC<ValueFieldSettingsProps> = ({
   };
 
   return (
-    <div className="value-settings-overlay" onClick={onClose}>
-      <div
-        className="value-settings-dropdown"
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+    <div className="value-settings-overlay">
+      <button
+        type="button"
+        className="value-settings-backdrop"
+        aria-label="关闭值格式设置"
+        onClick={onClose}
+      />
+      <div className="value-settings-dropdown" role="dialog" aria-modal="false">
         <div className="value-settings-header">
           <span className="value-settings-title">{pivotField.field.name}</span>
         </div>
 
         {/* 小数位数 */}
         <div className="value-settings-section">
-          <label className="value-settings-label">小数位数</label>
+          <span className="value-settings-label">小数位数</span>
           <div className="value-settings-decimals">
             {DECIMAL_OPTIONS.map((d) => (
               <button
@@ -57,7 +59,7 @@ const ValueFieldSettings: React.FC<ValueFieldSettingsProps> = ({
 
         {/* 千分位 */}
         <div className="value-settings-section">
-          <label className="value-settings-label">千分位分隔</label>
+          <span className="value-settings-label">千分位分隔</span>
           <button
             type="button"
             className={`mini-switch ${format.thousandsSeparator !== false ? 'active' : ''}`}
@@ -70,13 +72,12 @@ const ValueFieldSettings: React.FC<ValueFieldSettingsProps> = ({
 
         {/* 显示方式 */}
         <div className="value-settings-section">
-          <label className="value-settings-label">显示方式</label>
+          <span className="value-settings-label">显示方式</span>
           <div className="value-settings-radio-group">
             {DISPLAY_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
                 className={`value-settings-radio ${(format.displayAs || 'value') === opt.value ? 'active' : ''}`}
-                onClick={(e) => e.stopPropagation()}
               >
                 <input
                   type="radio"

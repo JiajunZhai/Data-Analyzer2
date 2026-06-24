@@ -72,6 +72,15 @@ type DataRow = Record<string, string | number>;
 // ============ 数据预处理（内联，避免外部依赖） ============
 
 const COUNTRY_MAP: Record<string, string> = {};
+const BEHAVIOR_DIMENSIONS = [
+  '标准广告场景',
+  'standard_scene',
+  '广告场景',
+  '聚合广告场景',
+  '广告类型',
+  '变现渠道',
+  '广告变现渠道',
+];
 
 const CALCULATED_METRICS: Record<string, { formula: string; fields: string[] }> = {
   eCPM: { formula: '(广告收益 / 曝光次数) * 1000', fields: ['广告收益', '曝光次数'] },
@@ -82,47 +91,127 @@ const CALCULATED_METRICS: Record<string, { formula: string; fields: string[] }> 
   '收益占比%': { formula: '(广告收益 / 总广告收益) * 100', fields: ['广告收益', '总广告收益'] },
 };
 
-const SAFE_EXPR_PATTERN = /^[\d\s+\-*/().]+$/;
-function safeEval(expr: string): number {
-  if (!SAFE_EXPR_PATTERN.test(expr)) return 0;
-  try {
-    const result = Function(`"use strict"; return (${expr})`)();
-    return typeof result === 'number' && isFinite(result) ? result : 0;
-  } catch {
-    return 0;
+function toNumber(value: unknown): number {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function parseCell(value: string): string | number {
+  const num = Number(value);
+  return Number.isNaN(num) ? value : num;
+}
+
+function safeDivide(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : numerator / denominator;
+}
+
+function isAllBehaviorRow(row: DataRow): boolean {
+  for (let i = 0; i < BEHAVIOR_DIMENSIONS.length; i++) {
+    if (
+      String(row[BEHAVIOR_DIMENSIONS[i]] ?? '')
+        .trim()
+        .toUpperCase() === 'ALL'
+    ) {
+      return true;
+    }
   }
+  return false;
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function getMappedCountry(value: unknown): string {
+  const code = String(value ?? '').trim();
+  return code ? (COUNTRY_MAP[code.toLowerCase()] ?? code) : '';
 }
 
-const calculatedFieldRegexes = new Map<string, RegExp[]>();
-for (const [name, config] of Object.entries(CALCULATED_METRICS)) {
-  calculatedFieldRegexes.set(
-    name,
-    [...config.fields]
-      .sort((a, b) => b.length - a.length)
-      .map((f) => new RegExp(escapeRegExp(f), 'g'))
-  );
+function getRegisterLookupKey(row: DataRow): string {
+  const date = String(row.日期 ?? '').trim();
+  const app = String(row.应用 ?? row.app_code ?? '').trim();
+  const country = getMappedCountry(row.国家);
+  return `${date}\u001f${app}\u001f${country}`;
+}
+
+function addCalculatedMetrics(row: DataRow, totalRevenue: number): void {
+  const revenue = toNumber(row.广告收益);
+  const impressions = toNumber(row.曝光次数);
+  const clicks = toNumber(row.点击次数);
+  const impressionUsers = toNumber(row.曝光人数);
+  const registeredUsers = toNumber(row.注册用户);
+
+  row.总广告收益 = totalRevenue;
+  row.eCPM = safeDivide(revenue, impressions) * 1000;
+  row.CTR = safeDivide(clicks, impressions);
+  row.ARPU = safeDivide(revenue, registeredUsers);
+  row.渗透率 = safeDivide(impressionUsers, registeredUsers);
+  row.IPU = safeDivide(impressions, registeredUsers);
+  row['收益占比%'] = safeDivide(revenue, totalRevenue) * 100;
 }
 
 // ============ 字段检测 ============
 
-const DIMENSION_FIELDS = ['日期', '国家', '应用', '渠道', '版本', '标准广告场景', '聚合广告场景'];
-const MEASURE_FIELDS = ['注册用户', '曝光人数', '曝光次数', '广告收益', '点击次数'];
+const ATTRIBUTE_DIMENSIONS = new Set([
+  '安装日期',
+  '日期',
+  '国家',
+  '应用',
+  'app_code',
+  '买量渠道',
+  '渠道',
+  '版本',
+  '生命周期',
+]);
+const BEHAVIOR_DIMENSIONS_SET = new Set([
+  '标准广告场景',
+  'standard_scene',
+  '广告场景',
+  '聚合广告场景',
+  '广告类型',
+  '变现渠道',
+  '广告变现渠道',
+]);
+const DIMENSION_FIELDS = [
+  '日期',
+  '国家',
+  '应用',
+  'app_code',
+  '买量渠道',
+  '渠道',
+  '版本',
+  '标准广告场景',
+  'standard_scene',
+  '聚合广告场景',
+  '广告类型',
+  '变现渠道',
+  '广告变现渠道',
+  '广告场景',
+  '生命周期',
+  '安装日期',
+];
+const MEASURE_FIELDS = ['注册用户', '活跃用户', '曝光人数', '曝光次数', '广告收益', '点击次数'];
 
 interface Field {
   name: string;
   type: 'dimension' | 'measure';
   dataType: 'string' | 'number' | 'date';
   isCalculated?: boolean;
+  dimensionType?: 'Attribute' | 'Behavior';
+  dimensionCategory?: 'Attribute' | 'Behavior';
 }
 
 function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
   return headers.map((header) => {
     if (DIMENSION_FIELDS.includes(header)) {
-      return { name: header, type: 'dimension', dataType: header === '日期' ? 'date' : 'string' };
+      const dimensionType = BEHAVIOR_DIMENSIONS_SET.has(header)
+        ? 'Behavior'
+        : ATTRIBUTE_DIMENSIONS.has(header)
+          ? 'Attribute'
+          : undefined;
+      return {
+        name: header,
+        type: 'dimension',
+        dataType: header === '日期' ? 'date' : 'string',
+        dimensionType,
+        dimensionCategory: dimensionType,
+      };
     }
     if (MEASURE_FIELDS.includes(header)) {
       return { name: header, type: 'measure', dataType: 'number' };
@@ -132,7 +221,7 @@ function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
       .map((r) => r[header])
       .filter((v) => v !== '' && v != null);
     if (values.length === 0) return { name: header, type: 'dimension', dataType: 'string' };
-    const isNumeric = values.every((v) => !isNaN(Number(v)));
+    const isNumeric = values.every((v) => !Number.isNaN(Number(v)));
     const uniqueCount = new Set(values).size;
     const type = isNumeric && uniqueCount / values.length > 0.5 ? 'measure' : 'dimension';
     return { name: header, type, dataType: isNumeric ? 'number' : 'string' };
@@ -166,6 +255,22 @@ self.onmessage = async (e: MessageEvent) => {
 
     let offset = 0;
     let lineCount = 0;
+    const appendDataRow = (values: string[]) => {
+      const obj: DataRow = {};
+      for (let i = 0; i < headers.length; i++) {
+        obj[headers[i]] = parseCell(values[i] ?? '');
+      }
+
+      totalRevenue += toNumber(obj.广告收益);
+
+      if (isAllBehaviorRow(obj)) {
+        const val = Number(obj.注册用户);
+        if (!Number.isNaN(val) && val > 0) registeredUserLookup.set(getRegisterLookupKey(obj), val);
+      }
+
+      rows.push(obj);
+      lineCount++;
+    };
 
     while (offset < fileSize) {
       const end = Math.min(offset + CHUNK_SIZE, fileSize);
@@ -187,31 +292,7 @@ self.onmessage = async (e: MessageEvent) => {
           continue;
         }
 
-        const values = parseCSVLine(trimmed);
-        const obj: DataRow = {};
-        for (let i = 0; i < headers.length; i++) {
-          const val = values[i] ?? '';
-          obj[headers[i]] = isNaN(Number(val)) ? val : Number(val);
-        }
-
-        // 累计总收益
-        totalRevenue += Number(obj['广告收益']) || 0;
-
-        // 收集 ALL 行注册用户
-        const scene = String(obj['标准广告场景'] ?? obj['聚合广告场景'] ?? '')
-          .trim()
-          .toUpperCase();
-        if (scene === 'ALL') {
-          const date = String(obj['日期'] ?? '').trim();
-          const app = String(obj['应用'] ?? '').trim();
-          const country = String(obj['国家'] ?? '').trim();
-          const key = `${date}\u001f${app}\u001f${country}`;
-          const val = Number(obj['注册用户']);
-          if (!Number.isNaN(val) && val > 0) registeredUserLookup.set(key, val);
-        }
-
-        rows.push(obj);
-        lineCount++;
+        appendDataRow(parseCSVLine(trimmed));
 
         if (lineCount % 50000 === 0) {
           self.postMessage({
@@ -231,13 +312,7 @@ self.onmessage = async (e: MessageEvent) => {
       if (isFirstLine) {
         headers.push(...parseCSVLine(buffer.trim()));
       } else {
-        const values = parseCSVLine(buffer.trim());
-        const obj: DataRow = {};
-        for (let i = 0; i < headers.length; i++) {
-          const val = values[i] ?? '';
-          obj[headers[i]] = isNaN(Number(val)) ? val : Number(val);
-        }
-        rows.push(obj);
+        appendDataRow(parseCSVLine(buffer.trim()));
       }
     }
 
@@ -253,36 +328,18 @@ self.onmessage = async (e: MessageEvent) => {
       const row = rows[i];
 
       // 国家映射
-      const code = String(row['国家'] ?? '');
-      if (code && COUNTRY_MAP[code.toLowerCase()]) {
-        row['国家'] = COUNTRY_MAP[code.toLowerCase()];
-      }
+      row.国家 = getMappedCountry(row.国家);
 
       // 注册用户回填
-      const regUsers = Number(row['注册用户']);
-      const scene = String(row['标准广告场景'] ?? row['聚合广告场景'] ?? '')
-        .trim()
-        .toUpperCase();
-      if ((!regUsers || regUsers === 0) && scene !== 'ALL') {
-        const date = String(row['日期'] ?? '').trim();
-        const app = String(row['应用'] ?? '').trim();
-        const country = String(row['国家'] ?? '').trim();
-        const key = `${date}\u001f${app}\u001f${country}`;
-        const fallback = registeredUserLookup.get(key);
-        if (fallback && fallback > 0) row['注册用户'] = fallback;
+      const regUsers = Number(row.注册用户);
+      const isDetailRow = !isAllBehaviorRow(row);
+      if ((!regUsers || regUsers === 0) && isDetailRow) {
+        const fallback = registeredUserLookup.get(getRegisterLookupKey(row));
+        if (fallback && fallback > 0) row.注册用户 = fallback;
       }
 
       // 计算字段
-      row['总广告收益'] = totalRevenue;
-      for (const [metricName, config] of Object.entries(CALCULATED_METRICS)) {
-        const regexes = calculatedFieldRegexes.get(metricName)!;
-        let formula = config.formula;
-        config.fields.forEach((fieldName, idx) => {
-          const value = fieldName === '总广告收益' ? totalRevenue : Number(row[fieldName]) || 0;
-          formula = formula.replace(regexes[idx], String(value));
-        });
-        row[metricName] = safeEval(formula);
-      }
+      addCalculatedMetrics(row, totalRevenue);
 
       if (i % 50000 === 0) {
         self.postMessage({
@@ -303,13 +360,14 @@ self.onmessage = async (e: MessageEvent) => {
       isCalculated: true,
     }));
 
-    // 发送最终结果（包含完整数据）
+    // 发送最终结果（包含完整数据，标记已预处理）
     self.postMessage({
       type: 'done',
       headers,
       fields: [...fields, ...calculatedFields],
       data: rows,
       rowCount: rows.length,
+      preprocessed: true,
     });
   } catch (error) {
     self.postMessage({

@@ -1,5 +1,8 @@
 export type FieldType = 'dimension' | 'measure';
 
+export type DimensionType = 'Attribute' | 'Behavior';
+export type DimensionCategory = DimensionType;
+
 export type AggregationType = 'sum' | 'avg' | 'count' | 'min' | 'max';
 
 export type ValueAxis = 'rows' | 'columns';
@@ -11,6 +14,8 @@ export interface Field {
   aggregation?: AggregationType;
   isCalculated?: boolean;
   isMapped?: boolean;
+  dimensionType?: DimensionType;
+  dimensionCategory?: DimensionCategory;
 }
 
 export interface CalculatedField {
@@ -20,21 +25,21 @@ export interface CalculatedField {
 }
 
 export interface ValueFormatConfig {
-  decimals?: number;            // 0-6, 不设置则使用默认值
+  decimals?: number; // 0-6, 不设置则使用默认值
   thousandsSeparator?: boolean; // 千分位分隔符，默认 true
   displayAs?: 'value' | 'percentage';
 }
 
 export interface SortConfig {
   type: 'column' | 'dimension' | 'total';
-  value: string;       // 列索引字符串 或 维度名
+  value: string; // 列索引字符串 或 维度名
   direction: 'asc' | 'desc';
 }
 
 export interface PivotField {
   field: Field;
   aggregation?: AggregationType;
-  format?: ValueFormatConfig;   // 仅值字段有意义
+  format?: ValueFormatConfig; // 仅值字段有意义
 }
 
 export interface PivotConfig {

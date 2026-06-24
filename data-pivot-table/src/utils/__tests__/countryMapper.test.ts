@@ -9,9 +9,9 @@ describe('countryMapper', () => {
 
       const result = applyCountryMapping(data);
 
-      expect(result[0]['国家']).toBe('中国');
-      expect(result[1]['国家']).toBe('美国');
-      expect(result[2]['国家']).toBe('日本');
+      expect(result[0].国家).toBe('中国');
+      expect(result[1].国家).toBe('美国');
+      expect(result[2].国家).toBe('日本');
     });
 
     it('应该保留未知的国家代码', () => {
@@ -19,7 +19,7 @@ describe('countryMapper', () => {
 
       const result = applyCountryMapping(data);
 
-      expect(result[0]['国家']).toBe('XX');
+      expect(result[0].国家).toBe('XX');
     });
 
     it('应该处理空数据', () => {
@@ -35,7 +35,7 @@ describe('countryMapper', () => {
 
       const result = applyCountryMapping(data);
 
-      expect(result[0]['国家']).toBeUndefined();
+      expect(result[0].国家).toBeUndefined();
     });
 
     it('应该使用自定义字段名', () => {
@@ -43,7 +43,7 @@ describe('countryMapper', () => {
 
       const result = applyCountryMapping(data, 'country');
 
-      expect(result[0]['country']).toBe('中国');
+      expect(result[0].country).toBe('中国');
     });
   });
 

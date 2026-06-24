@@ -94,8 +94,10 @@
   --shadow-lg: 0 8px 28px -4px rgba(11, 28, 48, 0.12), 0 4px 12px -2px rgba(11, 28, 48, 0.06);
   --shadow-card-subtle: 0 4px 12px rgba(11, 28, 48, 0.03);
   --shadow-card: 0 2px 8px -2px rgba(11, 28, 48, 0.06), 0 1px 2px rgba(11, 28, 48, 0.04);
-  --shadow-card-hover: 0 8px 20px -4px rgba(41, 82, 201, 0.12), 0 4px 8px -2px rgba(11, 28, 48, 0.06);
-  --shadow-dropdown: 0 12px 36px -8px rgba(11, 28, 48, 0.15), 0 4px 12px -4px rgba(11, 28, 48, 0.08);
+  --shadow-card-hover:
+    0 8px 20px -4px rgba(41, 82, 201, 0.12), 0 4px 8px -2px rgba(11, 28, 48, 0.06);
+  --shadow-dropdown:
+    0 12px 36px -8px rgba(11, 28, 48, 0.15), 0 4px 12px -4px rgba(11, 28, 48, 0.08);
   --shadow-drag: 0 16px 40px -8px rgba(41, 82, 201, 0.18), 0 4px 12px -2px rgba(11, 28, 48, 0.1);
   --shadow-drawer: -8px 0 32px -4px rgba(11, 28, 48, 0.08);
   --shadow-focus: 0 0 0 3px rgba(41, 82, 201, 0.2);

@@ -1,7 +1,17 @@
 import type { ValueFormatConfig } from '../../types';
 import { BASE_METRICS } from '../../utils/calculatedField';
 
-const KEY_SEPARATOR = '\u001f';
+export const KEY_SEPARATOR = '\u001f';
+
+export function makeStableKeys(values: readonly string[], prefix: string): string[] {
+  const seen = new Map<string, number>();
+  return values.map((value) => {
+    const base = value || prefix;
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    return count === 0 ? `${prefix}:${base}` : `${prefix}:${base}:${count + 1}`;
+  });
+}
 
 /**
  * 格式化透视表数值
@@ -14,7 +24,7 @@ export function formatPivotValue(
   if (num === 0) return { text: '-', isEmpty: true };
 
   const val = Number(num);
-  if (isNaN(val)) return { text: '-', isEmpty: true };
+  if (Number.isNaN(val)) return { text: '-', isEmpty: true };
 
   // 有自定义格式配置时，按配置格式化
   if (formatConfig) {
@@ -22,7 +32,7 @@ export function formatPivotValue(
     const useThousands = formatConfig.thousandsSeparator !== false;
 
     if (formatConfig.displayAs === 'percentage') {
-      return { text: (val * 100).toFixed(decimals) + '%', isEmpty: false };
+      return { text: `${(val * 100).toFixed(decimals)}%`, isEmpty: false };
     }
 
     if (useThousands) {
@@ -41,9 +51,9 @@ export function formatPivotValue(
   // 默认格式化规则
   let text: string;
   if (metricName === '渗透率' || metricName === 'CTR') {
-    text = (val * 100).toFixed(2) + '%';
+    text = `${(val * 100).toFixed(2)}%`;
   } else if (metricName === '收益占比%') {
-    text = val.toFixed(2) + '%';
+    text = `${val.toFixed(2)}%`;
   } else if (metricName === 'ARPU') {
     text = val.toFixed(4);
   } else if (metricName === 'eCPM' || metricName === 'IPU') {

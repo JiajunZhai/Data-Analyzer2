@@ -306,6 +306,8 @@ body {
 .more-filter-reset-icon {
   display: inline-flex;
   align-items: center;
+  border: 0;
+  background: transparent;
   cursor: pointer;
   color: var(--text-muted);
   padding: 1px;
@@ -336,7 +338,9 @@ body {
   width: 14px;
   height: 14px;
   margin-left: 1px;
+  border: 0;
   border-radius: 50%;
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1598,7 +1602,6 @@ body {
 
 /* 冻结列头：垂直滚动时固定在顶部 */
 .pivot-table thead {
-  position: -webkit-sticky;
   position: sticky;
   top: 0;
   z-index: 8;
@@ -1632,7 +1635,6 @@ body {
 }
 
 .corner-cell {
-  position: -webkit-sticky;
   position: sticky;
   left: 0;
   top: 0;
@@ -1651,7 +1653,6 @@ body {
 }
 
 .tree-corner-cell {
-  position: -webkit-sticky;
   position: sticky;
   left: 0;
   top: 0;
@@ -1713,7 +1714,6 @@ body {
 
 /* 粘性文字标签 */
 .sticky-header-label {
-  position: -webkit-sticky;
   position: sticky;
   left: 12px;
   display: inline-block;
@@ -1882,7 +1882,6 @@ td.group-boundary-col {
 
 /* 冻结列 td：sticky 必须放在 td 上（内层 div 的 sticky 在滚动物理上不生效） */
 .row-header.frozen-row-header {
-  position: -webkit-sticky;
   position: sticky;
   left: 0;
   z-index: 10;
@@ -1905,7 +1904,6 @@ td.group-boundary-col {
 /* 右侧行总计列 Sticky */
 .total-cell-sticky,
 .total-header-sticky {
-  position: -webkit-sticky;
   position: sticky;
   right: 0;
   z-index: 15;
@@ -1926,7 +1924,6 @@ td.group-boundary-col {
 
 /* 底部列总计行 Sticky */
 .total-row-sticky {
-  position: -webkit-sticky;
   position: sticky;
   bottom: 0;
   z-index: 20;
@@ -1940,7 +1937,6 @@ td.group-boundary-col {
 
 /* 右下角交汇单元格 */
 .grand-total.summary-intersection {
-  position: -webkit-sticky;
   position: sticky;
   bottom: 0;
   right: 0;
@@ -2265,8 +2261,7 @@ td.group-boundary-col {
   padding: 10px 18px;
   min-height: 64px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 249, 255, 0.94)),
-    var(--header-bg);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 249, 255, 0.94)), var(--header-bg);
   color: var(--header-text);
   border-bottom: 1px solid var(--border-light);
   box-shadow: 0 8px 24px -20px rgba(11, 28, 48, 0.35);
@@ -2481,10 +2476,104 @@ td.group-boundary-col {
   opacity: 1;
 }
 
+/* 算法分析入口按钮 */
+.algorithm-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #2e3192 0%, #5a1f85 100%);
+  border: none;
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(46, 49, 146, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.algorithm-entry-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.5s ease;
+}
+
+.algorithm-entry-btn:hover::before {
+  left: 100%;
+}
+
+.algorithm-entry-btn:hover {
+  box-shadow: 0 4px 16px rgba(46, 49, 146, 0.35);
+  transform: translateY(-1px);
+}
+
+.algorithm-entry-btn:active {
+  transform: scale(0.97);
+}
+
+.algorithm-entry-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.algorithm-entry-label {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* SQL 模板入口按钮 */
+.sql-entry-section {
+  padding: 8px 8px 0;
+  margin-top: auto;
+}
+
+.sql-entry-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.sql-entry-btn:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-light);
+  color: var(--primary-light);
+}
+
+.sql-entry-btn svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.sql-entry-btn:hover svg {
+  opacity: 1;
+}
+
 [data-theme="dark"] .app-header {
   background:
-    linear-gradient(180deg, rgba(15, 32, 64, 0.98), rgba(11, 28, 48, 0.94)),
-    var(--header-bg);
+    linear-gradient(180deg, rgba(15, 32, 64, 0.98), rgba(11, 28, 48, 0.94)), var(--header-bg);
 }
 
 [data-theme="dark"] .app-header .admob-filter-bar {
@@ -2675,6 +2764,14 @@ td.group-boundary-col {
   align-items: flex-start;
   justify-content: center;
   padding-top: 20vh;
+}
+
+.value-settings-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
 }
 
 .value-settings-dropdown {
@@ -2878,7 +2975,9 @@ th.sortable .sort-btn:focus,
 
 .spatial-table .pivot-table-container {
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 12px -2px rgba(11, 28, 48, 0.08), 0 2px 4px -1px rgba(11, 28, 48, 0.04);
+  box-shadow:
+    0 4px 12px -2px rgba(11, 28, 48, 0.08),
+    0 2px 4px -1px rgba(11, 28, 48, 0.04);
 }
 
 .spatial-table .pivot-table-empty {
@@ -2933,7 +3032,6 @@ th.sortable .sort-btn:focus,
   padding: 0 12px;
   border-bottom: 1px solid var(--border-light);
   background: var(--zone-bg);
-  position: -webkit-sticky;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -3983,9 +4081,20 @@ th.sortable .sort-btn:focus,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px;
+  width: 100%;
+  padding: 4px 4px;
+  margin: 0;
+  border: none;
+  background: none;
   cursor: pointer;
   user-select: none;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.sub-zone-header:hover {
+  opacity: 0.8;
 }
 
 .sub-zone-title {
