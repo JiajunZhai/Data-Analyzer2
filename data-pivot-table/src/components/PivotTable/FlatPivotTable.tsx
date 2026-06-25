@@ -291,12 +291,12 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       );
     };
 
-    // 渲染角标维度头 — colSpan 横跨所有行维度列，rowSpan 纵跨表头层级数
+    // 渲染角标维度头 — 固定 colSpan=1，所有维度名显示在一个单元格内
     const renderCornerCells = () => (
       <th
         key="corner"
         className="corner-cell sortable"
-        colSpan={dimensionCount}
+        colSpan={1}
         rowSpan={columnLevels.length || 1}
       >
         {rowDimensions.join(' / ')}
