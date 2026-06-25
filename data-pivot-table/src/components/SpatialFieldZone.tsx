@@ -56,6 +56,7 @@ const FieldCapsule: React.FC<FieldCapsuleProps> = ({
   disabledReason,
   showSettings,
   onSettingsClick,
+  onToggle,
 }) => {
   const innerRef = useRef<HTMLDivElement>(null);
   const prevActiveRef = useRef(active);

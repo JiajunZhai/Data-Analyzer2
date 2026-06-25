@@ -54,7 +54,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       rowHeaders,
       rowDimensions,
       columnHeaders,
-      columnLevels,
+      columnLevels: rawColumnLevels,
       columnValueFieldNames,
       data,
       rowTotalValues,
@@ -65,6 +65,29 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       valueFieldNames,
       valueFormats,
     } = result;
+
+    // 统一的响应式叶子列数组 — 表头和数据行共用此源
+    const activeColumns = useMemo(() => {
+      return columnHeaders.map((header, idx) => ({
+        header,
+        valueFieldName: columnValueFieldNames[idx],
+      }));
+    }, [columnHeaders, columnValueFieldNames]);
+
+    // 响应式 columnLevels — 基于 activeColumns 长度校验 colspan 一致性
+    const columnLevels = useMemo(() => {
+      if (!rawColumnLevels.length) return rawColumnLevels;
+      // 校验：每层 colspan 之和必须等于 activeColumns.length
+      return rawColumnLevels.map((level) => {
+        const totalColspan = level.reduce((sum, col) => sum + col.colspan, 0);
+        if (totalColspan === activeColumns.length) return level;
+        // 如果不一致，按叶子列重新生成单层表头
+        return activeColumns.map((col) => ({
+          value: col.header || '总计',
+          colspan: 1,
+        }));
+      });
+    }, [rawColumnLevels, activeColumns]);
 
     const rowCount = rowHeaders.length;
     const useVirtual = shouldUseVirtualScroll(rowCount);
@@ -249,24 +272,24 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       );
     };
 
-    // 渲染角标维度头
-    const renderCornerCells = () =>
-      rowDimensions.map((dim, index) => (
-        <th
-          key={dim}
-          className="corner-cell sortable"
-          rowSpan={hasColumnLevels ? columnLevels.length : 1}
-          style={frozenColumnStyles[index]}
-        >
-          {dim}
+    // 渲染角标维度头 — 单个 <th> 横跨所有行维度列，不设 rowSpan 避免侵入 tbody
+    const renderCornerCells = () => (
+      <th
+        key="corner"
+        className="corner-cell sortable"
+        colSpan={dimensionCount}
+      >
+        {rowDimensions.join(' / ')}
+        {dimensionCount === 1 && onToggleSort && (
           <SortButton
             type="dimension"
-            value={dim}
+            value={rowDimensions[0]}
             sortConfig={sortConfig}
             onToggleSort={onToggleSort}
           />
-        </th>
-      ));
+        )}
+      </th>
+    );
 
     // 渲染行总计头
     const renderTotalHeaderCells = (levelIndex: number, depth: number) => {
@@ -365,7 +388,8 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
             );
           })}
 
-          {(data[ri] || []).map((val, ci) => {
+          {activeColumns.map((col, ci) => {
+            const val = data[ri]?.[ci] ?? 0;
             const metricName = getDataMetricName(ri, ci);
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
             const boundaryClass = getGroupBoundaryClass(columnLevels, ci);
@@ -471,46 +495,63 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
           <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
             <table className="pivot-table" style={{ position: 'absolute', top: 0, width: '100%' }}>
               <thead>
-                <tr>
-                  {renderCornerCells()}
-                  {columnHeaders.map((col, idx) => (
-                    <th
-                      key={columnKeys[idx]}
-                      className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''} sortable`}
-                    >
-                      {formatColumnHeader(col)}
-                      <SortButton
-                        type="column"
-                        value={String(idx)}
-                        sortConfig={sortConfig}
-                        onToggleSort={onToggleSort}
-                      />
-                    </th>
-                  ))}
-                  {showRowTotal &&
-                    totalColumnHeaders.length > 0 &&
-                    (hasMultipleTotalColumns ? (
-                      totalColumnHeaders.map((header, idx) => (
-                        <th
-                          key={totalColumnKeys[idx]}
-                          className="total-header total-header-leaf total-header-sticky"
-                          style={getStickyRightStyle(idx, totalColumnHeaders.length)}
-                        >
-                          {header}
-                        </th>
-                      ))
-                    ) : (
-                      <th className="total-header total-header-sticky sortable">
-                        行总计
+                {hasColumnLevels ? (
+                  columnLevels.map((level, levelIdx) => (
+                    <tr key={columnLevelRowKeys[levelIdx]}>
+                      {levelIdx === 0 && renderCornerCells()}
+                      {level.map((col, colIdx) =>
+                        renderColumnHeader(
+                          col,
+                          levelIdx,
+                          colIdx,
+                          columnLevelCellKeys[levelIdx]?.[colIdx] || `${col.value}:${col.colspan}`
+                        )
+                      )}
+                      {renderTotalHeaderCells(levelIdx, columnLevels.length)}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    {renderCornerCells()}
+                    {columnHeaders.map((col, idx) => (
+                      <th
+                        key={columnKeys[idx]}
+                        className={`col-header ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''} sortable`}
+                      >
+                        {formatColumnHeader(col)}
                         <SortButton
-                          type="total"
-                          value="total"
+                          type="column"
+                          value={String(idx)}
                           sortConfig={sortConfig}
                           onToggleSort={onToggleSort}
                         />
                       </th>
                     ))}
-                </tr>
+                    {showRowTotal &&
+                      totalColumnHeaders.length > 0 &&
+                      (hasMultipleTotalColumns ? (
+                        totalColumnHeaders.map((header, idx) => (
+                          <th
+                            key={totalColumnKeys[idx]}
+                            className="total-header total-header-leaf total-header-sticky"
+                            style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                          >
+                            {header}
+                          </th>
+                        ))
+                      ) : (
+                        <th className="total-header total-header-sticky sortable">
+                          行总计
+                          <SortButton
+                            type="total"
+                            value="total"
+                            sortConfig={sortConfig}
+                            onToggleSort={onToggleSort}
+                          />
+                        </th>
+                      ))}
+                  </tr>
+                )}
               </thead>
               <tbody>{renderVisibleRows()}</tbody>
             </table>

@@ -68,7 +68,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       rowTree,
       rowDimensions,
       columnHeaders,
-      columnLevels,
+      columnLevels: rawColumnLevels,
       columnValueFieldNames,
       totalColumnHeaders,
       totalColumnValueFieldNames,
@@ -76,6 +76,27 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       valueFieldNames,
       valueFormats,
     } = result;
+
+    // 统一的响应式叶子列数组 — 表头和数据行共用此源
+    const activeColumns = useMemo(() => {
+      return columnHeaders.map((header, idx) => ({
+        header,
+        valueFieldName: columnValueFieldNames[idx],
+      }));
+    }, [columnHeaders, columnValueFieldNames]);
+
+    // 响应式 columnLevels — 基于 activeColumns 长度校验 colspan 一致性
+    const columnLevels = useMemo(() => {
+      if (!rawColumnLevels.length) return rawColumnLevels;
+      return rawColumnLevels.map((level) => {
+        const totalColspan = level.reduce((sum, col) => sum + col.colspan, 0);
+        if (totalColspan === activeColumns.length) return level;
+        return activeColumns.map((col) => ({
+          value: col.header || '总计',
+          colspan: 1,
+        }));
+      });
+    }, [rawColumnLevels, activeColumns]);
 
     const visibleTreeRows = useMemo<VisibleTreeRow[]>(() => {
       if (!rowTree) return [];

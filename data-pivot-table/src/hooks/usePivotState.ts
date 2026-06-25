@@ -480,6 +480,15 @@ export function usePivotState() {
     [fields, rowFields.length, colFields.length, rowFieldNames, colFieldNames]
   );
 
+  // 专用删除函数 — 普通箭头函数，不占 hook 位
+  // setRowFields/setColFields/setValueFields 是 React 稳定引用，闭包安全
+  const removeRowField = (fieldName: string) =>
+    setRowFields((prev) => prev.filter((pf) => pf.field.name !== fieldName));
+  const removeColField = (fieldName: string) =>
+    setColFields((prev) => prev.filter((pf) => pf.field.name !== fieldName));
+  const removeValueField = (fieldName: string) =>
+    setValueFields((prev) => prev.filter((pf) => pf.field.name !== fieldName));
+
   return {
     // 数据状态
     fields,
@@ -517,6 +526,9 @@ export function usePivotState() {
     toggleValueField,
     toggleRowField,
     toggleColField,
+    removeRowField,
+    removeColField,
+    removeValueField,
     handleFilterChange,
     resetAllFilters,
     applyTemplate,

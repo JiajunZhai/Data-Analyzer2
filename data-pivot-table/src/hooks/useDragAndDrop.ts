@@ -33,6 +33,9 @@ interface UseDragAndDropProps {
   toggleValueField: (field: Field, targetIndex?: number) => void;
   toggleRowField: (field: Field, targetIndex?: number) => void;
   toggleColField: (field: Field, targetIndex?: number) => void;
+  removeRowField: (fieldName: string) => void;
+  removeColField: (fieldName: string) => void;
+  removeValueField: (fieldName: string) => void;
   reorderFields: (
     zoneId: SpatialZoneId,
     activeName: string,
@@ -56,6 +59,9 @@ export function useDragAndDrop({
   toggleValueField,
   toggleRowField,
   toggleColField,
+  removeRowField,
+  removeColField,
+  removeValueField,
   reorderFields,
   moveFieldToIndex,
   activateFieldAtIndex,
@@ -249,18 +255,13 @@ export function useDragAndDrop({
 
       const deactivateFieldForZone = (zoneId: SpatialZoneId, fieldName: string) => {
         if (zoneId === 'values') {
-          const field = measures.find((f) => f.name === fieldName);
-          if (field) toggleValueField(field);
+          removeValueField(fieldName);
           return;
         }
-
-        const field = dimensions.find((f) => f.name === fieldName);
-        if (!field) return;
-
         if (zoneId === 'rows') {
-          toggleRowField(field);
+          removeRowField(fieldName);
         } else if (zoneId === 'columns') {
-          toggleColField(field);
+          removeColField(fieldName);
         }
       };
 
@@ -337,6 +338,9 @@ export function useDragAndDrop({
       toggleValueField,
       toggleRowField,
       toggleColField,
+      removeRowField,
+      removeColField,
+      removeValueField,
       handlePointerMove,
     ]
   );

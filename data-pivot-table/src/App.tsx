@@ -103,6 +103,9 @@ function App() {
     toggleValueField,
     toggleRowField,
     toggleColField,
+    removeRowField,
+    removeColField,
+    removeValueField,
     handleFilterChange,
     resetAllFilters,
     applyTemplate,
@@ -169,6 +172,9 @@ function App() {
     toggleValueField,
     toggleRowField,
     toggleColField,
+    removeRowField,
+    removeColField,
+    removeValueField,
     reorderFields,
     moveFieldToIndex,
     activateFieldAtIndex,
@@ -590,6 +596,7 @@ function App() {
                 }}
               >
                 <PivotTable
+                  key={pivotResult ? `${colFields.map(f => f.field.name).join('-')}_${JSON.stringify(filterConfigs)}` : 'empty'}
                   result={pivotResult}
                   valueFieldName={valueFields[0]?.field.name}
                   emptyMessage={emptyMessage}
