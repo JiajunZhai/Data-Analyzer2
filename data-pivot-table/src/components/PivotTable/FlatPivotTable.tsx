@@ -74,20 +74,9 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       }));
     }, [columnHeaders, columnValueFieldNames]);
 
-    // 响应式 columnLevels — 基于 activeColumns 长度校验 colspan 一致性
-    const columnLevels = useMemo(() => {
-      if (!rawColumnLevels.length) return rawColumnLevels;
-      // 校验：每层 colspan 之和必须等于 activeColumns.length
-      return rawColumnLevels.map((level) => {
-        const totalColspan = level.reduce((sum, col) => sum + col.colspan, 0);
-        if (totalColspan === activeColumns.length) return level;
-        // 如果不一致，按叶子列重新生成单层表头
-        return activeColumns.map((col) => ({
-          value: col.header || '总计',
-          colspan: 1,
-        }));
-      });
-    }, [rawColumnLevels, activeColumns]);
+    // 直接使用聚合引擎的 columnLevels，不做降级替换
+    // 降级替换会破坏多级表头结构，导致 colspan 错位
+    const columnLevels = rawColumnLevels;
 
     const rowCount = rowHeaders.length;
     const useVirtual = shouldUseVirtualScroll(rowCount);
@@ -272,12 +261,13 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       );
     };
 
-    // 渲染角标维度头 — 单个 <th> 横跨所有行维度列，不设 rowSpan 避免侵入 tbody
+    // 渲染角标维度头 — colSpan 严格等于行维度数，rowSpan 动态等于表头层级数
     const renderCornerCells = () => (
       <th
         key="corner"
         className="corner-cell sortable"
-        colSpan={dimensionCount}
+        colSpan={rowDimensions.length}
+        rowSpan={columnLevels.length || 1}
       >
         {rowDimensions.join(' / ')}
         {dimensionCount === 1 && onToggleSort && (

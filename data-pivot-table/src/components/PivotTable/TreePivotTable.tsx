@@ -85,18 +85,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       }));
     }, [columnHeaders, columnValueFieldNames]);
 
-    // 响应式 columnLevels — 基于 activeColumns 长度校验 colspan 一致性
-    const columnLevels = useMemo(() => {
-      if (!rawColumnLevels.length) return rawColumnLevels;
-      return rawColumnLevels.map((level) => {
-        const totalColspan = level.reduce((sum, col) => sum + col.colspan, 0);
-        if (totalColspan === activeColumns.length) return level;
-        return activeColumns.map((col) => ({
-          value: col.header || '总计',
-          colspan: 1,
-        }));
-      });
-    }, [rawColumnLevels, activeColumns]);
+    // 直接使用聚合引擎的 columnLevels，不做降级替换
+    const columnLevels = rawColumnLevels;
 
     const visibleTreeRows = useMemo<VisibleTreeRow[]>(() => {
       if (!rowTree) return [];
