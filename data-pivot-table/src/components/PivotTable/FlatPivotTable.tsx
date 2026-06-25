@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import { shouldUseVirtualScroll, useVirtualScroll } from '../../hooks/useVirtualScroll';
-import type { PivotResult, SortConfig } from '../../types';
+import type { ColumnLevel, PivotResult, SortConfig } from '../../types';
 import { calculateAllRowSpans } from '../../utils/rowSpanCalculator';
 import type { ToggleSortFn } from './PivotTable';
 import {
@@ -55,6 +55,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       rowDimensions,
       columnHeaders,
       columnLevels: rawColumnLevels,
+      colFieldNames,
       columnValueFieldNames,
       data,
       rowTotalValues,
@@ -75,8 +76,26 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     }, [columnHeaders, columnValueFieldNames]);
 
     // 直接使用聚合引擎的 columnLevels，不做降级替换
-    // 降级替换会破坏多级表头结构，导致 colspan 错位
     const columnLevels = rawColumnLevels;
+
+    // 诊断日志 — 确认数据源头是否正确
+    console.log('[PivotTable 诊断]', {
+      columnHeaders长度: columnHeaders.length,
+      columnLevels层数: columnLevels.length,
+      每层colspan之和: columnLevels.map((level, i) => ({
+        层: i,
+        节点数: level.length,
+        colspan之和: level.reduce((s, c) => s + c.colspan, 0),
+        节点详情: level.map(c => `${c.value}:${c.colspan}`),
+      })),
+      rowDimensions: rowDimensions,
+      rowDimensions长度: rowDimensions.length,
+      data首行长度: data[0]?.length ?? 0,
+    });
+    const columnBoundaryLevels = useMemo(
+      () => columnLevels.slice(0, colFieldNames.length),
+      [columnLevels, colFieldNames.length]
+    );
 
     const rowCount = rowHeaders.length;
     const useVirtual = shouldUseVirtualScroll(rowCount);
@@ -185,6 +204,14 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     const hasColumnLevels = columnLevels.length > 0;
     const hasMultipleTotalColumns = totalColumnHeaders.length > 1;
     const dimensionCount = rowDimensions.length;
+    const cornerCellStyle = useMemo(() => {
+      const width = `calc(var(--pivot-dimension-col-width) * ${Math.max(dimensionCount, 1)})`;
+      return {
+        width,
+        minWidth: width,
+        maxWidth: width,
+      } as React.CSSProperties;
+    }, [dimensionCount]);
     const containerStyle = useMemo(
       () =>
         ({
@@ -219,20 +246,23 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
     // 渲染列头
     const renderColumnHeader = (
-      col: { value: string; colspan: number },
+      col: ColumnLevel,
       levelIdx: number,
       colIdx: number,
       headerKey: string
     ) => {
-      const isBoundary = getGroupBoundaryClass(columnLevels, colIdx) !== '';
       const isSticky = levelIdx === 0 && col.colspan > 1;
       const isLeaf = levelIdx === columnLevels.length - 1;
 
       // 计算该列头对应的数据列索引
-      let dataColIdx = 0;
-      for (let i = 0; i < colIdx; i++) {
-        dataColIdx += columnLevels[levelIdx]?.[i]?.colspan ?? 1;
+      let dataColIdx = col.startIndex ?? 0;
+      if (col.startIndex === undefined) {
+        for (let i = 0; i < colIdx; i++) {
+          dataColIdx += columnLevels[levelIdx]?.[i]?.colspan ?? 1;
+        }
       }
+      const boundaryLeafIndex = dataColIdx + col.colspan - 1;
+      const isBoundary = getGroupBoundaryClass(columnBoundaryLevels, boundaryLeafIndex) !== '';
       const colIdxStr = String(dataColIdx);
       const canSort = isLeaf && onToggleSort && col.value && col.value !== '总计';
 
@@ -261,12 +291,12 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       );
     };
 
-    // 渲染角标维度头 — colSpan 严格等于行维度数，rowSpan 动态等于表头层级数
+    // 渲染角标维度头 — colSpan 横跨所有行维度列，rowSpan 纵跨表头层级数
     const renderCornerCells = () => (
       <th
         key="corner"
         className="corner-cell sortable"
-        colSpan={rowDimensions.length}
+        colSpan={dimensionCount}
         rowSpan={columnLevels.length || 1}
       >
         {rowDimensions.join(' / ')}
@@ -378,11 +408,11 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
             );
           })}
 
-          {activeColumns.map((col, ci) => {
+          {activeColumns.map((_col, ci) => {
             const val = data[ri]?.[ci] ?? 0;
             const metricName = getDataMetricName(ri, ci);
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
-            const boundaryClass = getGroupBoundaryClass(columnLevels, ci);
+            const boundaryClass = getGroupBoundaryClass(columnBoundaryLevels, ci);
             return (
               <td
                 key={columnKeys[ci]}
@@ -445,7 +475,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
           {totalRow.values.map((val, idx) => {
             const metricName = totalRow.valueFieldNames[idx] || columnValueFieldNames[idx];
             const { text, isEmpty } = formatPivotValue(val, metricName, valueFormats?.[metricName]);
-            const boundaryClass = getGroupBoundaryClass(columnLevels, idx);
+            const boundaryClass = getGroupBoundaryClass(columnBoundaryLevels, idx);
             return (
               <td
                 key={columnKeys[idx]}
