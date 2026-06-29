@@ -38,7 +38,6 @@ export function sqlTemplatesPlugin(): Plugin {
               chunks.push(Buffer.from(chunk));
             }
             const body = Buffer.concat(chunks).toString('utf-8');
-            console.log('Received body:', body);
             const data = JSON.parse(body);
             await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
             res.end(JSON.stringify({ success: true }));

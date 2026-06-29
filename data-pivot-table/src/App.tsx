@@ -596,7 +596,11 @@ function App() {
                 }}
               >
                 <PivotTable
-                  key={pivotResult ? `${colFields.map(f => f.field.name).join('-')}_${valueFields.map(f => f.field.name).join('-')}_${JSON.stringify(filterConfigs)}` : 'empty'}
+                  key={
+                    pivotResult
+                      ? `${colFields.map((f) => f.field.name).join('-')}_${valueFields.map((f) => f.field.name).join('-')}_${JSON.stringify(filterConfigs)}`
+                      : 'empty'
+                  }
                   result={pivotResult}
                   valueFieldName={valueFields[0]?.field.name}
                   emptyMessage={emptyMessage}

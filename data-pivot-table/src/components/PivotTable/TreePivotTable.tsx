@@ -3,6 +3,7 @@ import { shouldUseVirtualScroll, useVirtualScroll } from '../../hooks/useVirtual
 import type { ColumnLevel, PivotResult, PivotTreeNode, SortConfig } from '../../types';
 import type { ToggleSortFn } from './PivotTable';
 import {
+  createTreeColumnSpecs,
   formatColumnHeader,
   formatPivotValue,
   getGroupBoundaryClass,
@@ -89,20 +90,6 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
     // 直接使用聚合引擎的 columnLevels，不做降级替换
     const columnLevels = rawColumnLevels;
 
-    // 诊断日志
-    console.log('[TreePivotTable 诊断]', {
-      columnHeaders长度: columnHeaders.length,
-      columnLevels层数: columnLevels.length,
-      每层详情: columnLevels.map((level, i) => ({
-        层: i,
-        节点数: level.length,
-        colspan之和: level.reduce((s, c) => s + c.colspan, 0),
-        节点: level.map(c => `${c.value}:${c.colspan}`),
-      })),
-      rowDimensions,
-      rowTree节点数: rowTree?.length ?? 0,
-      totalColumnHeaders,
-    });
     const columnBoundaryLevels = useMemo(
       () => columnLevels.slice(0, colFieldNames.length),
       [columnLevels, colFieldNames.length]
@@ -172,6 +159,11 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
         }) as React.CSSProperties,
       [treeDimensionWidth]
     );
+    const tableColumnSpecs = useMemo(
+      () =>
+        createTreeColumnSpecs(activeColumns.length, showRowTotal ? totalColumnHeaders.length : 0),
+      [activeColumns.length, showRowTotal, totalColumnHeaders.length]
+    );
     const columnKeys = useMemo(
       () =>
         makeStableKeys(
@@ -231,6 +223,14 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
         };
       },
       [totalColumnHeaders.length, totalColumnStickyStyles]
+    );
+
+    const renderColGroup = () => (
+      <colgroup>
+        {tableColumnSpecs.map((column) => (
+          <col key={column.key} className={column.className} style={{ width: column.width }} />
+        ))}
+      </colgroup>
     );
 
     const getTreeRowTotalMetricName = useCallback(
@@ -518,7 +518,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           onScroll={onScroll}
         >
           <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
-            <table className="pivot-table" style={{ position: 'absolute', top: 0, width: '100%' }}>
+            <table className="pivot-table" style={{ position: 'absolute', top: 0, left: 0 }}>
+              {renderColGroup()}
               <thead>
                 {hasColumnLevels ? (
                   columnLevels.map((level, levelIdx) => (
@@ -618,6 +619,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
         style={containerStyle}
       >
         <table className="pivot-table">
+          {renderColGroup()}
           <thead>
             {hasColumnLevels ? (
               columnLevels.map((level, levelIdx) => (
@@ -652,7 +654,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
               ))
             ) : (
               <tr>
-                <th className="corner-cell tree-corner-cell sortable" colSpan={rowDimensions.length}>
+                <th className="corner-cell tree-corner-cell sortable" colSpan={1}>
                   {rowDimensions.join(' / ')}
                   {rowDimensions.length === 1 && (
                     <SortButton

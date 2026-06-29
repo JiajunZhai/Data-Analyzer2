@@ -107,13 +107,78 @@ const METRIC_KEYWORDS: Record<string, string> = {
 const API_URL = '/api/sql-templates';
 
 const SQL_KEYWORDS = new Set([
-  'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'CROSS',
-  'ON', 'GROUP', 'BY', 'ORDER', 'HAVING', 'LIMIT', 'OFFSET', 'AS', 'CASE', 'WHEN', 'THEN',
-  'ELSE', 'END', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE', 'ALTER',
-  'DROP', 'WITH', 'UNION', 'ALL', 'DISTINCT', 'NULL', 'NOT', 'IN', 'BETWEEN', 'LIKE', 'EXISTS',
-  'CAST', 'COALESCE', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'OVER', 'PARTITION', 'ROW_NUMBER',
-  'RANK', 'DENSE', 'DESC', 'ASC', 'FETCH', 'NEXT', 'ROWS', 'ONLY', 'TABLE', 'VIEW', 'INDEX',
-  'IF', 'IS', 'TRUE', 'FALSE', 'INTERVAL', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', 'DATE_TRUNC',
+  'SELECT',
+  'FROM',
+  'WHERE',
+  'AND',
+  'OR',
+  'JOIN',
+  'LEFT',
+  'RIGHT',
+  'INNER',
+  'OUTER',
+  'CROSS',
+  'ON',
+  'GROUP',
+  'BY',
+  'ORDER',
+  'HAVING',
+  'LIMIT',
+  'OFFSET',
+  'AS',
+  'CASE',
+  'WHEN',
+  'THEN',
+  'ELSE',
+  'END',
+  'INSERT',
+  'INTO',
+  'VALUES',
+  'UPDATE',
+  'SET',
+  'DELETE',
+  'CREATE',
+  'ALTER',
+  'DROP',
+  'WITH',
+  'UNION',
+  'ALL',
+  'DISTINCT',
+  'NULL',
+  'NOT',
+  'IN',
+  'BETWEEN',
+  'LIKE',
+  'EXISTS',
+  'CAST',
+  'COALESCE',
+  'COUNT',
+  'SUM',
+  'AVG',
+  'MIN',
+  'MAX',
+  'OVER',
+  'PARTITION',
+  'ROW_NUMBER',
+  'RANK',
+  'DENSE',
+  'DESC',
+  'ASC',
+  'FETCH',
+  'NEXT',
+  'ROWS',
+  'ONLY',
+  'TABLE',
+  'VIEW',
+  'INDEX',
+  'IF',
+  'IS',
+  'TRUE',
+  'FALSE',
+  'INTERVAL',
+  'CURRENT_DATE',
+  'CURRENT_TIMESTAMP',
+  'DATE_TRUNC',
 ]);
 
 function formatSql(sql: string): string {
@@ -121,9 +186,29 @@ function formatSql(sql: string): string {
   result = result.replace(/\s+/g, ' ').trim();
 
   const newlineBefore = [
-    'WITH', 'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'GROUP BY', 'ORDER BY',
-    'HAVING', 'LIMIT', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'CROSS JOIN',
-    'FULL JOIN', 'ON', 'UNION', 'UNION ALL', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+    'WITH',
+    'SELECT',
+    'FROM',
+    'WHERE',
+    'AND',
+    'OR',
+    'GROUP BY',
+    'ORDER BY',
+    'HAVING',
+    'LIMIT',
+    'LEFT JOIN',
+    'RIGHT JOIN',
+    'INNER JOIN',
+    'CROSS JOIN',
+    'FULL JOIN',
+    'ON',
+    'UNION',
+    'UNION ALL',
+    'CASE',
+    'WHEN',
+    'THEN',
+    'ELSE',
+    'END',
   ];
 
   for (const kw of newlineBefore) {
@@ -135,19 +220,13 @@ function formatSql(sql: string): string {
   result = result.replace(/\(\s*SELECT/gi, '(\n  SELECT');
   result = result.replace(/\)\s*(AS|,|\))/gi, '\n)$1');
 
-  result = result.replace(
-    /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g,
-    (match) => {
-      const upper = match.toUpperCase();
-      if (SQL_KEYWORDS.has(upper)) return upper;
-      return match;
-    }
-  );
+  result = result.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (match) => {
+    const upper = match.toUpperCase();
+    if (SQL_KEYWORDS.has(upper)) return upper;
+    return match;
+  });
 
-  result = result.replace(
-    /__COMMENT_([A-Za-z0-9+/=]+)__/g,
-    (_, encoded) => atob(encoded)
-  );
+  result = result.replace(/__COMMENT_([A-Za-z0-9+/=]+)__/g, (_, encoded) => atob(encoded));
 
   const lines = result.split('\n');
   let indent = 0;
@@ -160,7 +239,8 @@ function formatSql(sql: string): string {
     if (
       trimmed.endsWith('(') ||
       (/\b(CASE|WITH|SELECT|FROM|WHERE|GROUP|ORDER|HAVING|JOIN|ON|AND|OR|UNION)\b/i.test(trimmed) &&
-        !trimmed.endsWith(';') && !trimmed.endsWith(')'))
+        !trimmed.endsWith(';') &&
+        !trimmed.endsWith(')'))
     ) {
       indent++;
     }
@@ -336,8 +416,9 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [deleted, setDeleted] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
-  const [consoleContent, setConsoleContent] = useState('');
+  const [, setConsoleContent] = useState('');
   const [consoleType, setConsoleType] = useState<'info' | 'error' | 'success'>('info');
+  const [simResult, setSimResult] = useState<SimulateResult | null>(null);
   const [toasts, setToasts] = useState<
     Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>
   >([]);
@@ -615,8 +696,6 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
     }
   }, [editSql, addToast]);
 
-  const [simResult, setSimResult] = useState<SimulateResult | null>(null);
-
   const handleValidate = useCallback(() => {
     const result = simulateSql(editSql);
     setSimResult(result);
@@ -814,14 +893,15 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                         onChange={(e) => setEditName(e.target.value)}
                         placeholder="输入模板名称"
                       />
-                      <span
+                      <button
+                        type="button"
                         className={`${s.verifiedBadge} ${editVerified ? s.verifiedBadgeActive : ''}`}
                         onClick={() => setEditVerified(!editVerified)}
                         title="点击切换验证状态"
                       >
                         <Check size={12} />
                         {editVerified ? '已验证' : '待验证'}
-                      </span>
+                      </button>
                       <select
                         className={s.categorySelect}
                         value={editCategory}
@@ -843,10 +923,20 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                         placeholder="输入模板描述（可选）"
                       />
                       <div className={s.toolbarActions}>
-                        <button type="button" className={s.btnIcon} onClick={handleCopy} title="复制 SQL">
+                        <button
+                          type="button"
+                          className={s.btnIcon}
+                          onClick={handleCopy}
+                          title="复制 SQL"
+                        >
                           {copied ? <Check size={14} /> : <Copy size={14} />}
                         </button>
-                        <button type="button" className={s.btnIcon} onClick={handleFormatSql} title="格式化 SQL">
+                        <button
+                          type="button"
+                          className={s.btnIcon}
+                          onClick={handleFormatSql}
+                          title="格式化 SQL"
+                        >
                           <Wand2 size={14} />
                         </button>
                         <button
@@ -862,9 +952,7 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   </div>
 
                   <div className={s.metadataSection}>
-                    <div className={s.autoTagHint}>
-                      标签由 SQL 别名自动检测，保存时更新
-                    </div>
+                    <div className={s.autoTagHint}>标签由 SQL 别名自动检测，保存时更新</div>
                     <div className={s.metadataRow}>
                       <span className={s.metadataLabel}>
                         <Tag size={12} />
@@ -957,7 +1045,7 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                           <span>{simResult.error}</span>
                         </div>
                       )}
-                      {simResult && simResult.valid && simResult.columns && simResult.rows && (
+                      {simResult?.valid && simResult.columns && simResult.rows && (
                         <div className={s.consoleResult}>
                           <div className={s.consoleSummary}>
                             <Terminal size={13} />
@@ -978,22 +1066,26 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {simResult.rows.map((row, ri) => (
-                                  <tr key={`row-${ri}`}>
-                                    {row.map((cell, ci) => (
-                                      <td
-                                        key={`cell-${ri}-${ci}`}
-                                        className={
-                                          simResult.columns?.[ci]?.type === 'metric'
-                                            ? s.tdMetric
-                                            : s.tdDim
-                                        }
-                                      >
-                                        {cell}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                ))}
+                                {simResult.rows.map((row) => {
+                                  const rowKey = row.map((cell) => String(cell)).join('\u001f');
+                                  return (
+                                    <tr key={rowKey}>
+                                      {row.map((cell, ci) => {
+                                        const column = simResult.columns?.[ci];
+                                        return (
+                                          <td
+                                            key={column?.name ?? String(cell)}
+                                            className={
+                                              column?.type === 'metric' ? s.tdMetric : s.tdDim
+                                            }
+                                          >
+                                            {cell}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>

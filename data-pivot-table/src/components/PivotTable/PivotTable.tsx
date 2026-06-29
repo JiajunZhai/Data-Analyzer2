@@ -32,19 +32,7 @@ const PivotTable: React.FC<PivotTableProps> = React.memo(
       );
     }
 
-    const canUseRowTree = result.valueAxis === 'columns' && Boolean(result.rowTree?.length);
-
-    console.log('[PivotTable 路由]', {
-      valueAxis: result.valueAxis,
-      canUseRowTree,
-      columnHeaders长度: result.columnHeaders.length,
-      columnLevels层数: result.columnLevels.length,
-      每层colspan之和: result.columnLevels.map((l, i) => `层${i}: ${l.reduce((s, c) => s + c.colspan, 0)}`),
-      colFieldNames: result.colFieldNames,
-      valueFieldNames: result.valueFieldNames,
-      rowDimensions: result.rowDimensions,
-      columnHeaders样例: result.columnHeaders.slice(0, 5),
-    });
+    const canUseRowTree = Boolean(result.rowTree?.length);
 
     if (canUseRowTree) {
       return (

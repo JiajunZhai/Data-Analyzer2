@@ -628,4 +628,106 @@ describe('aggregator', () => {
       expect(result.data[0][1]).toBeCloseTo(100);
     });
   });
+
+  describe('column header tree structure', () => {
+    it('keeps the first top-level group visible and derives colspan from leaf nodes', () => {
+      const data: DataRow[] = [
+        {
+          date: '2026-06-10',
+          scene: 'cold',
+          channel: 'organic',
+          version: '1.0',
+          app: 'R303',
+          country: 'AR',
+          users: 10,
+          revenue: 1,
+        },
+        {
+          date: '2026-06-10',
+          scene: 'cold',
+          channel: 'organic',
+          version: '1.0',
+          app: 'R303B',
+          country: 'BR',
+          users: 20,
+          revenue: 2,
+        },
+        {
+          date: '2026-06-10',
+          scene: 'cold',
+          channel: 'organic',
+          version: '1.0',
+          app: 'R303B',
+          country: 'MX',
+          users: 30,
+          revenue: 3,
+        },
+      ];
+
+      const result = aggregateData(
+        data,
+        [
+          createPivotField('date', 'dimension'),
+          createPivotField('scene', 'dimension'),
+          createPivotField('channel', 'dimension'),
+          createPivotField('version', 'dimension'),
+        ],
+        [createPivotField('app', 'dimension'), createPivotField('country', 'dimension')],
+        [createPivotField('users', 'measure'), createPivotField('revenue', 'measure')]
+      );
+
+      expect(result.rowDimensions).toEqual(['date', 'scene', 'channel', 'version']);
+      expect(result.columnHeaders).toEqual([
+        'R303\u001fAR\u001fusers',
+        'R303\u001fAR\u001frevenue',
+        'R303B\u001fBR\u001fusers',
+        'R303B\u001fBR\u001frevenue',
+        'R303B\u001fMX\u001fusers',
+        'R303B\u001fMX\u001frevenue',
+      ]);
+
+      expect(result.columnLevels[0]).toEqual([
+        { value: 'R303', colspan: 2, startIndex: 0 },
+        { value: 'R303B', colspan: 4, startIndex: 2 },
+      ]);
+      expect(result.columnLevels[1]).toEqual([
+        { value: 'AR', colspan: 2, startIndex: 0 },
+        { value: 'BR', colspan: 2, startIndex: 2 },
+        { value: 'MX', colspan: 2, startIndex: 4 },
+      ]);
+      expect(result.columnLevels[2]).toEqual([
+        { value: 'users', colspan: 1, startIndex: 0 },
+        { value: 'revenue', colspan: 1, startIndex: 1 },
+        { value: 'users', colspan: 1, startIndex: 2 },
+        { value: 'revenue', colspan: 1, startIndex: 3 },
+        { value: 'users', colspan: 1, startIndex: 4 },
+        { value: 'revenue', colspan: 1, startIndex: 5 },
+      ]);
+      expect(result.data[0]).toEqual([10, 1, 20, 2, 30, 3]);
+    });
+
+    it('only creates leaf columns for dimension combinations present in data', () => {
+      const data: DataRow[] = [
+        { row: 'all', app: 'R303', country: 'AR', users: 10 },
+        { row: 'all', app: 'R303B', country: 'MX', users: 30 },
+      ];
+
+      const result = aggregateData(
+        data,
+        [createPivotField('row', 'dimension')],
+        [createPivotField('app', 'dimension'), createPivotField('country', 'dimension')],
+        [createPivotField('users', 'measure')]
+      );
+
+      expect(result.columnHeaders).toEqual(['R303\u001fAR', 'R303B\u001fMX']);
+      expect(result.columnLevels[0]).toEqual([
+        { value: 'R303', colspan: 1, startIndex: 0 },
+        { value: 'R303B', colspan: 1, startIndex: 1 },
+      ]);
+      expect(result.columnLevels[1]).toEqual([
+        { value: 'AR', colspan: 1, startIndex: 0 },
+        { value: 'MX', colspan: 1, startIndex: 1 },
+      ]);
+    });
+  });
 });

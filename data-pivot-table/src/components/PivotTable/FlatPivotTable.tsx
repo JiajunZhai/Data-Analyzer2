@@ -4,9 +4,11 @@ import type { ColumnLevel, PivotResult, SortConfig } from '../../types';
 import { calculateAllRowSpans } from '../../utils/rowSpanCalculator';
 import type { ToggleSortFn } from './PivotTable';
 import {
+  createFlatColumnSpecs,
   formatColumnHeader,
   formatPivotValue,
   getGroupBoundaryClass,
+  getRowHeaderColumnCount,
   getSortIcon,
   isSortActive,
   KEY_SEPARATOR,
@@ -78,20 +80,6 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     // 直接使用聚合引擎的 columnLevels，不做降级替换
     const columnLevels = rawColumnLevels;
 
-    // 诊断日志 — 确认数据源头是否正确
-    console.log('[PivotTable 诊断]', {
-      columnHeaders长度: columnHeaders.length,
-      columnLevels层数: columnLevels.length,
-      每层colspan之和: columnLevels.map((level, i) => ({
-        层: i,
-        节点数: level.length,
-        colspan之和: level.reduce((s, c) => s + c.colspan, 0),
-        节点详情: level.map(c => `${c.value}:${c.colspan}`),
-      })),
-      rowDimensions: rowDimensions,
-      rowDimensions长度: rowDimensions.length,
-      data首行长度: data[0]?.length ?? 0,
-    });
     const columnBoundaryLevels = useMemo(
       () => columnLevels.slice(0, colFieldNames.length),
       [columnLevels, colFieldNames.length]
@@ -107,9 +95,11 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       overscan: 5,
     });
 
+    const dimensionCount = getRowHeaderColumnCount(rowDimensions, rowHeaders);
+
     const rowSpans = useMemo(
-      () => calculateAllRowSpans(rowHeaders, rowDimensions.length),
-      [rowHeaders, rowDimensions]
+      () => calculateAllRowSpans(rowHeaders, dimensionCount),
+      [dimensionCount, rowHeaders]
     );
     const rowKeys = useMemo(
       () =>
@@ -158,23 +148,24 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
     const frozenColumnStyles = useMemo(
       () =>
-        rowDimensions.map(
+        Array.from(
+          { length: dimensionCount },
           (_, index) =>
             ({
               left: index === 0 ? 0 : `calc(var(--pivot-dimension-col-width) * ${index})`,
             }) as React.CSSProperties
         ),
-      [rowDimensions]
+      [dimensionCount]
     );
 
     const isTotalRow = useCallback(
       (rowIndex: number): boolean => {
         const row = rowHeaders[rowIndex];
         const dimCount =
-          result.valueAxis === 'rows' ? rowDimensions.length - 1 : rowDimensions.length;
+          result.valueAxis === 'rows' ? Math.max(0, dimensionCount - 1) : dimensionCount;
         return row.slice(0, dimCount).every((val) => val === '总计');
       },
-      [rowHeaders, rowDimensions, result.valueAxis]
+      [dimensionCount, rowHeaders, result.valueAxis]
     );
 
     const getDataMetricName = useCallback(
@@ -203,15 +194,23 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
     const hasColumnLevels = columnLevels.length > 0;
     const hasMultipleTotalColumns = totalColumnHeaders.length > 1;
-    const dimensionCount = rowDimensions.length;
-    const cornerCellStyle = useMemo(() => {
-      const width = `calc(var(--pivot-dimension-col-width) * ${Math.max(dimensionCount, 1)})`;
-      return {
-        width,
-        minWidth: width,
-        maxWidth: width,
-      } as React.CSSProperties;
-    }, [dimensionCount]);
+    const rowDimensionLabels = useMemo(
+      () =>
+        Array.from(
+          { length: dimensionCount },
+          (_, index) => rowDimensions[index] || (index === 0 ? '总计' : `维度 ${index + 1}`)
+        ),
+      [dimensionCount, rowDimensions]
+    );
+    const tableColumnSpecs = useMemo(
+      () =>
+        createFlatColumnSpecs(
+          dimensionCount,
+          activeColumns.length,
+          showRowTotal ? totalColumnHeaders.length : 0
+        ),
+      [activeColumns.length, dimensionCount, showRowTotal, totalColumnHeaders.length]
+    );
     const containerStyle = useMemo(
       () =>
         ({
@@ -242,6 +241,14 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
         };
       },
       [totalColumnHeaders.length, totalColumnStickyStyles]
+    );
+
+    const renderColGroup = () => (
+      <colgroup>
+        {tableColumnSpecs.map((column) => (
+          <col key={column.key} className={column.className} style={{ width: column.width }} />
+        ))}
+      </colgroup>
     );
 
     // 渲染列头
@@ -291,16 +298,16 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
       );
     };
 
-    // 渲染角标维度头 — 固定 colSpan=1，所有维度名显示在一个单元格内
+    // 渲染角标维度头 — colSpan 跨所有行维度列，与数据行的维度单元格对齐
     const renderCornerCells = () => (
       <th
         key="corner"
         className="corner-cell sortable"
-        colSpan={1}
+        colSpan={dimensionCount}
         rowSpan={columnLevels.length || 1}
       >
-        {rowDimensions.join(' / ')}
-        {dimensionCount === 1 && onToggleSort && (
+        {rowDimensionLabels.join(' / ')}
+        {rowDimensions.length === 1 && onToggleSort && (
           <SortButton
             type="dimension"
             value={rowDimensions[0]}
@@ -379,9 +386,11 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
 
       return (
         <tr key={rowKeys[ri]} style={useVirtual ? getRowStyle(ri) : undefined}>
-          {row.map((cellValue, ci) => {
+          {Array.from({ length: dimensionCount }, (_, ci) => {
+            const cellValue = row[ci] ?? '';
             const span = rowSpans[ci]?.[ri] ?? 1;
             if (span === 0) return null;
+            if (totalRow && ci > 0) return null;
 
             if (totalRow && ci === 0) {
               return (
@@ -395,10 +404,10 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
               );
             }
 
-            const isLastDimCol = ci === row.length - 1;
+            const isLastDimCol = ci === dimensionCount - 1;
             return (
               <td
-                key={rowDimensions[ci] || cellValue}
+                key={rowDimensionLabels[ci] || cellValue || `dimension-${ci}`}
                 className={`row-header frozen-row-header ${isLastDimCol ? 'dimension-col-end frozen-row-header-last' : ''}`}
                 rowSpan={span}
                 style={frozenColumnStyles[ci]}
@@ -513,7 +522,8 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
           style={{ ...containerStyle, overflow: 'auto', height: '100%' }}
         >
           <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
-            <table className="pivot-table" style={{ position: 'absolute', top: 0, width: '100%' }}>
+            <table className="pivot-table" style={{ position: 'absolute', top: 0, left: 0 }}>
+              {renderColGroup()}
               <thead>
                 {hasColumnLevels ? (
                   columnLevels.map((level, levelIdx) => (
@@ -584,6 +594,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     return (
       <div className="pivot-table-container" ref={containerRef} style={containerStyle}>
         <table className="pivot-table">
+          {renderColGroup()}
           <thead>
             {hasColumnLevels ? (
               columnLevels.map((level, levelIdx) => (

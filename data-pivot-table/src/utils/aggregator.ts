@@ -108,6 +108,14 @@ interface DisplayRow {
   valueField: PivotField;
 }
 
+interface ColumnHeaderTreeNode {
+  value: string;
+  children: ColumnHeaderTreeNode[];
+  colspan: number;
+  startIndex: number;
+  leafIndex?: number;
+}
+
 export function aggregateData(
   data: DataRow[],
   rowFields: PivotField[],
@@ -738,6 +746,9 @@ function buildRowsValueResult(options: BuildResultOptions): PivotResult {
     totalColumnHeaders: ['行总计'],
     totalColumnValueFieldNames: [''],
     totalRows,
+    valueFormats: Object.fromEntries(
+      valueFields.flatMap((vf) => (vf.format ? [[vf.field.name, vf.format]] : []))
+    ),
   };
 }
 
@@ -1119,43 +1130,74 @@ function sumSemiAdditiveMetric(points: MetricPoint[]): number {
 function generateColumnLevels(columnHeaders: string[], depth: number): ColumnLevel[][] {
   if (depth === 0) return [];
 
-  // 预分割所有列头，避免在内层循环中重复 split
-  const allParts = columnHeaders.map((h) => h.split(KEY_SEPARATOR));
+  const root: ColumnHeaderTreeNode = {
+    value: '__root__',
+    children: [],
+    colspan: 0,
+    startIndex: 0,
+  };
 
-  const levels: ColumnLevel[][] = [];
+  columnHeaders.forEach((header, leafIndex) => {
+    const parts = header.split(KEY_SEPARATOR);
+    let parent = root;
 
-  for (let levelIdx = 0; levelIdx < depth; levelIdx++) {
-    const level: ColumnLevel[] = [];
-    let i = 0;
+    for (let levelIdx = 0; levelIdx < depth; levelIdx++) {
+      const value = parts[levelIdx] || TOTAL_LABEL;
+      const isLeaf = levelIdx === depth - 1;
+      const lastChild = parent.children[parent.children.length - 1];
+      const node =
+        !isLeaf && lastChild?.value === value
+          ? lastChild
+          : {
+              value,
+              children: [],
+              colspan: 0,
+              startIndex: leafIndex,
+              leafIndex: isLeaf ? leafIndex : undefined,
+            };
 
-    while (i < columnHeaders.length) {
-      const parts = allParts[i];
-      const currentVal = parts[levelIdx] || TOTAL_LABEL;
-      let colspan = 1;
-
-      while (i + colspan < columnHeaders.length) {
-        const nextParts = allParts[i + colspan];
-        let sameAncestors = true;
-        for (let a = 0; a < levelIdx; a++) {
-          if (parts[a] !== nextParts[a]) {
-            sameAncestors = false;
-            break;
-          }
-        }
-        const nextVal = nextParts[levelIdx] || TOTAL_LABEL;
-
-        if (!sameAncestors || nextVal !== currentVal) break;
-        colspan++;
+      if (node !== lastChild) {
+        parent.children.push(node);
       }
 
-      level.push({ value: currentVal, colspan });
-      i += colspan;
+      parent = node;
     }
+  });
 
-    levels.push(level);
+  calculateHeaderColSpan(root);
+
+  const levels = Array.from({ length: depth }, () => [] as ColumnLevel[]);
+  collectColumnLevels(root.children, levels, 0);
+  return levels;
+}
+
+function calculateHeaderColSpan(node: ColumnHeaderTreeNode): number {
+  if (node.children.length === 0) {
+    node.colspan = 1;
+    node.startIndex = node.leafIndex ?? node.startIndex;
+    return node.colspan;
   }
 
-  return levels;
+  node.colspan = node.children.reduce((total, child) => total + calculateHeaderColSpan(child), 0);
+  node.startIndex = node.children[0]?.startIndex ?? node.startIndex;
+  return node.colspan;
+}
+
+function collectColumnLevels(
+  nodes: ColumnHeaderTreeNode[],
+  levels: ColumnLevel[][],
+  levelIdx: number
+): void {
+  if (levelIdx >= levels.length) return;
+
+  nodes.forEach((node) => {
+    levels[levelIdx].push({
+      value: node.value,
+      colspan: node.colspan,
+      startIndex: node.startIndex,
+    });
+    collectColumnLevels(node.children, levels, levelIdx + 1);
+  });
 }
 
 function sortKeys(keys: string[], desc = false): string[] {

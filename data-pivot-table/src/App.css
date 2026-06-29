@@ -1129,7 +1129,7 @@ body {
 }
 
 /* 落区样式 */
-.droppable-zone {
+.app .droppable-zone {
   background: var(--zone-bg);
   border: 2px dashed var(--zone-border);
   border-radius: var(--radius-md);
@@ -1154,7 +1154,7 @@ body {
   letter-spacing: 0.05em;
 }
 
-.zone-content {
+.app .zone-content {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
@@ -1183,7 +1183,7 @@ body {
   opacity: 0.5;
 }
 
-.zone-field {
+.app .zone-field {
   display: inline-flex;
   align-items: center;
   width: auto;
@@ -1309,8 +1309,8 @@ body {
 /* 拖动占位符样式 */
 .drag-ghost {
   opacity: 0.4;
-  background-color: var(--selected-bg) !important;
-  border: 2px dashed var(--primary-light) !important;
+  background-color: var(--selected-bg);
+  border: 2px dashed var(--primary-light);
 }
 
 .zone-field-name {
@@ -1363,7 +1363,7 @@ body {
 }
 
 /* 筛选器下拉菜单 */
-.filter-dropdown {
+.app .filter-dropdown {
   position: relative;
 }
 
@@ -1571,6 +1571,8 @@ body {
 .pivot-table-container {
   --pivot-dimension-col-width: clamp(72px, 7vw, 112px);
   --pivot-tree-dimension-col-width: clamp(120px, 9vw, 176px);
+  --pivot-data-col-width: 96px;
+  --pivot-total-col-width: 96px;
   background: var(--panel-bg);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -1600,6 +1602,22 @@ body {
   font-size: 13px;
 }
 
+.pivot-table col.pivot-col-row-header {
+  width: var(--pivot-dimension-col-width);
+}
+
+.pivot-table col.pivot-col-tree-header {
+  width: var(--pivot-tree-dimension-col-width);
+}
+
+.pivot-table col.pivot-col-data {
+  width: var(--pivot-data-col-width);
+}
+
+.pivot-table col.pivot-col-total {
+  width: var(--pivot-total-col-width);
+}
+
 /* 冻结列头：垂直滚动时固定在顶部 */
 .pivot-table thead {
   position: sticky;
@@ -1608,21 +1626,21 @@ body {
 }
 
 .pivot-table thead th {
-  background-color: var(--zone-bg) !important;
+  background-color: var(--zone-bg);
 }
 
-.pivot-table th,
-.pivot-table td {
+.app .pivot-table th,
+.app .pivot-table td {
   padding: 6px 10px;
   border: 1px solid var(--pivot-data-border);
   white-space: nowrap;
 }
 
-.pivot-table th {
+.app .pivot-table th {
   text-align: right;
 }
 
-.pivot-table td {
+.app .pivot-table td {
   text-align: right;
   border-left: none;
   border-right: none;
@@ -1631,21 +1649,18 @@ body {
 /* 保留维度分界线和分组边界线 */
 .pivot-table td.dimension-col-end,
 .pivot-table td.group-boundary-col {
-  border-right: 3px solid var(--pivot-data-separator) !important;
+  border-right: 3px solid var(--pivot-data-separator);
 }
 
 .corner-cell {
   position: sticky;
   left: 0;
   top: 0;
-  background: var(--zone-bg) !important;
+  background: var(--zone-bg);
   color: var(--text-secondary);
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.05em;
-  width: var(--pivot-dimension-col-width);
-  min-width: var(--pivot-dimension-col-width);
-  max-width: var(--pivot-dimension-col-width);
   text-align: center;
   z-index: 22;
   overflow: hidden;
@@ -1656,11 +1671,11 @@ body {
   position: sticky;
   left: 0;
   top: 0;
-  background: var(--zone-bg) !important;
+  background: var(--zone-bg);
   width: var(--pivot-tree-dimension-col-width);
   min-width: var(--pivot-tree-dimension-col-width);
   max-width: var(--pivot-tree-dimension-col-width);
-  text-align: center !important;
+  text-align: center;
   z-index: 22;
 }
 
@@ -1669,36 +1684,36 @@ body {
   color: var(--text-color);
   font-weight: 600;
   font-size: 11px;
-  min-width: 96px;
-  width: 96px;
-  max-width: 140px;
+  min-width: var(--pivot-data-col-width);
+  width: var(--pivot-data-col-width);
+  max-width: var(--pivot-data-col-width);
   text-align: center;
 }
 
 /* 第一级父表头 - 深色 */
 .col-header-level-0 {
-  background: var(--pivot-header-level-0-bg) !important;
+  background: var(--pivot-header-level-0-bg);
   font-weight: 700;
   font-size: 12px;
   color: var(--pivot-header-level-0-text);
-  text-align: center !important;
-  padding: 6px 10px !important;
+  text-align: center;
+  padding: 6px 10px;
   vertical-align: middle;
-  border-bottom: 2px solid var(--pivot-data-separator) !important;
+  border-bottom: 2px solid var(--pivot-data-separator);
 }
 
 /* 第二级子表头 - 浅色 */
 .col-header-level-1 {
-  background: var(--pivot-header-level-1-bg) !important;
+  background: var(--pivot-header-level-1-bg);
   font-weight: 600;
   font-size: 11px;
   color: var(--pivot-header-level-1-text);
-  border-top: 2px solid var(--pivot-data-separator) !important;
+  border-top: 2px solid var(--pivot-data-separator);
 }
 
 /* 第三级及更深层级 */
 .col-header-level-2 {
-  background: var(--pivot-header-level-2-bg) !important;
+  background: var(--pivot-header-level-2-bg);
   font-weight: 500;
   font-size: 11px;
   color: var(--pivot-header-level-2-text);
@@ -1713,26 +1728,25 @@ body {
 
 /* 粘性文字标签 */
 .sticky-header-label {
-  position: sticky;
-  left: 12px;
   display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 700;
   color: var(--text-color);
-  padding: 6px 10px;
-  z-index: 5;
 }
 
 /* 分组边界分割线 — 加粗增强成组感 */
-th.group-boundary-col,
-td.group-boundary-col {
-  border-right: 3px solid var(--pivot-data-separator) !important;
+.app th.group-boundary-col,
+.app td.group-boundary-col {
+  border-right: 3px solid var(--pivot-data-separator);
 }
 
 .row-header {
   background: var(--zone-bg);
   font-weight: 500;
-  text-align: center !important;
+  text-align: center;
   color: var(--text-color);
   vertical-align: middle;
   padding: 6px 10px;
@@ -1760,7 +1774,7 @@ td.group-boundary-col {
   min-width: var(--pivot-tree-dimension-col-width);
   max-width: var(--pivot-tree-dimension-col-width);
   padding: 0;
-  background-color: var(--zone-bg) !important;
+  background-color: var(--zone-bg);
 }
 
 .tree-cell-inner {
@@ -1825,8 +1839,8 @@ td.group-boundary-col {
   font-weight: 600;
 }
 
-.tree-row-subtotal td {
-  background-color: var(--zone-bg) !important;
+.app .tree-row-subtotal td {
+  background-color: var(--zone-bg);
   border-top: 1px solid var(--pivot-data-border);
   font-weight: 700;
 }
@@ -1843,18 +1857,18 @@ td.group-boundary-col {
 }
 
 .tree-subtotal-cell {
-  background-color: #f1f5f9 !important;
+  background-color: #f1f5f9;
   font-weight: 700;
   font-size: 12px;
 }
 
 .tree-group-placeholder {
-  background-color: white !important;
+  background-color: white;
   color: transparent;
 }
 
 .tree-row-expanded .tree-row-header {
-  background-color: var(--zone-bg) !important;
+  background-color: var(--zone-bg);
 }
 
 /* ========================================== */
@@ -1884,7 +1898,7 @@ td.group-boundary-col {
   position: sticky;
   left: 0;
   z-index: 10;
-  background-color: var(--zone-bg) !important;
+  background-color: var(--zone-bg);
 }
 
 /* 最后一列冻结列右侧投影分割线 */
@@ -1909,15 +1923,15 @@ td.group-boundary-col {
 }
 
 .total-header-sticky {
-  background: var(--pivot-header-level-0-bg) !important;
+  background: var(--pivot-header-level-0-bg);
 }
 
 .total-header-sticky.total-header-leaf {
-  background: var(--pivot-header-level-0-bg) !important;
+  background: var(--pivot-header-level-0-bg);
 }
 
 .total-cell-sticky {
-  background: var(--pivot-total-col-bg) !important;
+  background: var(--pivot-total-col-bg);
   box-shadow: -4px 0 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -1940,13 +1954,13 @@ td.group-boundary-col {
   bottom: 0;
   right: 0;
   z-index: 30;
-  background-color: var(--pivot-header-level-0-bg) !important;
+  background-color: var(--pivot-header-level-0-bg);
 }
 
 /* 总计行的维度列 */
 .row-header.total-label {
   font-weight: 600;
-  text-align: center !important;
+  text-align: center;
   background: var(--total-row-bg);
 }
 
@@ -1954,9 +1968,9 @@ td.group-boundary-col {
   background: var(--bg-primary);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
-  min-width: 96px;
-  width: 96px;
-  max-width: 140px;
+  min-width: var(--pivot-data-col-width);
+  width: var(--pivot-data-col-width);
+  max-width: var(--pivot-data-col-width);
 }
 
 /* 行悬停高亮 — 对齐参考的 surface-container-low 色调 */
@@ -1986,25 +2000,25 @@ td.group-boundary-col {
 }
 
 .total-header {
-  background: var(--pivot-header-level-0-bg) !important;
+  background: var(--pivot-header-level-0-bg);
   color: var(--pivot-header-level-0-text);
   font-weight: 700;
   font-size: 12px;
-  min-width: 96px;
-  width: 96px;
-  max-width: 140px;
+  min-width: var(--pivot-total-col-width);
+  width: var(--pivot-total-col-width);
+  max-width: var(--pivot-total-col-width);
   border-left: 3px solid var(--pivot-data-separator);
   border-bottom: 2px solid var(--pivot-data-separator);
 }
 
 .total-header-leaf {
-  background: var(--pivot-header-level-0-bg) !important;
+  background: var(--pivot-header-level-0-bg);
   color: var(--pivot-header-level-0-text);
   font-size: 12px;
 }
 
 .total-header-spacer {
-  background: var(--pivot-header-level-0-bg) !important;
+  background: var(--pivot-header-level-0-bg);
   border-bottom: 2px solid var(--pivot-data-separator);
   font-size: 12px;
 }
@@ -2013,29 +2027,29 @@ td.group-boundary-col {
   background: var(--zone-bg);
   font-weight: 600;
   color: var(--text-color);
-  min-width: 96px;
-  width: 96px;
-  max-width: 140px;
+  min-width: var(--pivot-total-col-width);
+  width: var(--pivot-total-col-width);
+  max-width: var(--pivot-total-col-width);
   border-left: 1px solid var(--pivot-data-border);
 }
 
 .total-row {
   background: var(--total-row-bg);
-  border-top: 3px double var(--pivot-data-separator) !important;
-  background-color: var(--total-row-bg) !important;
+  border-top: 3px double var(--pivot-data-separator);
+  background-color: var(--total-row-bg);
 }
 
-.total-row-secondary td {
+.app .total-row-secondary td {
   background: var(--pivot-header-level-1-bg);
 }
 
-.total-row td {
+.app .total-row td {
   font-weight: 600;
 }
 
 .total-label {
   font-weight: 600;
-  text-align: center !important;
+  text-align: center;
   color: var(--text-secondary);
   text-transform: uppercase;
   font-size: 10px;
@@ -2043,10 +2057,10 @@ td.group-boundary-col {
 }
 
 .grand-total {
-  background-color: var(--total-row-bg) !important;
-  color: var(--total-row-text) !important;
+  background-color: var(--total-row-bg);
+  color: var(--total-row-text);
   font-weight: 600;
-  border-top: var(--total-border-top) !important;
+  border-top: var(--total-border-top);
   border-bottom: 1px solid var(--pivot-data-border);
   border-left: 1px solid var(--pivot-data-separator);
   min-width: 96px;
@@ -2066,12 +2080,12 @@ td.group-boundary-col {
 
 /* 分组区隔线 */
 .pivot-table .group-end-cell {
-  border-right: 1px solid var(--pivot-data-separator) !important;
+  border-right: 1px solid var(--pivot-data-separator);
 }
 
 /* 维度列与数据列分界线 */
 .pivot-table .dimension-col-end {
-  border-right: 1px solid var(--pivot-data-separator) !important;
+  border-right: 1px solid var(--pivot-data-separator);
 }
 
 /* 十字交叉高亮 - 已改为纯 CSS :has() 实现 */
@@ -2223,7 +2237,7 @@ td.group-boundary-col {
     grid-row: 4;
   }
 
-  .zone-field {
+  .app .zone-field {
     max-width: 100%;
   }
 
@@ -2235,8 +2249,8 @@ td.group-boundary-col {
     width: 100%;
   }
 
-  .pivot-table th,
-  .pivot-table td {
+  .app .pivot-table th,
+  .app .pivot-table td {
     padding: 6px 8px;
     font-size: 11px;
   }
@@ -2561,7 +2575,7 @@ td.group-boundary-col {
   color: var(--primary-light);
 }
 
-.sql-entry-btn svg {
+.app .sql-entry-btn svg {
   flex-shrink: 0;
   opacity: 0.7;
 }
@@ -2635,11 +2649,11 @@ td.group-boundary-col {
   border-color: var(--primary-color);
 }
 
-.capsule-icon {
+.app .capsule-icon {
   font-size: 13px;
 }
 
-.capsule-name {
+.app .capsule-name {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
@@ -2654,7 +2668,7 @@ td.group-boundary-col {
   color: var(--text-muted);
 }
 
-.capsule-action {
+.app .capsule-action {
   font-size: 11px;
   color: var(--primary-light);
   font-weight: 500;
@@ -3300,9 +3314,9 @@ th.sortable .sort-btn:focus,
 }
 
 .priority-slot.drag-over {
-  border-color: var(--primary-light) !important;
-  background: var(--hover-bg) !important;
-  border-style: dashed !important;
+  border-color: var(--primary-light);
+  background: var(--hover-bg);
+  border-style: dashed;
   box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
 }
 
@@ -3602,19 +3616,19 @@ th.sortable .sort-btn:focus,
   border-left: none;
 }
 
-.spatial-capsule-list.inactive-list {
+.app .spatial-capsule-list.inactive-list {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed var(--border-color);
 }
 
-.spatial-capsule-list.active-list:empty + .inactive-list {
+.app .spatial-capsule-list.active-list:empty + .inactive-list {
   margin-top: 0;
   padding-top: 0;
   border-top: none;
 }
 
-.spatial-capsule {
+.app .spatial-capsule {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -3644,7 +3658,7 @@ th.sortable .sort-btn:focus,
   transition: none;
 }
 
-.spatial-capsule:hover {
+.app .spatial-capsule:hover {
   background: var(--capsule-hover-bg, #e4e7ed);
   border-color: var(--capsule-hover-border, #c0c4cc);
   color: var(--capsule-hover-text, #303133);
@@ -3735,7 +3749,7 @@ th.sortable .sort-btn:focus,
   transform: translate(3px, 4px) rotate(-45deg);
 }
 
-.spatial-capsule-name {
+.app .spatial-capsule-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -3744,7 +3758,7 @@ th.sortable .sort-btn:focus,
   font-weight: 600;
 }
 
-.spatial-capsule-badge {
+.app .spatial-capsule .spatial-capsule-badge {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -3760,7 +3774,7 @@ th.sortable .sort-btn:focus,
   letter-spacing: 0;
 }
 
-.spatial-capsule-handle {
+.app .spatial-capsule-handle {
   flex: 0 0 auto;
   width: 18px;
   height: 20px;
@@ -3830,7 +3844,7 @@ th.sortable .sort-btn:focus,
 }
 
 /* 整个胶囊可拖拽 */
-.spatial-capsule {
+.app .spatial-capsule {
   cursor: grab;
 }
 
@@ -4031,7 +4045,7 @@ th.sortable .sort-btn:focus,
 /* Inner Target 策略 - 动效包装层              */
 /* ========================================== */
 
-.field-capsule-inner {
+.app .field-capsule-inner {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -4044,8 +4058,8 @@ th.sortable .sort-btn:focus,
 
 /* 1920px+ 大屏 */
 @media (min-width: 1920px) {
-  .pivot-table th,
-  .pivot-table td {
+  .app .pivot-table th,
+  .app .pivot-table td {
     padding: 8px 14px;
     font-size: 13px;
   }
@@ -4053,8 +4067,8 @@ th.sortable .sort-btn:focus,
 
 /* 1440px 外接显示器 */
 @media (min-width: 1440px) {
-  .pivot-table th,
-  .pivot-table td {
+  .app .pivot-table th,
+  .app .pivot-table td {
     padding: 7px 12px;
   }
 }
@@ -4181,7 +4195,7 @@ th.sortable .sort-btn:focus,
 }
 
 /* 折叠动画容器 */
-.sub-zone-content {
+.app .sub-zone-content {
   overflow: visible;
   transition:
     height 0.2s ease,
@@ -4930,8 +4944,8 @@ button.dataset-info {
 }
 
 .mapping-trigger:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .mapping-dropdown {
@@ -5355,7 +5369,7 @@ button.dataset-info {
   font-size: 13px;
 }
 
-.mapping-table th {
+.app .mapping-table th {
   background: var(--zone-bg);
   padding: 8px 12px;
   text-align: left;
@@ -5364,7 +5378,7 @@ button.dataset-info {
   border-bottom: 1px solid var(--border-light);
 }
 
-.mapping-table td {
+.app .mapping-table td {
   padding: 4px 8px;
   border-bottom: 1px solid var(--border-light);
 }
@@ -5566,7 +5580,7 @@ button.dataset-info {
   font-size: 12px;
 }
 
-.mapping-2d-table th {
+.app .mapping-2d-table th {
   position: sticky;
   top: 0;
   background: var(--zone-bg);
@@ -5578,7 +5592,7 @@ button.dataset-info {
   z-index: 1;
 }
 
-.mapping-2d-table td {
+.app .mapping-2d-table td {
   padding: 4px 8px;
   border-bottom: 1px solid var(--border-light);
 }
@@ -5720,7 +5734,7 @@ button.dataset-info {
 
 /* hover 时强制显示 */
 .floating-control-bar:hover {
-  opacity: 1 !important;
+  opacity: 1;
 }
 
 .zen-status {
@@ -5894,9 +5908,9 @@ button.dataset-info {
 }
 
 .drop-zone-hover {
-  border-color: var(--primary-light) !important;
-  border-style: solid !important;
-  background: rgba(59, 130, 246, 0.04) !important;
+  border-color: var(--primary-light);
+  border-style: solid;
+  background: rgba(59, 130, 246, 0.04);
 }
 
 @keyframes drop-success {

@@ -56,6 +56,7 @@ export interface DataRow {
 export interface ColumnLevel {
   value: string;
   colspan: number;
+  startIndex?: number;
 }
 
 export interface FilterConfig {

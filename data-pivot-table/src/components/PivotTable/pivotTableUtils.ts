@@ -1,7 +1,63 @@
-import type { ValueFormatConfig } from '../../types';
+import type { ColumnLevel, ValueFormatConfig } from '../../types';
 import { BASE_METRICS } from '../../utils/calculatedField';
 
 export const KEY_SEPARATOR = '\u001f';
+export const DATA_COLUMN_WIDTH_VAR = 'var(--pivot-data-col-width)';
+export const DIMENSION_COLUMN_WIDTH_VAR = 'var(--pivot-dimension-col-width)';
+export const TREE_DIMENSION_COLUMN_WIDTH_VAR = 'var(--pivot-tree-dimension-col-width)';
+export const TOTAL_COLUMN_WIDTH_VAR = 'var(--pivot-total-col-width)';
+
+export interface PivotColumnSpec {
+  key: string;
+  className: string;
+  width: string;
+}
+
+function makeColumnSpec(key: string, className: string, width: string): PivotColumnSpec {
+  return { key, className, width };
+}
+
+export function getRowHeaderColumnCount(
+  rowDimensions: readonly string[],
+  rowHeaders: readonly string[][]
+): number {
+  const headerCellCount = rowHeaders.reduce((max, row) => Math.max(max, row.length), 0);
+  return Math.max(rowDimensions.length, headerCellCount, 1);
+}
+
+export function createFlatColumnSpecs(
+  rowHeaderColumnCount: number,
+  dataColumnCount: number,
+  totalColumnCount: number
+): PivotColumnSpec[] {
+  const dimensionCount = Math.max(rowHeaderColumnCount, 1);
+  return [
+    ...Array.from({ length: dimensionCount }, (_, index) =>
+      makeColumnSpec(`row-dimension-${index}`, 'pivot-col-row-header', DIMENSION_COLUMN_WIDTH_VAR)
+    ),
+    ...Array.from({ length: dataColumnCount }, (_, index) =>
+      makeColumnSpec(`data-${index}`, 'pivot-col-data', DATA_COLUMN_WIDTH_VAR)
+    ),
+    ...Array.from({ length: totalColumnCount }, (_, index) =>
+      makeColumnSpec(`total-${index}`, 'pivot-col-total', TOTAL_COLUMN_WIDTH_VAR)
+    ),
+  ];
+}
+
+export function createTreeColumnSpecs(
+  dataColumnCount: number,
+  totalColumnCount: number
+): PivotColumnSpec[] {
+  return [
+    makeColumnSpec('tree-dimension', 'pivot-col-tree-header', TREE_DIMENSION_COLUMN_WIDTH_VAR),
+    ...Array.from({ length: dataColumnCount }, (_, index) =>
+      makeColumnSpec(`data-${index}`, 'pivot-col-data', DATA_COLUMN_WIDTH_VAR)
+    ),
+    ...Array.from({ length: totalColumnCount }, (_, index) =>
+      makeColumnSpec(`total-${index}`, 'pivot-col-total', TOTAL_COLUMN_WIDTH_VAR)
+    ),
+  ];
+}
 
 export function makeStableKeys(values: readonly string[], prefix: string): string[] {
   const seen = new Map<string, number>();
@@ -82,20 +138,17 @@ export function formatColumnHeader(header: string): string {
 /**
  * 判断是否为分组边界
  */
-export function isGroupBoundary(
-  columnLevels: Array<Array<{ value: string; colspan: number }>>,
-  levelIdx: number,
-  colIdx: number
-): boolean {
-  if (!columnLevels[levelIdx]) return false;
+export function isGroupBoundary(columnLevels: ColumnLevel[][], leafIndex: number): boolean {
+  if (leafIndex < 0) return false;
 
-  if (colIdx === columnLevels[levelIdx].length - 1) return true;
+  for (const level of columnLevels) {
+    let inferredStart = 0;
 
-  if (levelIdx < columnLevels.length - 1) {
-    const currentCol = columnLevels[levelIdx][colIdx];
-    const nextCol = columnLevels[levelIdx][colIdx + 1];
-    if (currentCol && nextCol && currentCol.value !== nextCol.value) {
-      return true;
+    for (const col of level) {
+      const startIndex = col.startIndex ?? inferredStart;
+      const endIndex = startIndex + col.colspan - 1;
+      if (endIndex === leafIndex) return true;
+      inferredStart += col.colspan;
     }
   }
 
@@ -105,19 +158,9 @@ export function isGroupBoundary(
 /**
  * 获取分组边界样式类
  */
-export function getGroupBoundaryClass(
-  columnLevels: Array<Array<{ value: string; colspan: number }>>,
-  colIdx: number
-): string {
+export function getGroupBoundaryClass(columnLevels: ColumnLevel[][], leafIndex: number): string {
   if (columnLevels.length === 0) return '';
-
-  for (let levelIdx = 0; levelIdx < columnLevels.length; levelIdx++) {
-    if (isGroupBoundary(columnLevels, levelIdx, colIdx)) {
-      return 'group-boundary-col';
-    }
-  }
-
-  return '';
+  return isGroupBoundary(columnLevels, leafIndex) ? 'group-boundary-col' : '';
 }
 
 /**
