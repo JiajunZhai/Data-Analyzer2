@@ -68,6 +68,19 @@ export function useVirtualScroll(options: VirtualScrollOptions): VirtualScrollRe
 
   const totalHeight = rowCount * rowHeight;
 
+  useEffect(() => {
+    const maxScrollTop = Math.max(0, totalHeight - containerHeight);
+    if (scrollTopRef.current <= maxScrollTop) return;
+
+    scrollTopRef.current = maxScrollTop;
+    setScrollTop(maxScrollTop);
+
+    const container = containerRef.current;
+    if (container && container.scrollTop > maxScrollTop) {
+      container.scrollTop = maxScrollTop;
+    }
+  }, [containerHeight, containerRef, totalHeight]);
+
   // 使用 requestAnimationFrame 优化滚动性能
   const onScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget;

@@ -1,13 +1,13 @@
 import { FileSpreadsheet, Pencil, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { DataRow } from '../../types';
-import type { StorageQuota, StoredDataset } from '../../types/storage';
+import type { StorageQuota, StoredDatasetMeta } from '../../types/storage';
 import { formatBytes } from '../../utils/storageUtils';
 import FileUpload from '../FileUpload/FileUpload';
 
 interface DataSourceManagerProps {
   currentDatasetId: string | null;
-  datasets: StoredDataset[];
+  datasets: StoredDatasetMeta[];
   storageQuota: StorageQuota;
   onDatasetSelect: (id: string) => void;
   onDatasetRename: (id: string, newName: string) => void;
@@ -55,7 +55,7 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
   const currentDataset = datasets.find((d) => d.id === currentDatasetId);
   const historicalDatasets = datasets.filter((d) => d.id !== currentDatasetId);
 
-  const handleRenameStart = useCallback((dataset: StoredDataset) => {
+  const handleRenameStart = useCallback((dataset: StoredDatasetMeta) => {
     setEditingId(dataset.id);
     setEditingName(dataset.name);
   }, []);

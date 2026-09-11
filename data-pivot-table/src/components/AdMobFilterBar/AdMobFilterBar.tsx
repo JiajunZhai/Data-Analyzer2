@@ -4,31 +4,49 @@ import type { DataRow, FilterConfig } from '../../types';
 import DateRangeFilterChip from './DateRangeFilterChip';
 
 const collator = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
+const FILTER_OPTION_RENDER_LIMIT = 400;
 
-/**
- * 直接从原始数据中提取指定字段的唯一值（不经过 getDimensionValue 的场景映射）
- */
-function getRawUniqueValues(data: DataRow[], fieldName: string): string[] {
-  const values = new Set<string>();
+function normalizeFilterValue(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+function isUsableFilterValue(value: string): boolean {
+  return Boolean(value && value !== 'undefined' && value !== 'null');
+}
+
+function buildRawFilterValues(data: DataRow[], fieldNames: string[]): Record<string, string[]> {
+  const valueSets = Object.fromEntries(
+    fieldNames.map((fieldName) => [fieldName, new Set<string>()])
+  );
+
   for (const row of data) {
-    const val = String(row[fieldName] ?? '').trim();
-    if (val && val !== 'undefined' && val !== 'null') {
-      values.add(val);
+    for (const fieldName of fieldNames) {
+      const value = normalizeFilterValue(row[fieldName]);
+      if (isUsableFilterValue(value)) {
+        valueSets[fieldName].add(value);
+      }
     }
   }
-  return Array.from(values).sort((a, b) => collator.compare(a, b));
+
+  return Object.fromEntries(
+    fieldNames.map((fieldName) => [
+      fieldName,
+      Array.from(valueSets[fieldName]).sort((a, b) => collator.compare(a, b)),
+    ])
+  );
 }
 
 function computeRegistrationCounts(
   data: DataRow[],
-  configs: FilterChipConfig[],
+  dateFieldNames: Set<string>,
   filterConfigs: FilterConfig[],
   targetFieldName: string
 ): Map<string, number> {
-  const dateFields = new Set(configs.filter((c) => c.type === 'date').map((c) => c.fieldName));
   const otherFilters = filterConfigs.filter(
     (f) =>
-      f.fieldName !== targetFieldName && !dateFields.has(f.fieldName) && f.selectedValues.length > 0
+      f.fieldName !== targetFieldName &&
+      !dateFieldNames.has(f.fieldName) &&
+      f.selectedValues.length > 0
   );
   const filterSets = otherFilters.map((f) => ({
     fieldName: f.fieldName,
@@ -38,12 +56,12 @@ function computeRegistrationCounts(
   for (const row of data) {
     if (
       filterSets.length > 0 &&
-      !filterSets.every((f) => f.valueSet.has(String(row[f.fieldName] ?? '').trim()))
+      !filterSets.every((f) => f.valueSet.has(normalizeFilterValue(row[f.fieldName])))
     ) {
       continue;
     }
-    const key = String(row[targetFieldName] ?? '').trim();
-    if (!key || key === 'undefined' || key === 'null') continue;
+    const key = normalizeFilterValue(row[targetFieldName]);
+    if (!isUsableFilterValue(key)) continue;
     const reg = Number(row.注册用户 ?? 0);
     counts.set(key, (counts.get(key) ?? 0) + (Number.isNaN(reg) ? 0 : reg));
   }
@@ -116,6 +134,10 @@ const FilterChip: React.FC<FilterChipProps> = ({
     }
     return allValues;
   }, [allValues, searchQuery, selectedValues, selectedValueSet, registrationCounts, sortByCount]);
+  const visibleValues = useMemo(
+    () => filteredValues.slice(0, FILTER_OPTION_RENDER_LIMIT),
+    [filteredValues]
+  );
 
   const isAllSelected = tempValues.length === allValues.length;
 
@@ -251,7 +273,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
           </div>
 
           <div className="filter-dropdown-options">
-            {filteredValues.map((value) => (
+            {visibleValues.map((value) => (
               <label key={value} className="filter-dropdown-option">
                 <input
                   type="checkbox"
@@ -261,6 +283,11 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 <span className="option-text">{value}</span>
               </label>
             ))}
+            {filteredValues.length > visibleValues.length && (
+              <div className="filter-dropdown-empty">
+                仅显示前 {visibleValues.length} 项，可搜索完整选项
+              </div>
+            )}
             {filteredValues.length === 0 && <div className="filter-dropdown-empty">无匹配项</div>}
           </div>
 
@@ -306,24 +333,24 @@ interface AdMobFilterBarProps {
  * 从而只显示当前筛选器在已筛选数据范围内的可选值。
  * 日期筛选器不参与联动（始终使用全量数据）。
  */
-function getLinkedFilterValues(
+/*
+function _getLinkedFilterValues(
   data: DataRow[],
-  configs: FilterChipConfig[],
   filterConfigs: FilterConfig[],
-  targetFieldName: string
+  targetFieldName: string,
+  rawFilterValues: Record<string, string[]>,
+  dateFieldNames: Set<string>
 ): string[] {
   // 收集除目标字段外的所有已启用筛选条件
   const otherFilters = filterConfigs.filter(
     (f) => f.fieldName !== targetFieldName && f.selectedValues.length > 0
   );
 
-  // 收集日期筛选器（不参与联动，但需要过滤）
-  const dateFields = new Set(configs.filter((c) => c.type === 'date').map((c) => c.fieldName));
-  const nonDateFilters = otherFilters.filter((f) => !dateFields.has(f.fieldName));
+  const nonDateFilters = otherFilters.filter((f) => !dateFieldNames.has(f.fieldName));
 
   // 如果没有其他非日期筛选器，直接返回全量数据的唯一值
   if (nonDateFilters.length === 0) {
-    return getRawUniqueValues(data, targetFieldName);
+    return rawFilterValues[targetFieldName] ?? [];
   }
 
   // 预构建 Set 加速查找
@@ -335,17 +362,84 @@ function getLinkedFilterValues(
   const values = new Set<string>();
   for (const row of data) {
     if (
-      !filterSets.every((filter) => filter.valueSet.has(String(row[filter.fieldName] ?? '').trim()))
+      !filterSets.every((filter) =>
+        filter.valueSet.has(normalizeFilterValue(row[filter.fieldName]))
+      )
     ) {
       continue;
     }
-    const val = String(row[targetFieldName] ?? '').trim();
-    if (val && val !== 'undefined' && val !== 'null') {
+    const val = normalizeFilterValue(row[targetFieldName]);
+    if (isUsableFilterValue(val)) {
       values.add(val);
     }
   }
 
   return Array.from(values).sort((a, b) => collator.compare(a, b));
+}
+
+*/
+function buildLinkedFilterValues(
+  data: DataRow[],
+  configs: FilterChipConfig[],
+  filterConfigs: FilterConfig[],
+  rawFilterValues: Record<string, string[]>,
+  dateFieldNames: Set<string>
+): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  const nonDateConfigs = configs.filter((config) => !dateFieldNames.has(config.fieldName));
+  const nonDateFieldNames = new Set(nonDateConfigs.map((config) => config.fieldName));
+  const activeFilters = filterConfigs
+    .filter(
+      (filter) =>
+        nonDateFieldNames.has(filter.fieldName) &&
+        filter.selectedValues.length > 0 &&
+        filter.selectedValues.length < (rawFilterValues[filter.fieldName]?.length ?? 0)
+    )
+    .map((filter) => ({
+      fieldName: filter.fieldName,
+      valueSet: new Set(filter.selectedValues),
+    }));
+
+  for (const config of configs) {
+    if (dateFieldNames.has(config.fieldName) || activeFilters.length === 0) {
+      result[config.fieldName] = rawFilterValues[config.fieldName] ?? [];
+    }
+  }
+
+  if (activeFilters.length === 0) return result;
+
+  const linkedValueSets = Object.fromEntries(
+    nonDateConfigs.map((config) => [config.fieldName, new Set<string>()])
+  );
+
+  for (const row of data) {
+    let failedFieldName = '';
+    let failedCount = 0;
+
+    for (const filter of activeFilters) {
+      if (!filter.valueSet.has(normalizeFilterValue(row[filter.fieldName]))) {
+        failedFieldName = filter.fieldName;
+        failedCount += 1;
+        if (failedCount > 1) break;
+      }
+    }
+
+    if (failedCount > 1) continue;
+
+    for (const config of nonDateConfigs) {
+      if (failedCount === 1 && config.fieldName !== failedFieldName) continue;
+      const value = normalizeFilterValue(row[config.fieldName]);
+      if (isUsableFilterValue(value)) linkedValueSets[config.fieldName].add(value);
+    }
+  }
+
+  for (const config of nonDateConfigs) {
+    result[config.fieldName] = Array.from(linkedValueSets[config.fieldName]).sort((a, b) =>
+      collator.compare(a, b)
+    );
+  }
+
+  return result;
 }
 
 // "更多筛选" 中单个筛选器的子弹窗
@@ -379,6 +473,10 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
     }
     return allValues;
   }, [allValues, searchQuery]);
+  const visibleValues = useMemo(
+    () => filteredValues.slice(0, FILTER_OPTION_RENDER_LIMIT),
+    [filteredValues]
+  );
 
   const isAllSelected = tempValues.length === allValues.length;
 
@@ -507,7 +605,7 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
           </div>
 
           <div className="filter-dropdown-options">
-            {filteredValues.map((value) => (
+            {visibleValues.map((value) => (
               <label key={value} className="filter-dropdown-option">
                 <input
                   type="checkbox"
@@ -517,6 +615,11 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
                 <span className="option-text">{value}</span>
               </label>
             ))}
+            {filteredValues.length > visibleValues.length && (
+              <div className="filter-dropdown-empty">
+                仅显示前 {visibleValues.length} 项，可搜索完整选项
+              </div>
+            )}
             {filteredValues.length === 0 && <div className="filter-dropdown-empty">无匹配项</div>}
           </div>
 
@@ -637,25 +740,25 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
     () => new Set(configs.filter((c) => c.type === 'date').map((c) => c.fieldName)),
     [configs]
   );
+  const filterFieldNames = useMemo(() => configs.map((config) => config.fieldName), [configs]);
+  const rawFilterValues = useMemo(
+    () => buildRawFilterValues(data, filterFieldNames),
+    [data, filterFieldNames]
+  );
+  const hasLinkedNonDateFilters = useMemo(
+    () =>
+      filterConfigs.some(
+        (filter) => !dateFieldNames.has(filter.fieldName) && filter.selectedValues.length > 0
+      ),
+    [dateFieldNames, filterConfigs]
+  );
 
   const allFilterValues = useMemo(() => {
-    const result: Record<string, string[]> = {};
-    configs.forEach((config) => {
-      if (dateFieldNames.has(config.fieldName)) {
-        // 日期筛选器：始终使用全量数据
-        result[config.fieldName] = getRawUniqueValues(data, config.fieldName);
-      } else {
-        // 非日期筛选器：使用联动逻辑
-        result[config.fieldName] = getLinkedFilterValues(
-          data,
-          configs,
-          filterConfigs,
-          config.fieldName
-        );
-      }
-    });
-    return result;
-  }, [data, configs, filterConfigs, dateFieldNames]);
+    if (!hasLinkedNonDateFilters) return rawFilterValues;
+    return buildLinkedFilterValues(data, configs, filterConfigs, rawFilterValues, dateFieldNames);
+
+    // 非日期筛选器：使用联动逻辑
+  }, [data, configs, filterConfigs, dateFieldNames, hasLinkedNonDateFilters, rawFilterValues]);
 
   const getSelectedValues = (fieldName: string): string[] => {
     const config = filterConfigs.find((f) => f.fieldName === fieldName);
@@ -703,10 +806,13 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
     if (!appFilterActive) return new Map<string, Map<string, number>>();
     const result = new Map<string, Map<string, number>>();
     for (const fieldName of SORT_BY_REG_FIELDS) {
-      result.set(fieldName, computeRegistrationCounts(data, configs, filterConfigs, fieldName));
+      result.set(
+        fieldName,
+        computeRegistrationCounts(data, dateFieldNames, filterConfigs, fieldName)
+      );
     }
     return result;
-  }, [appFilterActive, data, configs, filterConfigs]);
+  }, [appFilterActive, data, dateFieldNames, filterConfigs]);
 
   return (
     <div className="admob-filter-bar">

@@ -1,4 +1,4 @@
-import { Maximize2, Minimize2, Table2, X } from 'lucide-react';
+import { Maximize2, Minimize2, PanelBottom, PanelRight, X } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface FloatingControlBarProps {
@@ -42,18 +42,20 @@ const FloatingControlBar: React.FC<FloatingControlBarProps> = ({
         type="button"
         className={`zen-bar-switch ${showRowTotal ? 'active' : ''}`}
         onClick={onToggleRowTotal}
+        aria-pressed={showRowTotal}
         title={showRowTotal ? '隐藏行总计' : '显示行总计'}
       >
-        <Table2 size={13} />
+        <PanelRight size={13} />
         <span>行总计</span>
       </button>
       <button
         type="button"
         className={`zen-bar-switch ${showColumnTotal ? 'active' : ''}`}
         onClick={onToggleColumnTotal}
+        aria-pressed={showColumnTotal}
         title={showColumnTotal ? '隐藏列总计' : '显示列总计'}
       >
-        <Table2 size={13} style={{ transform: 'rotate(90deg)' }} />
+        <PanelBottom size={13} />
         <span>列总计</span>
       </button>
       <div className="zen-bar-divider" />

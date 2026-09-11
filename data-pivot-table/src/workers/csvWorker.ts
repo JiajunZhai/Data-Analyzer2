@@ -124,10 +124,12 @@ function getMappedCountry(value: unknown): string {
 }
 
 function getRegisterLookupKey(row: DataRow): string {
-  const date = String(row.日期 ?? '').trim();
+  const date = String(row.安装日期 ?? row.日期 ?? '').trim();
   const app = String(row.应用 ?? row.app_code ?? '').trim();
   const country = getMappedCountry(row.国家);
-  return `${date}\u001f${app}\u001f${country}`;
+  const channel = String(row.买量渠道 ?? row.渠道 ?? '').trim();
+  const version = String(row.版本 ?? '').trim();
+  return `${date}\u001f${app}\u001f${country}\u001f${channel}\u001f${version}`;
 }
 
 function addCalculatedMetrics(row: DataRow, totalRevenue: number): void {
@@ -232,8 +234,14 @@ function detectFieldTypes(headers: string[], data: DataRow[]): Field[] {
 
 const CHUNK_SIZE = 1024 * 1024; // 1MB
 
+interface WorkerInput {
+  file?: File;
+  fileBuffer?: ArrayBuffer;
+  countryMapping?: Record<string, string>;
+}
+
 self.onmessage = async (e: MessageEvent) => {
-  const { fileBuffer, countryMapping } = e.data;
+  const { file, fileBuffer, countryMapping } = e.data as WorkerInput;
 
   try {
     // 加载国家映射
@@ -241,9 +249,20 @@ self.onmessage = async (e: MessageEvent) => {
       Object.assign(COUNTRY_MAP, countryMapping);
     }
 
-    const fileBytes = new Uint8Array(fileBuffer);
-    const fileSize = fileBytes.length;
-    const decoder = detectDecoder(fileBytes);
+    if (!file && !fileBuffer) {
+      throw new Error('缺少文件数据');
+    }
+
+    const fileSize = file?.size ?? fileBuffer?.byteLength ?? 0;
+    let firstBytes: Uint8Array;
+    if (file) {
+      firstBytes = new Uint8Array(await file.slice(0, Math.min(8192, file.size)).arrayBuffer());
+    } else {
+      const buffer = fileBuffer;
+      if (!buffer) throw new Error('缺少文件数据');
+      firstBytes = new Uint8Array(buffer.slice(0, Math.min(8192, buffer.byteLength)));
+    }
+    const decoder = detectDecoder(firstBytes);
 
     // 第一遍：逐行解析，同步计算全局总收益和 ALL 行注册用户映射
     const headers: string[] = [];
@@ -253,7 +272,6 @@ self.onmessage = async (e: MessageEvent) => {
     let totalRevenue = 0;
     const registeredUserLookup = new Map<string, number>();
 
-    let offset = 0;
     let lineCount = 0;
     const appendDataRow = (values: string[]) => {
       const obj: DataRow = {};
@@ -272,12 +290,7 @@ self.onmessage = async (e: MessageEvent) => {
       lineCount++;
     };
 
-    while (offset < fileSize) {
-      const end = Math.min(offset + CHUNK_SIZE, fileSize);
-      const chunk = fileBytes.slice(offset, end);
-      const isLast = end >= fileSize;
-      const text = decoder.decode(chunk, { stream: !isLast });
-
+    const processDecodedText = (text: string, progress: number) => {
       const fullText = buffer + text;
       const parts = fullText.split('\n');
       buffer = parts.pop() || '';
@@ -298,13 +311,42 @@ self.onmessage = async (e: MessageEvent) => {
           self.postMessage({
             type: 'progress',
             phase: 'parsing',
-            progress: offset / fileSize,
+            progress,
             rowCount: lineCount,
           });
         }
       }
+    };
 
-      offset = end;
+    if (file) {
+      const reader = file.stream().getReader();
+      let bytesRead = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        bytesRead += value.byteLength;
+        const text = decoder.decode(value, { stream: true });
+        processDecodedText(text, fileSize > 0 ? bytesRead / fileSize : 1);
+      }
+    } else if (fileBuffer) {
+      const fileBytes = new Uint8Array(fileBuffer);
+      let offset = 0;
+
+      while (offset < fileSize) {
+        const end = Math.min(offset + CHUNK_SIZE, fileSize);
+        const chunk = fileBytes.slice(offset, end);
+        const text = decoder.decode(chunk, { stream: true });
+
+        processDecodedText(text, fileSize > 0 ? end / fileSize : 1);
+        offset = end;
+      }
+    }
+
+    const decoderTail = decoder.decode();
+    if (decoderTail) {
+      processDecodedText(decoderTail, 1);
     }
 
     // 处理最后一行

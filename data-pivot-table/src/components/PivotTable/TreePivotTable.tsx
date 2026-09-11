@@ -1,11 +1,13 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { shouldUseVirtualScroll, useVirtualScroll } from '../../hooks/useVirtualScroll';
 import type { ColumnLevel, PivotResult, PivotTreeNode, SortConfig } from '../../types';
+import { PivotFullTextTooltip } from './PivotFullTextTooltip';
 import type { ToggleSortFn } from './PivotTable';
 import {
   createTreeColumnSpecs,
   formatColumnHeader,
   formatPivotValue,
+  getFullTextAttributes,
   getGroupBoundaryClass,
   getSortIcon,
   isSortActive,
@@ -53,6 +55,7 @@ const SortButton: React.FC<{
         onToggleSort(type, value);
       }}
       onMouseDown={(e) => e.stopPropagation()}
+      aria-label="切换排序"
       title="点击排序"
     >
       {getSortIcon(type, value, sortConfig)}
@@ -64,6 +67,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
   ({ result, showRowTotal, showColumnTotal, sortConfig, onToggleSort }) => {
     const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
     const containerRef = useRef<HTMLDivElement>(null);
+    const tableRef = useRef<HTMLTableElement>(null);
+    const [enableStickyTotals, setEnableStickyTotals] = useState(false);
 
     const {
       rowTree,
@@ -225,6 +230,42 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       [totalColumnHeaders.length, totalColumnStickyStyles]
     );
 
+    const getOptionalStickyRightStyle = useCallback(
+      (index: number, count: number): React.CSSProperties | undefined =>
+        enableStickyTotals ? getStickyRightStyle(index, count) : undefined,
+      [enableStickyTotals, getStickyRightStyle]
+    );
+    const totalHeaderStickyClass = enableStickyTotals ? 'total-header-sticky' : '';
+    const totalCellStickyClass = enableStickyTotals ? 'total-cell-sticky' : '';
+
+    useEffect(() => {
+      const container = containerRef.current;
+      const table = tableRef.current;
+      if (!container || !table) return undefined;
+
+      const measureOverflow = () => {
+        const next = table.offsetWidth > container.clientWidth + 1;
+        setEnableStickyTotals(next);
+      };
+
+      measureOverflow();
+
+      if (typeof ResizeObserver === 'undefined') {
+        window.addEventListener('resize', measureOverflow);
+        return () => window.removeEventListener('resize', measureOverflow);
+      }
+
+      const resizeObserver = new ResizeObserver(measureOverflow);
+      resizeObserver.observe(container);
+      resizeObserver.observe(table);
+      window.addEventListener('resize', measureOverflow);
+
+      return () => {
+        resizeObserver.disconnect();
+        window.removeEventListener('resize', measureOverflow);
+      };
+    }, []);
+
     const renderColGroup = () => (
       <colgroup>
         {tableColumnSpecs.map((column) => (
@@ -262,16 +303,20 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       const boundaryLeafIndex = dataColIdx + col.colspan - 1;
       const isBoundary = getGroupBoundaryClass(columnBoundaryLevels, boundaryLeafIndex) !== '';
       const canSort = isLeaf && onToggleSort && col.value && col.value !== '总计';
+      const headerText = col.value || '总计';
       return (
         <th
           key={headerKey}
           className={`col-header col-header-level-${levelIdx} ${isBoundary ? 'group-boundary-col' : ''} ${canSort ? 'sortable' : ''}`}
           colSpan={col.colspan}
+          {...getFullTextAttributes(headerText)}
         >
           {isSticky ? (
-            <span className="sticky-header-label">{col.value || '总计'}</span>
+            <span className="sticky-header-label" {...getFullTextAttributes(headerText)}>
+              {headerText}
+            </span>
           ) : (
-            col.value || '总计'
+            headerText
           )}
           {canSort && (
             <SortButton
@@ -287,10 +332,14 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
 
     const renderTotalHeaderCells = (levelIndex: number, depth: number) => {
       if (totalColumnHeaders.length === 0 || !showRowTotal) return null;
-      const stickyRight = 'total-header-sticky';
+      const stickyRight = totalHeaderStickyClass;
       if (!hasMultipleTotalColumns) {
         return levelIndex === 0 ? (
-          <th className={`total-header ${stickyRight} sortable`} rowSpan={depth}>
+          <th
+            className={`total-header ${stickyRight} sortable`}
+            rowSpan={depth}
+            {...getFullTextAttributes('行总计')}
+          >
             行总计
             <SortButton
               type="total"
@@ -306,7 +355,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           <th
             key={totalColumnKeys[index]}
             className={`total-header total-header-leaf ${stickyRight}`}
-            style={getStickyRightStyle(index, totalColumnHeaders.length)}
+            style={getOptionalStickyRightStyle(index, totalColumnHeaders.length)}
+            {...getFullTextAttributes(header || `总计 ${index + 1}`)}
           >
             {header || `总计 ${index + 1}`}
           </th>
@@ -314,7 +364,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       }
       if (levelIndex === 0) {
         return (
-          <th className={`total-header ${stickyRight}`} colSpan={totalColumnHeaders.length}>
+          <th className="total-header total-header-group" colSpan={totalColumnHeaders.length}>
             行总计
           </th>
         );
@@ -324,7 +374,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           <th
             key={totalColumnKeys[index]}
             className={`total-header total-header-leaf ${stickyRight}`}
-            style={getStickyRightStyle(index, totalColumnHeaders.length)}
+            style={getOptionalStickyRightStyle(index, totalColumnHeaders.length)}
+            {...getFullTextAttributes(header || `总计 ${index + 1}`)}
           >
             {header || `总计 ${index + 1}`}
           </th>
@@ -332,7 +383,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       }
       return (
         <th
-          className={`total-header total-header-spacer ${stickyRight}`}
+          className="total-header total-header-group total-header-spacer"
           colSpan={totalColumnHeaders.length}
         >
           &nbsp;
@@ -340,35 +391,48 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       );
     };
 
-    const renderTreeRowHeader = (treeRow: VisibleTreeRow) => (
-      <td
-        className={`row-header frozen-row-header frozen-row-header-last dimension-col-end tree-row-header tree-row-header-${treeRow.type}`}
-      >
-        <div className="frozen-cell-inner tree-cell-inner">
+    const renderTreeRowHeader = (treeRow: VisibleTreeRow) => {
+      const displayLabel = treeRow.label || '总计';
+
+      return (
+        <td
+          className={`row-header frozen-row-header frozen-row-header-last dimension-col-end tree-row-header tree-row-header-${treeRow.type}`}
+          {...getFullTextAttributes(displayLabel)}
+        >
           <div
-            className="tree-label"
-            style={{ paddingLeft: hasTreeHierarchy ? `${treeRow.depth * 14}px` : undefined }}
+            className="frozen-cell-inner tree-cell-inner"
+            {...getFullTextAttributes(displayLabel)}
           >
-            {treeRow.hasChildren ? (
-              <button
-                type="button"
-                className="tree-toggle"
-                aria-label={treeRow.isExpanded ? `折叠 ${treeRow.label}` : `展开 ${treeRow.label}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleTreeToggle(treeRow.id);
-                }}
-              >
-                {treeRow.isExpanded ? '▼' : '▶'}
-              </button>
-            ) : hasTreeHierarchy ? (
-              <span className="tree-toggle-spacer" />
-            ) : null}
-            <span className="tree-label-text">{treeRow.label || '总计'}</span>
+            <div
+              className="tree-label"
+              style={{ paddingLeft: hasTreeHierarchy ? `${treeRow.depth * 14}px` : undefined }}
+            >
+              {treeRow.hasChildren ? (
+                <button
+                  type="button"
+                  className="tree-toggle"
+                  aria-expanded={treeRow.isExpanded}
+                  aria-label={
+                    treeRow.isExpanded ? `折叠 ${treeRow.label}` : `展开 ${treeRow.label}`
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleTreeToggle(treeRow.id);
+                  }}
+                >
+                  {treeRow.isExpanded ? '▼' : '▶'}
+                </button>
+              ) : hasTreeHierarchy ? (
+                <span className="tree-toggle-spacer" />
+              ) : null}
+              <span className="tree-label-text" {...getFullTextAttributes(displayLabel)}>
+                {displayLabel}
+              </span>
+            </div>
           </div>
-        </div>
-      </td>
-    );
+        </td>
+      );
+    };
 
     // 虚拟滚动支持
     const rowCount = visibleTreeRows.length;
@@ -426,8 +490,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                 return (
                   <td
                     key={totalColumnKeys[ti]}
-                    className="total-cell total-cell-sticky tree-group-placeholder"
-                    style={getStickyRightStyle(ti, totalValues.length)}
+                    className={`total-cell ${totalCellStickyClass} tree-group-placeholder`}
+                    style={getOptionalStickyRightStyle(ti, totalValues.length)}
                   >
                     &nbsp;
                   </td>
@@ -442,8 +506,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
               return (
                 <td
                   key={totalColumnKeys[ti]}
-                  className={`total-cell total-cell-sticky ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
-                  style={getStickyRightStyle(ti, totalValues.length)}
+                  className={`total-cell ${totalCellStickyClass} ${treeRow.type === 'subtotal' ? 'tree-subtotal-cell' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                  style={getOptionalStickyRightStyle(ti, totalValues.length)}
                 >
                   {text}
                 </td>
@@ -474,8 +538,11 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           <td
             className="row-header total-label frozen-row-header frozen-row-header-last dimension-col-end tree-row-header"
             colSpan={1}
+            {...getFullTextAttributes(totalRow.label)}
           >
-            <div className="frozen-cell-inner">{totalRow.label}</div>
+            <div className="frozen-cell-inner" {...getFullTextAttributes(totalRow.label)}>
+              {totalRow.label}
+            </div>
           </td>
           {totalRow.values.map((val, idx) => {
             const metricName = totalRow.valueFieldNames[idx] || columnValueFieldNames[idx];
@@ -497,8 +564,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
             return (
               <td
                 key={totalColumnKeys[idx]}
-                className={`grand-total summary-intersection ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
-                style={getStickyRightStyle(idx, totalRow.totalValues.length)}
+                className={`grand-total ${enableStickyTotals ? 'summary-intersection' : ''} ${isEmpty ? 'empty-cell' : 'number-formatted'}`}
+                style={getOptionalStickyRightStyle(idx, totalRow.totalValues.length)}
               >
                 {text}
               </td>
@@ -517,8 +584,13 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
           style={{ ...containerStyle, overflow: 'auto', height: '100%' }}
           onScroll={onScroll}
         >
+          <PivotFullTextTooltip containerRef={containerRef} />
           <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
-            <table className="pivot-table" style={{ position: 'absolute', top: 0, left: 0 }}>
+            <table
+              ref={tableRef}
+              className="pivot-table"
+              style={{ position: 'absolute', top: 0, left: 0 }}
+            >
               {renderColGroup()}
               <thead>
                 {hasColumnLevels ? (
@@ -529,6 +601,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                           className="corner-cell tree-corner-cell sortable"
                           colSpan={1}
                           rowSpan={columnLevels.length}
+                          {...getFullTextAttributes(rowDimensions.join(' / '))}
                         >
                           {rowDimensions.join(' / ')}
                           {rowDimensions.length === 1 && (
@@ -554,7 +627,11 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                   ))
                 ) : (
                   <tr>
-                    <th className="corner-cell tree-corner-cell sortable" colSpan={1}>
+                    <th
+                      className="corner-cell tree-corner-cell sortable"
+                      colSpan={1}
+                      {...getFullTextAttributes(rowDimensions.join(' / '))}
+                    >
                       {rowDimensions.join(' / ')}
                       {rowDimensions.length === 1 && (
                         <SortButton
@@ -569,6 +646,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                       <th
                         key={columnKeys[idx]}
                         className={`col-header sortable ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                        {...getFullTextAttributes(formatColumnHeader(col))}
                       >
                         {formatColumnHeader(col)}
                         <SortButton
@@ -585,14 +663,18 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                         totalColumnHeaders.map((header, idx) => (
                           <th
                             key={totalColumnKeys[idx]}
-                            className="total-header total-header-leaf total-header-sticky"
-                            style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                            className={`total-header total-header-leaf ${totalHeaderStickyClass}`}
+                            style={getOptionalStickyRightStyle(idx, totalColumnHeaders.length)}
+                            {...getFullTextAttributes(header)}
                           >
                             {header}
                           </th>
                         ))
                       ) : (
-                        <th className="total-header total-header-sticky sortable">
+                        <th
+                          className={`total-header ${totalHeaderStickyClass} sortable`}
+                          {...getFullTextAttributes('行总计')}
+                        >
                           行总计
                           <SortButton
                             type="total"
@@ -618,7 +700,8 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
         ref={containerRef}
         style={containerStyle}
       >
-        <table className="pivot-table">
+        <PivotFullTextTooltip containerRef={containerRef} />
+        <table ref={tableRef} className="pivot-table">
           {renderColGroup()}
           <thead>
             {hasColumnLevels ? (
@@ -629,6 +712,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                       className="corner-cell tree-corner-cell sortable"
                       colSpan={1}
                       rowSpan={columnLevels.length}
+                      {...getFullTextAttributes(rowDimensions.join(' / '))}
                     >
                       {rowDimensions.join(' / ')}
                       {rowDimensions.length === 1 && (
@@ -654,7 +738,11 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
               ))
             ) : (
               <tr>
-                <th className="corner-cell tree-corner-cell sortable" colSpan={1}>
+                <th
+                  className="corner-cell tree-corner-cell sortable"
+                  colSpan={1}
+                  {...getFullTextAttributes(rowDimensions.join(' / '))}
+                >
                   {rowDimensions.join(' / ')}
                   {rowDimensions.length === 1 && (
                     <SortButton
@@ -669,6 +757,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                   <th
                     key={columnKeys[idx]}
                     className={`col-header sortable ${idx === columnHeaders.length - 1 ? 'group-boundary-col' : ''}`}
+                    {...getFullTextAttributes(formatColumnHeader(col))}
                   >
                     {formatColumnHeader(col)}
                     <SortButton
@@ -685,14 +774,18 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
                     totalColumnHeaders.map((header, idx) => (
                       <th
                         key={totalColumnKeys[idx]}
-                        className="total-header total-header-leaf total-header-sticky"
-                        style={getStickyRightStyle(idx, totalColumnHeaders.length)}
+                        className={`total-header total-header-leaf ${totalHeaderStickyClass}`}
+                        style={getOptionalStickyRightStyle(idx, totalColumnHeaders.length)}
+                        {...getFullTextAttributes(header)}
                       >
                         {header}
                       </th>
                     ))
                   ) : (
-                    <th className="total-header total-header-sticky sortable">
+                    <th
+                      className={`total-header ${totalHeaderStickyClass} sortable`}
+                      {...getFullTextAttributes('行总计')}
+                    >
                       行总计
                       <SortButton
                         type="total"

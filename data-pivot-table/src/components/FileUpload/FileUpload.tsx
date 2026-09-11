@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useState } from 'react';
-import type { DataRow } from '../../types';
+import type { DataRow, Field } from '../../types';
 import { parseCSVFile, parseExcelFile, parseMappingCSV } from '../../utils/fileParser';
 import { parseCSVWithWorker, type WorkerParseProgress } from '../../workers/workerBridge';
 
@@ -20,7 +20,8 @@ interface FileUploadProps {
     headers: string[],
     data: DataRow[],
     fileName: string,
-    preprocessed?: boolean
+    preprocessed?: boolean,
+    detectedFields?: Field[]
   ) => void;
   onMappingLoaded?: (headers: string[], rows: string[][], fileName: string) => void;
   variant?: 'card' | 'header' | 'mapping' | 'capsule' | 'capsule-mapping';
@@ -81,6 +82,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           setFileSize(formatFileSize(file.size));
           let result: { headers: string[]; data: DataRow[] };
           let preprocessed = false;
+          let detectedFields: Field[] | undefined;
           if (file.name.endsWith('.csv')) {
             // 大于 10MB 的 CSV 使用 Web Worker 解析（不阻塞主线程）
             if (file.size > 10 * 1024 * 1024) {
@@ -89,13 +91,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
               });
               result = { headers: workerResult.headers, data: workerResult.data };
               preprocessed = workerResult.preprocessed ?? false;
+              detectedFields = workerResult.fields.filter((field) => !field.isCalculated);
             } else {
               result = await parseCSVFile(file);
             }
           } else {
             result = await parseExcelFile(file);
           }
-          onDataLoaded?.(result.headers, result.data, file.name, preprocessed);
+          onDataLoaded?.(result.headers, result.data, file.name, preprocessed, detectedFields);
         }
       } catch (err) {
         console.error('文件解析失败:', err);

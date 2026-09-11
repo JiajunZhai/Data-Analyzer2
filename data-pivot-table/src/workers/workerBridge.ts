@@ -82,9 +82,7 @@ export async function parseCSVWithWorker(
       reject(new Error(err.message || 'Worker 启动失败'));
     };
 
-    // 将文件作为 ArrayBuffer 传递给 Worker
-    file.arrayBuffer().then((buffer) => {
-      worker.postMessage({ fileBuffer: buffer, countryMapping }, [buffer]);
-    });
+    // 传递 File，让 Worker 自己读取流，避免主线程先加载完整大文件。
+    worker.postMessage({ file, countryMapping });
   });
 }

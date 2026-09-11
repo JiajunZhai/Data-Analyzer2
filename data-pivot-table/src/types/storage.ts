@@ -1,17 +1,21 @@
 import type { DataRow, Field, FilterConfig, PivotField } from './index';
 
-export interface StoredDataset {
+export interface StoredDatasetMeta {
   id: string;
   name: string;
   fileName: string;
   createdAt: number;
   updatedAt: number;
   rowCount: number;
+  estimatedSize: number;
   fieldCount: {
     dimensions: number;
     measures: number;
   };
   fields: Field[];
+}
+
+export interface StoredDataset extends StoredDatasetMeta {
   data: DataRow[];
 }
 

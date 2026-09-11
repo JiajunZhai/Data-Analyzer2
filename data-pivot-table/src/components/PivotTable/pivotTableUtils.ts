@@ -69,6 +69,10 @@ export function makeStableKeys(values: readonly string[], prefix: string): strin
   });
 }
 
+export function getFullTextAttributes(value: string) {
+  return value ? { 'aria-label': value, 'data-full-text': value } : {};
+}
+
 /**
  * 格式化透视表数值
  */

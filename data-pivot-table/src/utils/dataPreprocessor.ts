@@ -57,10 +57,12 @@ export function preprocessData(data: DataRow[]): DataRow[] {
   const registeredUserLookup = new Map<string, number>();
   for (const row of data) {
     if (!isAllBehaviorRow(row)) continue;
-    const date = String(row.日期 ?? '').trim();
+    const date = String(row.安装日期 ?? row.日期 ?? '').trim();
     const app = String(row.应用 ?? row.app_code ?? '').trim();
     const country = getMappedCountry(row.国家);
-    const key = `${date}\u001f${app}\u001f${country}`;
+    const channel = String(row.买量渠道 ?? row.渠道 ?? '').trim();
+    const version = String(row.版本 ?? '').trim();
+    const key = `${date}\u001f${app}\u001f${country}\u001f${channel}\u001f${version}`;
     const val = Number(row.注册用户);
     if (!Number.isNaN(val) && val > 0) {
       registeredUserLookup.set(key, val);
@@ -78,10 +80,12 @@ export function preprocessData(data: DataRow[]): DataRow[] {
     const regUsers = Number(row.注册用户);
     const isDetailRow = !isAllBehaviorRow(row);
     if ((!regUsers || regUsers === 0) && isDetailRow) {
-      const date = String(row.日期 ?? '').trim();
+      const date = String(row.安装日期 ?? row.日期 ?? '').trim();
       const app = String(row.应用 ?? row.app_code ?? '').trim();
       const country = String(row.国家 ?? '').trim();
-      const key = `${date}\u001f${app}\u001f${country}`;
+      const channel = String(row.买量渠道 ?? row.渠道 ?? '').trim();
+      const version = String(row.版本 ?? '').trim();
+      const key = `${date}\u001f${app}\u001f${country}\u001f${channel}\u001f${version}`;
       const fallback = registeredUserLookup.get(key);
       if (fallback && fallback > 0) {
         row.注册用户 = fallback;

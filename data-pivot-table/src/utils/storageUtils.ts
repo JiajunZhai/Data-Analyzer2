@@ -2,7 +2,7 @@ export const STORAGE_LIMITS = {
   MAX_DATASETS: 10,
   MAX_MAPPINGS: 10,
   MAX_CONFIGS_PER_DATASET: 10,
-  MAX_STORAGE_BYTES: 500 * 1024 * 1024,
+  MAX_STORAGE_BYTES: 2 * 1024 * 1024 * 1024,
 };
 
 export const estimateDataSize = (data: unknown[]): number => {
@@ -16,7 +16,8 @@ export const estimateDataSize = (data: unknown[]): number => {
 export const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 };
 
 export const generateId = (): string => {

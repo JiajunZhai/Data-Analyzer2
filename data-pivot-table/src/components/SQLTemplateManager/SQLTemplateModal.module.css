@@ -1,24 +1,24 @@
 :root {
-  --sql-primary: #2563eb;
-  --sql-primary-light: #3b82f6;
-  --sql-primary-bg: rgba(37, 99, 235, 0.06);
-  --sql-primary-border: rgba(37, 99, 235, 0.2);
-  --sql-danger: #dc2626;
-  --sql-danger-bg: rgba(220, 38, 38, 0.06);
-  --sql-success: #059669;
-  --sql-success-bg: rgba(5, 150, 105, 0.08);
-  --sql-surface: #f8fafc;
+  --sql-primary: #3d63dd;
+  --sql-primary-light: #6f8df5;
+  --sql-primary-bg: rgba(61, 99, 221, 0.08);
+  --sql-primary-border: rgba(61, 99, 221, 0.22);
+  --sql-danger: #c2413b;
+  --sql-danger-bg: rgba(194, 65, 59, 0.08);
+  --sql-success: #087f5b;
+  --sql-success-bg: rgba(8, 127, 91, 0.08);
+  --sql-surface: #f5f7fb;
   --sql-surface-0: #ffffff;
-  --sql-surface-1: #f1f5f9;
-  --sql-surface-2: #e2e8f0;
-  --sql-border: #e2e8f0;
-  --sql-border-light: rgba(226, 232, 240, 0.6);
-  --sql-text: #0f172a;
-  --sql-text-secondary: #334155;
-  --sql-text-muted: #64748b;
-  --sql-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --sql-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --sql-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.12);
+  --sql-surface-1: #f8fafd;
+  --sql-surface-2: #eef2f7;
+  --sql-border: #d6dce8;
+  --sql-border-light: rgba(214, 220, 232, 0.68);
+  --sql-text: #17243a;
+  --sql-text-secondary: #4c5870;
+  --sql-text-muted: #7a8496;
+  --sql-shadow-sm: 0 1px 3px rgba(23, 36, 58, 0.055);
+  --sql-shadow-md: 0 8px 22px -14px rgba(23, 36, 58, 0.22);
+  --sql-shadow-lg: 0 18px 44px -22px rgba(23, 36, 58, 0.28);
   --sql-radius-sm: 6px;
   --sql-radius-md: 8px;
   --sql-radius-lg: 12px;
@@ -98,12 +98,12 @@
   width: 32px;
   height: 32px;
   border-radius: var(--sql-radius-md);
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  background: linear-gradient(135deg, var(--sql-primary), var(--sql-primary-light));
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 6px 14px -8px rgba(61, 99, 221, 0.6);
 }
 
 .logo svg {

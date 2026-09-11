@@ -3,19 +3,38 @@ import type {
   StorageQuota,
   StoredConfig,
   StoredDataset,
+  StoredDatasetMeta,
   StoredSQLTemplate,
   UserPreferences,
 } from '../types/storage';
-import { estimateDataSize, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
+import { estimateDataSize, formatBytes, generateId, STORAGE_LIMITS } from '../utils/storageUtils';
 
 const DB_NAME = 'data-pivot-table';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
+
+type StoredDatasetRecord = Omit<StoredDatasetMeta, 'estimatedSize'> & {
+  estimatedSize?: number;
+  data?: StoredDataset['data'];
+};
+
+type DatasetDataRecord = {
+  datasetId: string;
+  data: StoredDataset['data'];
+};
+
+type SaveDatasetInput = Omit<StoredDataset, 'id' | 'createdAt' | 'updatedAt' | 'estimatedSize'> & {
+  estimatedSize?: number;
+};
 
 interface PivotTableDB {
   datasets: {
     key: string;
-    value: StoredDataset;
+    value: StoredDatasetRecord;
     indexes: { name: string; createdAt: number };
+  };
+  datasetData: {
+    key: string;
+    value: DatasetDataRecord;
   };
   configs: {
     key: string;
@@ -52,6 +71,10 @@ class StorageService {
           datasetStore.createIndex('createdAt', 'createdAt');
         }
 
+        if (!db.objectStoreNames.contains('datasetData')) {
+          db.createObjectStore('datasetData', { keyPath: 'datasetId' });
+        }
+
         if (!db.objectStoreNames.contains('configs')) {
           const configStore = db.createObjectStore('configs', { keyPath: 'id' });
           configStore.createIndex('datasetId', 'datasetId');
@@ -79,6 +102,8 @@ class StorageService {
         }
       },
     });
+
+    await this.migrateLegacyDatasetRows();
   }
 
   private getDb(): IDBPDatabase<PivotTableDB> {
@@ -90,9 +115,56 @@ class StorageService {
 
   // ============ 数据集操作 ============
 
-  async saveDataset(
-    dataset: Omit<StoredDataset, 'id' | 'createdAt' | 'updatedAt'>
-  ): Promise<string> {
+  private toDatasetMeta(record: StoredDatasetRecord): StoredDatasetMeta {
+    const { data, ...meta } = record;
+    return {
+      ...meta,
+      estimatedSize: meta.estimatedSize ?? (Array.isArray(data) ? estimateDataSize(data) : 0),
+    };
+  }
+
+  private async migrateLegacyDatasetRows(): Promise<void> {
+    const db = this.getDb();
+    const tx = db.transaction(['datasets', 'datasetData'], 'readwrite');
+    const datasetStore = tx.objectStore('datasets');
+    const dataStore = tx.objectStore('datasetData');
+
+    let cursor = await datasetStore.openCursor();
+    while (cursor) {
+      const record = cursor.value;
+      if (Array.isArray(record.data)) {
+        const { data, ...meta } = record;
+        const estimatedSize = meta.estimatedSize ?? estimateDataSize(data);
+        await dataStore.put({ datasetId: record.id, data });
+        await cursor.update({ ...meta, estimatedSize });
+      }
+      cursor = await cursor.continue();
+    }
+
+    await tx.done;
+  }
+
+  private async getUsedStorageBytes(excludeDatasetId?: string): Promise<number> {
+    const datasets = await this.getAllDatasetMetas();
+    return datasets.reduce((sum, dataset) => {
+      if (dataset.id === excludeDatasetId) return sum;
+      return sum + dataset.estimatedSize;
+    }, 0);
+  }
+
+  private async ensureDatasetFits(estimatedSize: number, excludeDatasetId?: string): Promise<void> {
+    const used = await this.getUsedStorageBytes(excludeDatasetId);
+    const nextUsed = used + estimatedSize;
+    if (nextUsed > STORAGE_LIMITS.MAX_STORAGE_BYTES) {
+      throw new Error(
+        `数据源存储空间不足：当前已用 ${formatBytes(used)}，本次约 ${formatBytes(
+          estimatedSize
+        )}，上限 ${formatBytes(STORAGE_LIMITS.MAX_STORAGE_BYTES)}`
+      );
+    }
+  }
+
+  async saveDataset(dataset: SaveDatasetInput): Promise<string> {
     const db = this.getDb();
     const count = await db.count('datasets');
     if (count >= STORAGE_LIMITS.MAX_DATASETS) {
@@ -101,44 +173,93 @@ class StorageService {
 
     const id = generateId();
     const now = Date.now();
+    const estimatedSize = dataset.estimatedSize ?? estimateDataSize(dataset.data);
+    await this.ensureDatasetFits(estimatedSize);
 
-    await db.put('datasets', {
-      ...dataset,
+    const { data, ...metaInput } = dataset;
+    const meta: StoredDatasetMeta = {
+      ...metaInput,
       id,
       createdAt: now,
       updatedAt: now,
-    });
+      estimatedSize,
+    };
+
+    const tx = db.transaction(['datasets', 'datasetData'], 'readwrite');
+    await Promise.all([
+      tx.objectStore('datasets').put(meta),
+      tx.objectStore('datasetData').put({ datasetId: id, data }),
+    ]);
+    await tx.done;
 
     return id;
   }
 
   async updateDataset(id: string, updates: Partial<StoredDataset>): Promise<void> {
     const db = this.getDb();
-    const dataset = await db.get('datasets', id);
-    if (!dataset) {
+    const record = await db.get('datasets', id);
+    if (!record) {
       throw new Error('Dataset not found');
     }
 
-    await db.put('datasets', {
-      ...dataset,
-      ...updates,
+    const { data, ...metaUpdates } = updates;
+    const nextMeta: StoredDatasetMeta = {
+      ...this.toDatasetMeta(record),
+      ...metaUpdates,
       updatedAt: Date.now(),
-    });
+    };
+
+    if (data !== undefined) {
+      nextMeta.estimatedSize = updates.estimatedSize ?? estimateDataSize(data);
+      nextMeta.rowCount = updates.rowCount ?? data.length;
+      await this.ensureDatasetFits(nextMeta.estimatedSize, id);
+    } else if (updates.estimatedSize !== undefined) {
+      await this.ensureDatasetFits(updates.estimatedSize, id);
+    }
+
+    const tx = db.transaction(['datasets', 'datasetData'], 'readwrite');
+    await tx.objectStore('datasets').put(nextMeta);
+    if (data !== undefined) {
+      await tx.objectStore('datasetData').put({ datasetId: id, data });
+    }
+    await tx.done;
   }
 
   async getAllDatasets(): Promise<StoredDataset[]> {
+    const datasets = await Promise.all(
+      (await this.getAllDatasetMetas()).map((dataset) => this.getDataset(dataset.id))
+    );
+    return datasets.filter((dataset): dataset is StoredDataset => dataset !== null);
+  }
+
+  async getAllDatasetMetas(): Promise<StoredDatasetMeta[]> {
     const db = this.getDb();
-    return await db.getAll('datasets');
+    const records = await db.getAll('datasets');
+    return records.map((record) => this.toDatasetMeta(record));
   }
 
   async getDataset(id: string): Promise<StoredDataset | null> {
     const db = this.getDb();
-    return (await db.get('datasets', id)) ?? null;
+    const record = await db.get('datasets', id);
+    if (!record) return null;
+
+    const meta = this.toDatasetMeta(record);
+    if (Array.isArray(record.data)) {
+      return { ...meta, data: record.data };
+    }
+
+    const dataRecord = await db.get('datasetData', id);
+    return { ...meta, data: dataRecord?.data ?? [] };
   }
 
   async deleteDataset(id: string): Promise<void> {
     const db = this.getDb();
-    await db.delete('datasets', id);
+    const tx = db.transaction(['datasets', 'datasetData'], 'readwrite');
+    await Promise.all([
+      tx.objectStore('datasets').delete(id),
+      tx.objectStore('datasetData').delete(id),
+    ]);
+    await tx.done;
     await this.deleteConfigsByDataset(id);
   }
 
@@ -224,10 +345,10 @@ class StorageService {
   // ============ 存储配额 ============
 
   async getStorageQuota(): Promise<StorageQuota> {
-    const datasets = await this.getAllDatasets();
+    const datasets = await this.getAllDatasetMetas();
 
     const used = datasets.reduce((sum, ds) => {
-      return sum + estimateDataSize(ds.data);
+      return sum + ds.estimatedSize;
     }, 0);
 
     return {

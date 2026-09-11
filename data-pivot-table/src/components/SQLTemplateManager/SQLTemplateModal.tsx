@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { storageService } from '../../services/storage';
 import s from './SQLTemplateModal.module.css';
 import { ToastManager } from './Toast';
 
@@ -32,17 +33,13 @@ interface SQLTemplate {
   id: string;
   name: string;
   category: string;
-  description: string;
-  dimensions: string[];
-  metrics: string[];
-  verified: boolean;
+  description?: string;
+  dimensions?: string[];
+  metrics?: string[];
+  verified?: boolean;
   sql: string;
   createdAt: number;
   updatedAt: number;
-}
-
-interface TemplatesData {
-  templates: SQLTemplate[];
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -104,7 +101,7 @@ const METRIC_KEYWORDS: Record<string, string> = {
   revenue_usd: '广告收益',
 };
 
-const API_URL = '/api/sql-templates';
+const SEED_URL = `${import.meta.env.BASE_URL}data/sql-templates.json`;
 
 const SQL_KEYWORDS = new Set([
   'SELECT',
@@ -439,31 +436,29 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const loadTemplates = useCallback(async (): Promise<SQLTemplate[]> => {
+  const seedTemplatesIfEmpty = useCallback(async () => {
     try {
-      const res = await fetch(API_URL);
-      if (!res.ok) throw new Error('Failed to load');
-      const data: TemplatesData = await res.json();
-      setTemplates(data.templates);
-      return data.templates;
+      const existing = await storageService.getAllSQLTemplates();
+      if (existing.length > 0) return;
+
+      const res = await fetch(SEED_URL);
+      if (!res.ok) return;
+      const data = (await res.json()) as { templates: SQLTemplate[] };
+      if (!Array.isArray(data.templates) || data.templates.length === 0) return;
+      await storageService.importSQLTemplates(JSON.stringify(data.templates));
     } catch (err) {
-      console.error('Failed to load SQL templates:', err);
-      return [];
+      console.error('Failed to seed SQL templates:', err);
     }
   }, []);
 
-  const saveTemplates = useCallback(async (newTemplates: SQLTemplate[]) => {
+  const refreshTemplates = useCallback(async (): Promise<SQLTemplate[]> => {
     try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templates: newTemplates }),
-      });
-      if (!res.ok) throw new Error('Failed to save');
-      setTemplates(newTemplates);
+      const all = (await storageService.getAllSQLTemplates()) as SQLTemplate[];
+      setTemplates(all);
+      return all;
     } catch (err) {
-      console.error('Failed to save SQL templates:', err);
-      throw err;
+      console.error('Failed to load SQL templates:', err);
+      return [];
     }
   }, []);
 
@@ -487,12 +482,14 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
     }
 
     if (!initializedRef.current) {
-      loadTemplates().then((all) => {
-        initSelection(all);
-        initializedRef.current = true;
-      });
+      seedTemplatesIfEmpty().then(() =>
+        refreshTemplates().then((all) => {
+          initSelection(all);
+          initializedRef.current = true;
+        })
+      );
     }
-  }, [isOpen, loadTemplates, initSelection]);
+  }, [isOpen, seedTemplatesIfEmpty, refreshTemplates, initSelection]);
 
   useEffect(() => {
     if (!showNewMenu) return;
@@ -548,49 +545,26 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   const handleSave = useCallback(async () => {
     try {
-      const now = Date.now();
       // 保存时自动检测标签
       const detected = autoDetectTags(editSql);
-      const finalDimensions = detected.dimensions;
-      const finalMetrics = detected.metrics;
-
-      let newTemplates: SQLTemplate[];
+      const input = {
+        name: editName,
+        category: editCategory,
+        description: editDescription,
+        dimensions: detected.dimensions,
+        metrics: detected.metrics,
+        verified: editVerified,
+        sql: editSql,
+      };
 
       if (selectedId) {
-        newTemplates = templates.map((t) =>
-          t.id === selectedId
-            ? {
-                ...t,
-                name: editName,
-                category: editCategory,
-                description: editDescription,
-                dimensions: finalDimensions,
-                metrics: finalMetrics,
-                verified: editVerified,
-                sql: editSql,
-                updatedAt: now,
-              }
-            : t
-        );
+        await storageService.updateSQLTemplate(selectedId, input);
       } else {
-        const newId = `template_${now}`;
-        const newTemplate: SQLTemplate = {
-          id: newId,
-          name: editName,
-          category: editCategory,
-          description: editDescription,
-          dimensions: finalDimensions,
-          metrics: finalMetrics,
-          verified: editVerified,
-          sql: editSql,
-          createdAt: now,
-          updatedAt: now,
-        };
-        newTemplates = [...templates, newTemplate];
+        const newId = await storageService.saveSQLTemplate(input);
         setSelectedId(newId);
       }
 
-      await saveTemplates(newTemplates);
+      await refreshTemplates();
       setSaved(true);
       addToast('模板已保存', 'success');
       setTimeout(() => setSaved(false), 2000);
@@ -605,31 +579,20 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
     editDescription,
     editVerified,
     editSql,
-    templates,
-    saveTemplates,
+    refreshTemplates,
     addToast,
   ]);
 
   const handleNew = useCallback(
     async (category: string) => {
       try {
-        const now = Date.now();
-        const newId = `template_${now}`;
-        const newTemplate: SQLTemplate = {
-          id: newId,
+        const newId = await storageService.saveSQLTemplate({
           name: '新建 SQL 模板',
           category,
-          description: '',
-          dimensions: [],
-          metrics: [],
-          verified: false,
           sql: '-- 在此编写 SQL\nSELECT * FROM daily_ad_monetization\nLIMIT 10;',
-          createdAt: now,
-          updatedAt: now,
-        };
+        });
 
-        const newTemplates = [...templates, newTemplate];
-        await saveTemplates(newTemplates);
+        await refreshTemplates();
 
         setSelectedId(newId);
         setEditName('新建 SQL 模板');
@@ -647,15 +610,16 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
         addToast('创建失败', 'error');
       }
     },
-    [templates, saveTemplates, addToast]
+    [refreshTemplates, addToast]
   );
 
   const handleDelete = useCallback(async () => {
     if (!selectedId) return;
 
     try {
+      await storageService.deleteSQLTemplate(selectedId);
       const newTemplates = templates.filter((t) => t.id !== selectedId);
-      await saveTemplates(newTemplates);
+      setTemplates(newTemplates);
 
       setDeleted(true);
       addToast('模板已删除', 'success');
@@ -684,7 +648,7 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
       console.error('Failed to delete SQL template:', err);
       addToast('删除失败', 'error');
     }
-  }, [selectedId, templates, saveTemplates, addToast]);
+  }, [selectedId, templates, addToast]);
 
   const handleFormatSql = useCallback(() => {
     try {
@@ -771,14 +735,14 @@ const SQLTemplateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <h1 className={s.title}>原始数据 SQL 库</h1>
                 <div className={s.pathRow}>
                   <FolderOpen size={12} />
-                  <span className={s.path}>project/data/sql-templates.json</span>
+                  <span className={s.path}>IndexedDB · 浏览器本地持久化</span>
                 </div>
               </div>
             </div>
             <div className={s.headerActions}>
               <span className={s.connectedBadge}>
                 <Check size={13} />
-                局域网共享
+                本地已连接
               </span>
               <button type="button" className={s.closeBtn} onClick={onClose}>
                 <X size={16} />

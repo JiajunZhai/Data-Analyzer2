@@ -3,6 +3,7 @@ import {
   BarChart3,
   Calendar,
   Database,
+  Download,
   Film,
   Globe,
   Link2,
@@ -18,6 +19,7 @@ import AdMobFilterBar from './components/AdMobFilterBar/AdMobFilterBar';
 import AlgorithmAnalysisModal from './components/AlgorithmAnalysis/AlgorithmAnalysisModal';
 import ConfigManager from './components/ConfigManager/ConfigManager';
 import DataSourceManager from './components/DataSourceManager/DataSourceManager';
+import ExportCenter from './components/ExportCenter/ExportCenter';
 import FloatingControlBar from './components/FloatingControlBar';
 import PivotTable from './components/PivotTable/PivotTable';
 import SpatialFieldZone from './components/SpatialFieldZone';
@@ -139,6 +141,7 @@ function App() {
 
   const [isAlgorithmModalOpen, setIsAlgorithmModalOpen] = useState(false);
   const [isSQLModalOpen, setIsSQLModalOpen] = useState(false);
+  const [isExportCenterOpen, setIsExportCenterOpen] = useState(false);
   const [shouldApplyDefault, setShouldApplyDefault] = useState(false);
   const loadDatasetRef = useRef<(dataset: StoredDataset) => Promise<void>>(async () => {});
 
@@ -207,9 +210,10 @@ function App() {
   // 自动应用默认配置（使用 requestAnimationFrame 避免级联渲染）
   useEffect(() => {
     if (shouldApplyDefault && fields.length > 0) {
-      requestAnimationFrame(() => {
+      const frame = requestAnimationFrame(() => {
         applyDefaultConfig();
       });
+      return () => cancelAnimationFrame(frame);
     }
   }, [shouldApplyDefault, fields, applyDefaultConfig]);
 
@@ -251,8 +255,14 @@ function App() {
 
   // 处理数据加载
   const handleDataLoaded = useCallback(
-    async (headers: string[], rawData: DataRow[], fileName: string, preprocessed?: boolean) => {
-      const detectedFields = detectFieldTypes(headers, rawData);
+    async (
+      headers: string[],
+      rawData: DataRow[],
+      fileName: string,
+      preprocessed?: boolean,
+      detectedFieldsOverride?: Field[]
+    ) => {
+      const detectedFields = detectedFieldsOverride ?? detectFieldTypes(headers, rawData);
       // Worker 路径已完成预处理，跳过主线程重复处理
       const dataWithCalculated = preprocessed ? rawData : preprocessData(rawData);
 
@@ -455,6 +465,19 @@ function App() {
             {data.length > 0 && (
               <button
                 type="button"
+                className="export-entry-btn"
+                onClick={() => setIsExportCenterOpen(true)}
+                title="导出当前透视表、明细数据、配置或分析报告"
+              >
+                <span className="export-entry-icon">
+                  <Download size={15} />
+                </span>
+                <span className="export-entry-label">导出</span>
+              </button>
+            )}
+            {data.length > 0 && (
+              <button
+                type="button"
                 className="algorithm-entry-btn"
                 onClick={() => setIsAlgorithmModalOpen(true)}
                 title="一键启动多维度差异、阶梯环比及算法归因分析"
@@ -596,11 +619,6 @@ function App() {
                 }}
               >
                 <PivotTable
-                  key={
-                    pivotResult
-                      ? `${colFields.map((f) => f.field.name).join('-')}_${valueFields.map((f) => f.field.name).join('-')}_${JSON.stringify(filterConfigs)}`
-                      : 'empty'
-                  }
                   result={pivotResult}
                   valueFieldName={valueFields[0]?.field.name}
                   emptyMessage={emptyMessage}
@@ -641,13 +659,35 @@ function App() {
           </div>
         )}
       </DragOverlay>
-      <AlgorithmAnalysisModal
-        isOpen={isAlgorithmModalOpen}
-        onClose={() => setIsAlgorithmModalOpen(false)}
-        fields={fields}
-        dimensions={dimensions}
-        measures={measures}
-      />
+      {isAlgorithmModalOpen && (
+        <AlgorithmAnalysisModal
+          isOpen={isAlgorithmModalOpen}
+          onClose={() => setIsAlgorithmModalOpen(false)}
+          data={data}
+          dimensions={dimensions}
+          measures={measures}
+          currentDatasetId={currentDatasetId}
+          currentDatasetName={datasets.find((dataset) => dataset.id === currentDatasetId)?.name}
+        />
+      )}
+      {isExportCenterOpen && (
+        <ExportCenter
+          isOpen={isExportCenterOpen}
+          onClose={() => setIsExportCenterOpen(false)}
+          data={data}
+          fields={fields}
+          dimensions={dimensions}
+          measures={measures}
+          pivotResult={pivotResult}
+          rowFields={rowFields}
+          colFields={colFields}
+          valueFields={valueFields}
+          filterConfigs={filterConfigs}
+          showRowTotal={showRowTotal}
+          showColumnTotal={showColumnTotal}
+          datasetName={datasets.find((dataset) => dataset.id === currentDatasetId)?.name}
+        />
+      )}
       <SQLTemplateModal isOpen={isSQLModalOpen} onClose={() => setIsSQLModalOpen(false)} />
     </DndContext>
   );

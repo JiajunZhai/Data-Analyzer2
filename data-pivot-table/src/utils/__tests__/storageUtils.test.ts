@@ -13,7 +13,7 @@ describe('storageUtils', () => {
       expect(STORAGE_LIMITS.MAX_DATASETS).toBe(10);
       expect(STORAGE_LIMITS.MAX_MAPPINGS).toBe(10);
       expect(STORAGE_LIMITS.MAX_CONFIGS_PER_DATASET).toBe(10);
-      expect(STORAGE_LIMITS.MAX_STORAGE_BYTES).toBe(500 * 1024 * 1024);
+      expect(STORAGE_LIMITS.MAX_STORAGE_BYTES).toBe(2 * 1024 * 1024 * 1024);
     });
   });
 
@@ -63,6 +63,11 @@ describe('storageUtils', () => {
     it('应该格式化兆字节', () => {
       expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
       expect(formatBytes(1.5 * 1024 * 1024)).toBe('1.5 MB');
+    });
+
+    it('应该格式化千兆字节', () => {
+      expect(formatBytes(1024 * 1024 * 1024)).toBe('1.0 GB');
+      expect(formatBytes(2 * 1024 * 1024 * 1024)).toBe('2.0 GB');
     });
   });
 

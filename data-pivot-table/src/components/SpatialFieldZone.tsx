@@ -3,7 +3,7 @@ import { rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sort
 import { CSS } from '@dnd-kit/utilities';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import { Link2 } from 'lucide-react';
+import { Link2, PanelBottom, PanelRight } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Field, PivotField, ValueFormatConfig } from '../types';
 import { animateCollapse, animateFieldEntry } from '../utils/animations';
@@ -202,6 +202,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   onToggle,
 }) => {
   const [settingsFieldName, setSettingsFieldName] = useState<string | null>(null);
+  const [settingsAnchor, setSettingsAnchor] = useState<{ x: number; y: number } | undefined>();
   const [isInactiveExpanded, setIsInactiveExpanded] = useState(true);
   const containerRef = useRef<HTMLElement>(null);
   const inactiveContentRef = useRef<HTMLDivElement>(null);
@@ -284,13 +285,18 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
         {headerExtra}
         {id === 'rows' && onToggleRowTotal && (
           <div className="spatial-zone-total-control">
-            <span className="total-control-label">行总计</span>
             <button
               type="button"
-              className={`mini-switch ${showRowTotal ? 'active' : ''}`}
+              className={`summary-toggle summary-toggle-row ${showRowTotal ? 'active' : ''}`}
               onClick={onToggleRowTotal}
+              aria-pressed={showRowTotal}
               aria-label={showRowTotal ? '隐藏行总计' : '显示行总计'}
-            />
+              title={showRowTotal ? '隐藏行总计' : '显示行总计'}
+            >
+              <PanelRight size={13} />
+              <span>行总计</span>
+              <span className="summary-toggle-state">{showRowTotal ? '显示' : '隐藏'}</span>
+            </button>
           </div>
         )}
       </div>
@@ -347,13 +353,20 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
               <>
                 <div className="column-flow-divider" aria-hidden="true" />
                 <div className="column-total-control">
-                  <span className="total-control-label">列总计</span>
                   <button
                     type="button"
-                    className={`mini-switch ${showColumnTotal ? 'active' : ''}`}
+                    className={`summary-toggle summary-toggle-column ${showColumnTotal ? 'active' : ''}`}
                     onClick={onToggleColumnTotal}
+                    aria-pressed={showColumnTotal}
                     aria-label={showColumnTotal ? '隐藏列总计' : '显示列总计'}
-                  />
+                    title={showColumnTotal ? '隐藏列总计' : '显示列总计'}
+                  >
+                    <PanelBottom size={13} />
+                    <span>列总计</span>
+                    <span className="summary-toggle-state">
+                      {showColumnTotal ? '显示' : '隐藏'}
+                    </span>
+                  </button>
                 </div>
               </>
             )}
@@ -405,6 +418,11 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                             id === 'values' && onFieldFormatChange
                               ? (e) => {
                                   e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setSettingsAnchor({
+                                    x: rect.left - 120,
+                                    y: rect.bottom + 8,
+                                  });
                                   setSettingsFieldName(
                                     settingsFieldName === field.name ? null : field.name
                                   );
@@ -473,10 +491,14 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
           return (
             <ValueFieldSettings
               pivotField={pivotField}
+              anchor={settingsAnchor}
               onFormatChange={(format) => {
                 onFieldFormatChange(settingsFieldName, format);
               }}
-              onClose={() => setSettingsFieldName(null)}
+              onClose={() => {
+                setSettingsFieldName(null);
+                setSettingsAnchor(undefined);
+              }}
             />
           );
         })()}

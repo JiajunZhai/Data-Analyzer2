@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { storageService } from '../services/storage';
-import type { StorageQuota, StoredDataset } from '../types/storage';
+import type { StorageQuota, StoredDatasetMeta } from '../types/storage';
 import { STORAGE_LIMITS } from '../utils/storageUtils';
 
 export function useDatasetManager() {
   const [isStorageReady, setIsStorageReady] = useState(false);
   const [currentDatasetId, setCurrentDatasetId] = useState<string | null>(null);
-  const [datasets, setDatasets] = useState<StoredDataset[]>([]);
+  const [datasets, setDatasets] = useState<StoredDatasetMeta[]>([]);
   const [storageQuota, setStorageQuota] = useState<StorageQuota>({
     used: 0,
     limit: STORAGE_LIMITS.MAX_STORAGE_BYTES,
@@ -19,7 +19,7 @@ export function useDatasetManager() {
   // 加载数据集列表
   const loadDatasets = useCallback(async () => {
     try {
-      const list = await storageService.getAllDatasets();
+      const list = await storageService.getAllDatasetMetas();
       setDatasets(list);
       const quota = await storageService.getStorageQuota();
       setStorageQuota(quota);

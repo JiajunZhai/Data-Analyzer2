@@ -5,6 +5,7 @@ import { sqlTemplatesPlugin } from './src/plugins/sqlTemplatesPlugin';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react(),
    //   basicSsl(),
     sqlTemplatesPlugin()
