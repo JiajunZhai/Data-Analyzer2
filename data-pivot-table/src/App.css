@@ -1579,12 +1579,10 @@ body {
   --pivot-data-col-width: 96px;
   --pivot-total-col-width: 96px;
   position: relative;
-  background: linear-gradient(180deg, rgba(248, 249, 255, 0.72), transparent 46px), var(--panel-bg);
+  background: var(--panel-bg);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
   overflow-x: auto;
   overflow-y: auto;
@@ -1633,7 +1631,8 @@ body {
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
 }
 
 .pivot-table col.pivot-col-row-header {
@@ -1662,12 +1661,15 @@ body {
 }
 
 .pivot-table thead th {
-  background-color: var(--zone-bg);
+  background-color: var(--table-header-secondary);
+  color: var(--table-header-text);
+  line-height: var(--leading-tight);
 }
 
 .app .pivot-table th,
 .app .pivot-table td {
-  padding: 6px 10px;
+  min-height: 32px;
+  padding: 7px 10px;
   border: 1px solid var(--pivot-data-border);
   white-space: nowrap;
   transition:
@@ -1720,10 +1722,10 @@ body {
 }
 
 .col-header {
-  background: var(--zone-bg);
-  color: var(--text-color);
+  background: var(--table-header-secondary);
+  color: var(--table-header-text);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--text-sm);
   min-width: var(--pivot-data-col-width);
   width: var(--pivot-data-col-width);
   max-width: var(--pivot-data-col-width);
@@ -1732,10 +1734,10 @@ body {
 
 /* 第一级父表头 - 深色 */
 .col-header-level-0 {
-  background: var(--pivot-header-level-0-bg);
+  background: var(--table-header-primary);
   font-weight: 700;
-  font-size: 12px;
-  color: var(--pivot-header-level-0-text);
+  font-size: var(--text-md);
+  color: var(--table-header-text);
   text-align: center;
   padding: 6px 10px;
   vertical-align: middle;
@@ -1744,18 +1746,18 @@ body {
 
 /* 第二级子表头 - 浅色 */
 .col-header-level-1 {
-  background: var(--pivot-header-level-1-bg);
+  background: var(--table-header-secondary);
   font-weight: 600;
-  font-size: 11px;
-  color: var(--pivot-header-level-1-text);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
   border-top: 2px solid var(--pivot-data-separator);
 }
 
 /* 第三级及更深层级 */
 .col-header-level-2 {
-  background: var(--pivot-header-level-2-bg);
+  background: var(--zone-bg);
   font-weight: 500;
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--pivot-header-level-2-text);
 }
 
@@ -2512,8 +2514,10 @@ body {
   z-index: 20;
   min-width: 0;
   overflow: visible;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
   gap: 6px 8px;
   padding: 4px 6px;
   border: 1px solid var(--border-light);
@@ -2521,6 +2525,7 @@ body {
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   scrollbar-width: none;
+  white-space: nowrap;
 }
 
 .app-header .admob-filter-bar::-webkit-scrollbar {
@@ -2537,6 +2542,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   gap: 4px;
+  flex: 0 0 auto;
   transition: all 0.15s ease;
 }
 
@@ -2622,7 +2628,7 @@ body {
 }
 
 .toolbar-btn .capsule-icon {
-  font-size: 13px;
+  font-size: var(--text-sm);
   opacity: 0.8;
 }
 
@@ -3599,6 +3605,278 @@ th.sortable .sort-btn:focus,
   opacity: 0.76;
   font-size: 10px;
   font-weight: 600;
+}
+
+/* Workbench density and interaction polish */
+.app-header {
+  min-height: 56px;
+  padding: 8px 16px;
+  background: var(--header-bg);
+  box-shadow: var(--shadow-xs);
+}
+
+.app-header .admob-filter-bar {
+  gap: 4px 6px;
+  padding: 3px 4px;
+  border-color: var(--border-color);
+  background: var(--bg-primary);
+  box-shadow: none;
+}
+
+.app-header .filter-chip {
+  min-height: 30px;
+  font-size: var(--text-sm);
+}
+
+.spatial-zone {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+
+.spatial-zone-header {
+  height: 38px;
+  padding: 0 12px;
+  background: var(--table-header-secondary);
+}
+
+.spatial-zone-title {
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.app .zone-field {
+  min-width: 96px;
+  height: 32px;
+  margin: 3px;
+  padding: 0 10px;
+  border-radius: var(--radius-element);
+  font-size: var(--text-sm);
+  box-shadow: none;
+}
+
+.app .zone-field:hover {
+  background: var(--capsule-hover-bg);
+  border-color: var(--capsule-hover-border);
+  color: var(--capsule-hover-text);
+  transform: var(--transform-lift);
+}
+
+.app .droppable-zone {
+  border-width: 1px;
+}
+
+.app .droppable-zone.drag-over {
+  border-width: 2px;
+  box-shadow: var(--drag-over-shadow);
+}
+
+.row-header {
+  text-align: left;
+}
+
+.pivot-table tbody tr:hover td,
+.pivot-table tbody tr:hover td.row-header {
+  background-color: var(--table-row-hover);
+}
+
+.pivot-table tbody tr:nth-child(even) td:not(.total-cell):not(.grand-total) {
+  background-color: var(--table-row-zebra);
+}
+
+.app .pivot-table th,
+.app .pivot-table td {
+  border-color: var(--table-divider);
+}
+
+.pivot-table .col-header-level-0 {
+  background: var(--table-header-primary);
+}
+
+.pivot-table .col-header-level-1,
+.pivot-table .col-header-level-2 {
+  background: var(--table-header-secondary);
+}
+
+.pivot-table .total-header,
+.pivot-table .total-cell {
+  background-color: var(--table-total-bg);
+  color: var(--table-total-text);
+}
+
+.pivot-table .group-boundary-col,
+.pivot-table .dimension-col-end {
+  border-right-color: var(--table-group-divider);
+}
+
+.app button,
+.app [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app button:focus-visible,
+.app [role="button"]:focus-visible,
+.app input:focus-visible,
+.app select:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-focus);
+}
+
+.app .filter-chip,
+.app .summary-toggle,
+.app .filter-btn,
+.app .filter-dropdown-btn {
+  min-height: 32px;
+}
+
+.pivot-table-container {
+  min-height: 220px;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 1024px) {
+  .app-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .app-header .admob-filter-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .app-header .file-upload-header,
+  .header-file-capsules {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header h1 {
+    font-size: var(--text-md);
+  }
+
+  .app-header .admob-filter-bar {
+    margin: 0 -4px;
+    padding-inline: 4px;
+  }
+
+  .spatial-zone-columns {
+    min-height: 72px;
+    height: auto;
+  }
+
+  .spatial-zone-header {
+    min-height: 38px;
+  }
+
+  .app .zone-field {
+    max-width: min(220px, 78vw);
+  }
+
+  .pivot-table-container {
+    min-height: 280px;
+  }
+}
+
+/* More filters uses the unused end of the toolbar as a secondary filter rail. */
+.app-header .more-filters-wrapper {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+.app-header .more-filters-trigger {
+  min-width: 112px;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-element);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-header .more-filters-trigger::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.65;
+}
+
+.app-header .more-filters-trigger:hover,
+.app-header .more-filters-trigger.open {
+  border-color: var(--border-focus);
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.app-header .more-filters-trigger.active-filter {
+  border-left: 1px solid var(--border-focus);
+  padding-left: 10px;
+  background: var(--filter-active-bg);
+}
+
+.app-header .more-filters-dropdown {
+  left: auto;
+  right: 0;
+  width: min(420px, calc(100vw - 32px));
+  min-width: 320px;
+  max-height: min(460px, calc(100vh - 96px));
+  overflow-y: auto;
+  padding: 10px;
+  gap: 4px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.app-header .more-filter-sub-wrapper {
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+}
+
+.app-header .more-filter-sub-wrapper:hover {
+  border-color: var(--border-light);
+  background: var(--hover-bg);
+}
+
+.app-header .more-filter-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+}
+
+.app-header .more-filter-trigger {
+  max-width: 190px;
+  min-height: 30px;
+  font-size: var(--text-sm);
+}
+
+@media (min-width: 760px) {
+  .app-header .more-filters-dropdown {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header .more-filters-wrapper {
+    margin-left: 0;
+  }
+
+  .app-header .more-filters-dropdown {
+    left: 0;
+    right: auto;
+    min-width: 280px;
+    width: min(360px, calc(100vw - 24px));
+  }
 }
 
 /* 微型开关 */
@@ -5243,7 +5521,7 @@ button.dataset-info {
 
 .config-name-input {
   flex: 1;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 12px;

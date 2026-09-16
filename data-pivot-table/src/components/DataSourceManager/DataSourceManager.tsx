@@ -147,6 +147,22 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
             <div className="datasource-section">
               <div className="section-title">当前数据源</div>
               <div className="dataset-card active">
+                {deleteConfirmId === currentDataset.id ? (
+                  <div className="delete-confirm">
+                    <div className="confirm-text">
+                      确定删除当前数据源吗？关联的已保存配置也会删除。
+                    </div>
+                    <div className="confirm-actions">
+                      <button type="button" className="btn-delete-confirm" onClick={handleDeleteConfirm}>
+                        确定删除
+                      </button>
+                      <button type="button" className="btn-cancel" onClick={handleDeleteCancel}>
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                <>
                 <div className="dataset-info">
                   <div className="dataset-active-badge">
                     <span className="active-dot" />
@@ -185,7 +201,16 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                   >
                     <Pencil size={14} />
                   </button>
+                  <button
+                    type="button"
+                    onClick={(event) => handleDeleteClick(currentDataset.id, event)}
+                    title="删除当前数据源"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
+                </>
+                )}
               </div>
             </div>
           )}

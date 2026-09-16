@@ -1,4 +1,25 @@
 :root {
+  /* Typography */
+  --font-sans: Inter, "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Layout rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
   /* 基础中性色 — Material Design 3 蓝白色调 */
   --primary-color: #17243a;
   --primary-light: #3d63dd;
@@ -72,6 +93,15 @@
   --pivot-total-header-text: #10213d;
   --pivot-empty-cell-text: #b5bfce;
   --pivot-frozen-bg: #f8fafd;
+  --table-header-primary: #e8eef8;
+  --table-header-secondary: #f4f7fb;
+  --table-header-text: #21324d;
+  --table-row-hover: #f3f7fc;
+  --table-row-zebra: #fbfcfe;
+  --table-divider: #d7dfeb;
+  --table-group-divider: #aebed4;
+  --table-total-bg: #eef3f9;
+  --table-total-text: #243a5b;
 
   /* 筛选器 */
   --filter-active-bg: #e6eeff;
@@ -330,6 +360,15 @@
   --pivot-total-header-text: #eaf1ff;
   --pivot-empty-cell-text: rgba(116, 118, 133, 0.5);
   --pivot-frozen-bg: #132a4a;
+  --table-header-primary: #243b5b;
+  --table-header-secondary: #1a3150;
+  --table-header-text: #eaf1ff;
+  --table-row-hover: rgba(182, 196, 255, 0.1);
+  --table-row-zebra: rgba(19, 42, 74, 0.5);
+  --table-divider: #2a4060;
+  --table-group-divider: #476ce3;
+  --table-total-bg: rgba(42, 64, 96, 0.46);
+  --table-total-text: #eaf1ff;
 
   --filter-active-bg: rgba(41, 82, 201, 0.2);
   --filter-active-border: rgba(182, 196, 255, 0.4);

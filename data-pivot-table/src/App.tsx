@@ -276,10 +276,7 @@ function App() {
         dataType: 'number',
         isCalculated: true,
       }));
-
       const allFields = [...detectedFields, ...newCalculatedFields];
-      loadData(allFields, dataWithCalculated);
-      resetConfig();
 
       if (isStorageReady) {
         try {
@@ -296,6 +293,8 @@ function App() {
             fields: allFields,
             data: dataWithCalculated,
           });
+          loadData(allFields, dataWithCalculated);
+          resetConfig();
           setCurrentDatasetId(datasetId);
           await loadDatasets();
 
@@ -308,6 +307,9 @@ function App() {
           console.error('保存数据集失败:', error);
           alert(error instanceof Error ? error.message : '保存失败');
         }
+      } else {
+        loadData(allFields, dataWithCalculated);
+        resetConfig();
       }
     },
     [isStorageReady, loadDatasets, loadData, resetConfig, setCurrentDatasetId]
