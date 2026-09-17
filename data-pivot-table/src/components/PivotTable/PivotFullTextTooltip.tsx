@@ -46,13 +46,19 @@ function getTextElement(target: HTMLElement): HTMLElement {
 
 function isTextTruncated(target: HTMLElement): boolean {
   const textElement = getTextElement(target);
-  const { clientWidth, scrollWidth, clientHeight, scrollHeight } = textElement;
+  const elements = textElement === target ? [target] : [textElement, target];
 
   // jsdom does not perform layout. Keep the interaction testable while real cells use
   // the overflow measurements below.
-  if (clientWidth === 0 && scrollWidth === 0) return true;
+  if (elements.every((element) => element.clientWidth === 0 && element.scrollWidth === 0)) {
+    return true;
+  }
 
-  return scrollWidth > clientWidth + 1 || scrollHeight > clientHeight + 1;
+  return elements.some(
+    (element) =>
+      element.scrollWidth > element.clientWidth + 1 ||
+      element.scrollHeight > element.clientHeight + 1
+  );
 }
 
 export const PivotFullTextTooltip: React.FC<PivotFullTextTooltipProps> = ({ containerRef }) => {
