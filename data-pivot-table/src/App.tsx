@@ -190,15 +190,15 @@ function App() {
     if (fields.length === 0) return;
 
     const defaultRow = DEFAULT_ROW_FIELDS.map((name) => fields.find((f) => f.name === name))
-      .filter((f): f is Field => f !== null)
+      .filter((f): f is Field => f !== undefined)
       .map(createPivotField);
 
     const defaultCol = DEFAULT_COL_FIELDS.map((name) => fields.find((f) => f.name === name))
-      .filter((f): f is Field => f !== null)
+      .filter((f): f is Field => f !== undefined)
       .map(createPivotField);
 
     const defaultValue = DEFAULT_VALUE_FIELDS.map((name) => fields.find((f) => f.name === name))
-      .filter((f): f is Field => f !== null)
+      .filter((f): f is Field => f !== undefined)
       .map(createPivotField);
 
     setRowFields(defaultRow);
