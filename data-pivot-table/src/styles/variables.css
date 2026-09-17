@@ -23,26 +23,26 @@
   --space-6: 24px;
 
   /* 基础中性色 — Material Design 3 蓝白色调 */
-  --primary-color: #17243a;
-  --primary-light: #3d63dd;
-  --primary-dark: #0f1b2d;
-  --accent-color: #0f766e;
-  --bg-color: #f5f7fb;
+  --primary-color: #3157d5;
+  --primary-light: #4f6fe5;
+  --primary-dark: #2443ad;
+  --accent-color: #0f8f82;
+  --bg-color: #f4f7fb;
   --bg-primary: #ffffff;
   --panel-bg: #ffffff;
-  --border-color: #d6dce8;
-  --border-light: rgba(214, 220, 232, 0.72);
+  --border-color: #e2e8f0;
+  --border-light: #edf1f6;
   --border-focus: #3d63dd;
   --text-color: #17243a;
   --text-primary: #17243a;
-  --text-secondary: #4c5870;
-  --text-muted: #7a8496;
-  --header-bg: rgba(255, 255, 255, 0.92);
+  --text-secondary: #475569;
+  --text-muted: #8490a3;
+  --header-bg: #ffffff;
   --header-text: #17243a;
-  --hover-bg: #eef4ff;
-  --selected-bg: #dfeaff;
-  --zone-bg: #f8fafd;
-  --zone-border: rgba(163, 174, 196, 0.42);
+  --hover-bg: #f1f5ff;
+  --selected-bg: #e8edff;
+  --zone-bg: #f8fafc;
+  --zone-border: #d9e2ef;
   --danger-color: #c2413b;
   --warning-color: #b7791f;
   --success-color: #087f5b;
@@ -56,14 +56,14 @@
   --color-warning-bg: rgba(183, 121, 31, 0.08);
 
   /* 区域色彩 — 去饱和，保持蓝白基调 */
-  --color-values-bg: #eefbf5;
-  --color-values-border: rgba(8, 127, 91, 0.18);
+  --color-values-bg: #ecfbf6;
+  --color-values-border: #b7e7d6;
 
-  --color-rows-bg: #fff7ed;
-  --color-rows-border: rgba(183, 121, 31, 0.22);
+  --color-rows-bg: #eef3ff;
+  --color-rows-border: #c9d5ff;
 
-  --color-cols-bg: #f0f5ff;
-  --color-cols-border: rgba(61, 99, 221, 0.18);
+  --color-cols-bg: #f1f5ff;
+  --color-cols-border: #d2dcff;
 
   /* 总计行 */
   --total-row-bg: #eef4ff;

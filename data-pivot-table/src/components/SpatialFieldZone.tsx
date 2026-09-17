@@ -171,14 +171,7 @@ const PrioritySlot: React.FC<PrioritySlotProps> = ({ zoneId, index, field, disab
           sortable={true}
           disabledReason={disabledReason}
         />
-      ) : isRow ? (
-        <>
-          <span className="row-slot-plus">+</span>
-          <span className="row-slot-num">{index + 1}</span>
-        </>
-      ) : (
-        <span className="priority-slot-num">{index + 1}</span>
-      )}
+      ) : null}
     </div>
   );
 };
@@ -204,6 +197,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
   const [settingsFieldName, setSettingsFieldName] = useState<string | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<{ x: number; y: number } | undefined>();
   const [isInactiveExpanded, setIsInactiveExpanded] = useState(true);
+  const [fieldSearch, setFieldSearch] = useState('');
   const containerRef = useRef<HTMLElement>(null);
   const inactiveContentRef = useRef<HTMLDivElement>(null);
 
@@ -220,6 +214,12 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
     () => fields.filter((field) => !activeNameSet.has(field.name)),
     [fields, activeNameSet]
   );
+  const visibleInactiveItems = useMemo(() => {
+    const query = fieldSearch.trim().toLowerCase();
+    return query
+      ? inactiveItems.filter((field) => field.name.toLowerCase().includes(query))
+      : inactiveItems;
+  }, [fieldSearch, inactiveItems]);
 
   const sortableIds = activeNames.map((fieldName) => getSpatialSortableId(id, fieldName));
 
@@ -453,11 +453,23 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                 ref={inactiveContentRef}
                 className={`sub-zone-content ${isInactiveExpanded ? '' : 'collapsed'}`}
               >
+                {inactiveItems.length > 8 && (
+                  <label className="field-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input
+                      type="search"
+                      value={fieldSearch}
+                      onChange={(event) => setFieldSearch(event.target.value)}
+                      placeholder="鎼滅储瀛楁"
+                      aria-label="鎼滅储瀛楁"
+                    />
+                  </label>
+                )}
                 <div
                   ref={setInactiveRef}
                   className={`sub-drag-zone zone-inactive ${inactiveDropClass}`}
                 >
-                  {inactiveItems.map((field) => {
+                  {visibleInactiveItems.map((field) => {
                     const disabled = disabledFieldNames.has(field.name);
                     return (
                       <FieldCapsule
@@ -472,7 +484,7 @@ const SpatialFieldZone: React.FC<SpatialFieldZoneProps> = ({
                       />
                     );
                   })}
-                  {inactiveItems.length === 0 && (
+                  {visibleInactiveItems.length === 0 && (
                     <div className="zone-placeholder">所有字段已启用</div>
                   )}
                 </div>

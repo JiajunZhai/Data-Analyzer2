@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { shouldUseVirtualScroll, useVirtualScroll } from '../../hooks/useVirtualScroll';
 import type { ColumnLevel, PivotResult, SortConfig } from '../../types';
@@ -11,7 +12,6 @@ import {
   getFullTextAttributes,
   getGroupBoundaryClass,
   getRowHeaderColumnCount,
-  getSortIcon,
   isSortActive,
   KEY_SEPARATOR,
   makeStableKeys,
@@ -34,6 +34,8 @@ const SortButton: React.FC<{
   onToggleSort?: ToggleSortFn;
 }> = ({ type, value, sortConfig, onToggleSort }) => {
   if (!onToggleSort) return null;
+  const active = isSortActive(type, value, sortConfig);
+  const SortIcon = !active ? ChevronsUpDown : sortConfig?.direction === 'asc' ? ArrowUp : ArrowDown;
   return (
     <button
       type="button"
@@ -46,7 +48,7 @@ const SortButton: React.FC<{
       aria-label="切换排序"
       title="点击排序"
     >
-      {getSortIcon(type, value, sortConfig)}
+      <SortIcon size={13} strokeWidth={2} aria-hidden="true" />
     </button>
   );
 };

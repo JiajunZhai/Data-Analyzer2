@@ -2902,6 +2902,218 @@ body {
   justify-content: flex-end;
 }
 
+/* Final visual system: one brand color, calm surfaces, and field-type cues. */
+.app {
+  background: var(--bg-color);
+}
+
+.app-header {
+  padding: 12px 20px;
+  gap: 14px;
+  border-bottom: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-header h1 {
+  color: var(--primary-dark);
+  letter-spacing: -0.01em;
+}
+
+.app-header h1 svg {
+  color: var(--primary-color);
+}
+
+.filter-chip {
+  height: 32px;
+  padding-inline: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+}
+
+.filter-chip:hover,
+.filter-chip.open {
+  border-color: #b8c6f5;
+  background: var(--hover-bg);
+}
+
+.filter-chip.active-filter {
+  border-color: #b8c6f5;
+  border-left: 2px solid var(--primary-color);
+  background: var(--selected-bg);
+}
+
+.algorithm-entry-btn {
+  background: var(--primary-color);
+  box-shadow: 0 4px 10px rgba(49, 87, 213, 0.2);
+}
+
+.algorithm-entry-btn:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 8px 16px rgba(49, 87, 213, 0.24);
+}
+
+.spatial-main {
+  padding: 14px 18px 18px;
+}
+
+.spatial-workspace {
+  gap: 14px;
+}
+
+.spatial-left-rail,
+.spatial-right-rail {
+  gap: 12px;
+}
+
+.spatial-zone {
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.spatial-zone-header {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.spatial-zone-title {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.spatial-zone-count {
+  color: var(--primary-color);
+  background: var(--selected-bg);
+}
+
+.spatial-zone-body {
+  padding: 10px;
+}
+
+.sub-drag-zone,
+.column-flow-active,
+.column-flow-inactive {
+  border-color: #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.sub-drag-zone.zone-active-rows,
+.sub-drag-zone.zone-active-columns {
+  min-height: 70px;
+  border: 1px dashed #c5d2e6;
+  background: #f8fafc;
+}
+
+.zone-placeholder,
+.spatial-zone-empty,
+.column-flow-hint {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.zone-placeholder {
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.field-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  margin: 0 0 8px;
+  padding: 0 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #94a3b8;
+}
+
+.field-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.spatial-capsule {
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  box-shadow: none;
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.spatial-capsule:hover {
+  transform: translateY(-1px);
+  background: #e7edf5;
+  box-shadow: var(--shadow-sm);
+}
+
+.spatial-capsule.active,
+.spatial-zone-columns .spatial-capsule.active,
+.spatial-zone-rows .spatial-capsule.active {
+  background: var(--selected-bg);
+  border-color: #b8c6f5;
+  color: var(--primary-dark);
+}
+
+.spatial-zone-values .spatial-capsule,
+.spatial-zone-values .spatial-capsule.active {
+  background: var(--color-values-bg);
+  border-color: var(--color-values-border);
+  color: #087f5b;
+}
+
+.spatial-zone-values .spatial-capsule-badge {
+  color: #0f8f82;
+}
+
+.spatial-capsule-handle {
+  color: #94a3b8;
+  opacity: 0.6;
+}
+
+.spatial-capsule:hover .spatial-capsule-handle {
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.row-slot,
+.priority-slot {
+  min-height: 46px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.row-slot.occupied,
+.priority-slot.occupied {
+  border-style: solid;
+  border-color: #dbe4f1;
+  background: #fff;
+}
+
 .spatial-main {
   display: block;
   flex: 1;

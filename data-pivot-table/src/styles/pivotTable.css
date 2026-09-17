@@ -22,10 +22,10 @@
   --pivot-total-col-hover-bg: #e6effc;
   --pivot-data-separator: var(--table-group-divider);
   --pivot-data-border: var(--table-divider);
-  background: #f6f8fb;
-  border: 1px solid var(--table-divider);
+  background: #ffffff;
+  border: 0;
   border-radius: 10px;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
   scrollbar-gutter: auto;
   padding: 12px;
 }
@@ -56,7 +56,7 @@
   line-height: 20px;
   font-variant-numeric: tabular-nums lining-nums;
   background: var(--bg-primary);
-  border: 1px solid var(--table-divider);
+  border: 0;
   box-shadow: 0 2px 6px rgb(15 23 42 / 3%);
 }
 
@@ -74,6 +74,22 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--table-header-text);
+}
+
+.app .pivot-table thead tr:first-child th {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.app .pivot-table thead tr:not(:first-child) th {
+  background: #f8fafc;
+}
+
+.app .pivot-table td.data-cell,
+.app .pivot-table th.data-header,
+.app .pivot-table th.total-header {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .app .pivot-table .row-header,
@@ -138,7 +154,7 @@
 
 .app .pivot-table tbody tr.total-row td {
   background: var(--total-row-bg);
-  border-top: var(--total-border-top);
+  border-top: 2px solid var(--primary-light);
   font-weight: 600;
 }
 
