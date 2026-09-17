@@ -2517,11 +2517,10 @@ body {
   position: relative;
   z-index: 20;
   min-width: 0;
+  /* 下拉菜单在筛选栏内定位，滚动容器会将菜单裁剪。 */
   overflow: visible;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-content: center;
-  overflow-x: auto;
-  overflow-y: hidden;
   gap: 6px 8px;
   padding: 4px 6px;
   border: 1px solid var(--border-light);
@@ -3744,8 +3743,8 @@ th.sortable .sort-btn:focus,
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow: visible;
   }
 
   .app-header .file-upload-header,
@@ -3838,6 +3837,15 @@ th.sortable .sort-btn:focus,
   min-height: 42px;
   padding: 6px 8px;
   border: 1px solid transparent;
+  flex-wrap: wrap;
+}
+
+.app-header .more-filter-dropdown-menu {
+  /* 子菜单参与布局，保持在更多筛选的可滚动区域内。 */
+  position: static;
+  flex-basis: 100%;
+  min-width: 0;
+  width: 100%;
 }
 
 .app-header .more-filter-sub-wrapper:hover {
@@ -3856,14 +3864,6 @@ th.sortable .sort-btn:focus,
   max-width: 190px;
   min-height: 30px;
   font-size: var(--text-sm);
-}
-
-@media (min-width: 760px) {
-  .app-header .more-filters-dropdown {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
 }
 
 @media (max-width: 640px) {
