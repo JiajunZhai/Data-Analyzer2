@@ -831,18 +831,21 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
       f.selectedValues.length < (allFilterValues[f.fieldName]?.length ?? 0)
   );
 
-  const handleResetAll = () => {
-    if (onResetAll) {
-      onResetAll();
-    } else {
-      // fallback: 逐个重置（兼容旧接口）
-      filterConfigs.forEach((f) => {
-        if (f.selectedValues.length > 0) {
-          onFilterChange(f.fieldName, allFilterValues[f.fieldName] || []);
-        }
-      });
+const handleResetAll = () => {
+  if (onResetAll) {
+    onResetAll();
+    return;
+  }
+
+  // fallback: 逐个重置（兼容旧接口）
+  for (const f of filterConfigs) {
+    if (f.selectedValues.length > 0) {
+      // 确认业务需求是重置为“全选”还是“清空”
+      const resetValues = allFilterValues?.[f.fieldName] ?? [];
+      onFilterChange(f.fieldName, resetValues);
     }
-  };
+  }
+};
 
   // 分离主要筛选器和"更多"筛选器
   const primaryConfigs = useMemo(
