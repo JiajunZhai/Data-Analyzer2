@@ -219,7 +219,7 @@ const FlatPivotTable: React.FC<FlatPivotTableProps> = React.memo(
     const containerStyle = useMemo(
       () =>
         ({
-          '--pivot-total-col-width': '96px',
+          '--pivot-total-col-width': '128px',
         }) as React.CSSProperties,
       []
     );

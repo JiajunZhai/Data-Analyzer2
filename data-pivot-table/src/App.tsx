@@ -42,6 +42,7 @@ import { generateDatasetName } from './utils/storageUtils';
 import './styles/variables.css';
 import './styles/global.css';
 import './App.css';
+import './styles/pivotTable.css';
 
 const ADMOB_FILTER_CONFIGS: FilterChipConfig[] = [
   { icon: <Calendar size={14} />, label: '安装日期', fieldName: '安装日期', type: 'date' },

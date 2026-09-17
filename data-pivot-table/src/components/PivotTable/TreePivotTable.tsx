@@ -152,7 +152,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
     const hasTreeHierarchy = dimensionCount > 1;
     const treeDimensionWidth =
       dimensionCount <= 1
-        ? 'clamp(104px, 7vw, 128px)'
+        ? '152px'
         : dimensionCount === 2
           ? 'clamp(148px, 9vw, 176px)'
           : 'clamp(168px, 11vw, 208px)';
@@ -160,7 +160,7 @@ const TreePivotTable: React.FC<TreePivotTableProps> = React.memo(
       () =>
         ({
           '--pivot-tree-dimension-col-width': treeDimensionWidth,
-          '--pivot-total-col-width': '96px',
+          '--pivot-total-col-width': '128px',
         }) as React.CSSProperties,
       [treeDimensionWidth]
     );

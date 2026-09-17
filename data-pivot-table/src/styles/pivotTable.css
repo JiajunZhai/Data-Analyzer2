@@ -1,0 +1,171 @@
+/* Comfortable table density; 40px body rows match the virtual scroll estimate. */
+.app .pivot-table-container {
+  --pivot-dimension-col-width: 144px;
+  --pivot-data-col-width: 128px;
+  --table-header-primary: #f0f4f9;
+  --table-header-secondary: #f5f7fb;
+  --table-header-text: #475569;
+  --table-divider: #e8edf3;
+  --table-group-divider: #d7e0ec;
+  --table-row-zebra: #fafbfd;
+  --table-row-hover: #f0f6ff;
+  --table-total-bg: #f0f5fc;
+  --table-total-text: #334b6b;
+  --total-row-bg: #edf3fb;
+  --total-row-text: #334b6b;
+  --total-area-border: #d2deed;
+  --total-border-top: 1px solid var(--total-area-border);
+  --summary-intersection-bg: #e5eef9;
+  --pivot-frozen-bg: #fff;
+  --pivot-total-col-bg: var(--table-total-bg);
+  --pivot-total-col-zebra-bg: #edf3fb;
+  --pivot-total-col-hover-bg: #e6effc;
+  --pivot-data-separator: var(--table-group-divider);
+  --pivot-data-border: var(--table-divider);
+  background: #f6f8fb;
+  border: 1px solid var(--table-divider);
+  border-radius: 10px;
+  box-shadow: none;
+  scrollbar-gutter: auto;
+  padding: 12px;
+}
+
+[data-theme="dark"] .app .pivot-table-container {
+  --table-header-primary: #233348;
+  --table-header-secondary: #1d2c40;
+  --table-header-text: #c6d2e1;
+  --table-divider: #2b3a4e;
+  --table-group-divider: #3c4d65;
+  --table-row-zebra: #182638;
+  --table-row-hover: #253c58;
+  --table-total-bg: #21334c;
+  --table-total-text: #d4e1f3;
+  --total-row-bg: #21334c;
+  --total-row-text: #d4e1f3;
+  --total-area-border: #3c506b;
+  --summary-intersection-bg: #2a405d;
+  --pivot-frozen-bg: #152235;
+  --pivot-total-col-zebra-bg: #243851;
+  --pivot-total-col-hover-bg: #2c4565;
+  background: #101b2a;
+}
+
+.app .pivot-table {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums lining-nums;
+  background: var(--bg-primary);
+  border: 1px solid var(--table-divider);
+  box-shadow: 0 2px 6px rgb(15 23 42 / 3%);
+}
+
+.app .pivot-table th,
+.app .pivot-table td {
+  height: 40px;
+  padding: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--table-divider);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.app .pivot-table th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--table-header-text);
+}
+
+.app .pivot-table .row-header,
+.app .pivot-table .corner-cell,
+.app .pivot-table .total-label {
+  text-align: left;
+}
+
+.app .pivot-table .row-header {
+  background: var(--pivot-frozen-bg);
+  font-weight: 500;
+}
+
+.app .pivot-table .tree-row-header {
+  padding: 0;
+}
+
+.app .pivot-table .total-label {
+  padding-inline: 16px;
+}
+
+.app .pivot-table .frozen-cell-inner {
+  background: transparent;
+}
+
+.app .pivot-table .frozen-row-header-last::after {
+  box-shadow: 2px 0 5px rgb(15 23 42 / 4%);
+}
+
+.app .pivot-table .tree-cell-inner {
+  padding: 8px 16px;
+}
+
+.app .pivot-table .tree-label {
+  justify-content: flex-start;
+}
+
+.app .pivot-table .sticky-header-label {
+  font-weight: 600;
+  color: inherit;
+}
+
+.app .pivot-table .dimension-col-end,
+.app .pivot-table .group-boundary-col {
+  border-right: 1px solid var(--table-group-divider);
+}
+
+.app .pivot-table .total-cell,
+.app .pivot-table .total-header {
+  background: var(--table-total-bg);
+  color: var(--table-total-text);
+  border-left: 1px solid var(--total-area-border);
+  font-weight: 600;
+}
+
+.app .pivot-table .grand-total {
+  width: var(--pivot-total-col-width);
+  min-width: var(--pivot-total-col-width);
+  background: var(--summary-intersection-bg);
+  font-weight: 700;
+}
+
+.app .pivot-table tbody tr.total-row td {
+  background: var(--total-row-bg);
+  border-top: var(--total-border-top);
+  font-weight: 600;
+}
+
+.app .pivot-table tbody tr:not(.total-row):nth-child(even) td:not(.total-cell) {
+  background: var(--table-row-zebra);
+}
+
+.app .pivot-table tbody tr:hover td {
+  background: var(--table-row-hover);
+  box-shadow: none;
+}
+
+.app .pivot-table tbody td.data-cell:hover {
+  box-shadow: inset 0 0 0 1px var(--primary-light);
+}
+
+.app .pivot-table td.empty-cell {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-align: right;
+  letter-spacing: 0;
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .app .pivot-table-container {
+    padding: 8px;
+  }
+}

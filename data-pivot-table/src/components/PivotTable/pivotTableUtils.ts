@@ -81,10 +81,8 @@ export function formatPivotValue(
   metricName?: string,
   formatConfig?: ValueFormatConfig
 ): { text: string; isEmpty: boolean } {
-  if (num === 0) return { text: '-', isEmpty: true };
-
   const val = Number(num);
-  if (Number.isNaN(val)) return { text: '-', isEmpty: true };
+  if (num == null || !Number.isFinite(val)) return { text: '—', isEmpty: true };
 
   // 有自定义格式配置时，按配置格式化
   if (formatConfig) {
@@ -193,4 +191,4 @@ export function isSortActive(
 /**
  * 行高常量
  */
-export const ROW_HEIGHT = 36;
+export const ROW_HEIGHT = 40;
