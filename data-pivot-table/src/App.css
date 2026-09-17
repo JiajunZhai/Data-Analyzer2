@@ -2519,7 +2519,7 @@ body {
   min-width: 0;
   /* 下拉菜单在筛选栏内定位，滚动容器会将菜单裁剪。 */
   overflow: visible;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-content: center;
   gap: 6px 8px;
   padding: 4px 6px;
@@ -2533,6 +2533,27 @@ body {
 
 .app-header .admob-filter-bar::-webkit-scrollbar {
   display: none;
+}
+
+.admob-filter-bar > .filter-chip-wrapper,
+.admob-filter-bar > .date-range-chip-wrapper {
+  flex: 0 0 144px;
+  width: 144px;
+  display: flex;
+  align-items: center;
+}
+
+.admob-filter-bar > .filter-chip-wrapper > .filter-chip,
+.admob-filter-bar > .date-range-chip-wrapper > .filter-chip {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.admob-filter-bar .chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-header .filter-chip {
@@ -3743,7 +3764,7 @@ th.sortable .sort-btn:focus,
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     overflow: visible;
   }
 
@@ -3785,6 +3806,7 @@ th.sortable .sort-btn:focus,
 .app-header .more-filters-wrapper {
   margin-left: 0;
   flex-shrink: 0;
+  position: static;
 }
 
 .app-header .more-filters-trigger {
@@ -3846,6 +3868,12 @@ th.sortable .sort-btn:focus,
   flex-basis: 100%;
   min-width: 0;
   width: 100%;
+}
+
+.more-filters-dropdown .date-range-dropdown {
+  position: static;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .app-header .more-filter-sub-wrapper:hover {

@@ -8,7 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { DataRow, FilterConfig } from '../../types';
+import type { DataRow, Field, FilterConfig } from '../../types';
 import DateRangeFilterChip from './DateRangeFilterChip';
 
 const collator = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
@@ -290,6 +290,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
           <div className="filter-dropdown-search">
             <input
               type="text"
+              name={`filter-search-${config.fieldName}`}
               placeholder={`搜索${config.label}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -307,6 +308,8 @@ const FilterChip: React.FC<FilterChipProps> = ({
               <label key={value} className="filter-dropdown-option">
                 <input
                   type="checkbox"
+                  name={`filter-values-${config.fieldName}`}
+                  value={value}
                   checked={tempValueSet.has(value)}
                   onChange={() => handleToggleValue(value)}
                 />
@@ -350,6 +353,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
 
 interface AdMobFilterBarProps {
   configs: FilterChipConfig[];
+  fields: Field[];
   data: DataRow[];
   filterConfigs: FilterConfig[];
   onFilterChange: (fieldName: string, selectedValues: string[]) => void;
@@ -616,6 +620,7 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
           <div className="filter-dropdown-search">
             <input
               type="text"
+              name={`filter-search-${config.fieldName}`}
               placeholder={`搜索${config.label}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -639,6 +644,8 @@ const MoreFilterSubDropdown: React.FC<MoreFilterSubDropdownProps> = ({
               <label key={value} className="filter-dropdown-option">
                 <input
                   type="checkbox"
+                  name={`filter-values-${config.fieldName}`}
+                  value={value}
                   checked={tempValueSet.has(value)}
                   onChange={() => handleToggleValue(value)}
                 />
@@ -736,6 +743,18 @@ const MoreFiltersDropdown: React.FC<MoreFiltersDropdownProps> = ({
           {configs.map((config) => {
             const allValues = allFilterValues[config.fieldName] || [];
             const selectedValues = getSelectedValues(config.fieldName);
+            if (config.type === 'date') {
+              return (
+                <DateRangeFilterChip
+                  key={config.fieldName}
+                  icon={config.icon}
+                  label={config.label}
+                  allValues={allValues}
+                  selectedValues={selectedValues}
+                  onSelectionChange={(values) => onFilterChange(config.fieldName, values)}
+                />
+              );
+            }
             return (
               <MoreFilterSubDropdown
                 key={config.fieldName}
@@ -759,6 +778,7 @@ const SORT_BY_REG_FIELDS = new Set(['买量渠道', '渠道', '国家']);
 
 const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   configs,
+  fields,
   data,
   filterConfigs,
   onFilterChange,
@@ -767,12 +787,16 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
 }) => {
   // 日期筛选器始终使用全量数据的唯一值
   const effectiveConfigs = useMemo(() => {
-    const availableFields = new Set<string>();
-    for (const row of data) {
-      Object.keys(row).forEach((fieldName) => {
-        availableFields.add(fieldName);
-      });
-    }
+    const metricNames = new Set(
+      fields
+        .filter((field) => field.type === 'measure' || field.isCalculated)
+        .map((field) => field.name)
+    );
+    const availableFields = new Set(
+      fields
+        .filter((field) => field.type === 'dimension' && !metricNames.has(field.name))
+        .map((field) => field.name)
+    );
     const configuredNames = new Set(configs.map((config) => config.fieldName));
     const detectedConfigs: FilterChipConfig[] = [];
     for (const fieldName of availableFields) {
@@ -781,9 +805,6 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
         new Set(data.map((row) => normalizeFilterValue(row[fieldName])).filter(isUsableFilterValue))
       );
       if (values.length <= 1) continue;
-      const numericRatio =
-        values.filter((value) => !Number.isNaN(Number(value))).length / values.length;
-      if (numericRatio > 0.9 && values.length > Math.max(20, data.length * 0.5)) continue;
       const type = isDateLikeField(fieldName, values) ? 'date' : 'default';
       detectedConfigs.push({
         icon: getDetectedIcon(fieldName, type),
@@ -794,7 +815,10 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
         source: 'detected',
       });
     }
-    const merged = [...configs, ...detectedConfigs];
+    const merged = [
+      ...configs.filter((config) => availableFields.has(config.fieldName)),
+      ...detectedConfigs,
+    ];
     const hasInstallDate = merged.some((config) => config.fieldName === '安装日期');
     const hasLifecycle = merged.some((config) => config.fieldName === '生命周期');
     return merged
@@ -811,7 +835,7 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
         (config, index, list) =>
           list.findIndex((item) => item.fieldName === config.fieldName) === index
       );
-  }, [configs, data]);
+  }, [configs, data, fields]);
 
   const dateFieldNames = useMemo(
     () => new Set(effectiveConfigs.filter((c) => c.type === 'date').map((c) => c.fieldName)),
@@ -891,28 +915,18 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   );
 
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [visibleMoreCount, setVisibleMoreCount] = useState(moreConfigs.length);
+  const [visiblePrimaryCount, setVisiblePrimaryCount] = useState(0);
 
   useEffect(() => {
     const toolbar = toolbarRef.current;
     if (!toolbar) return undefined;
 
     const measure = () => {
-      const available = toolbar.clientWidth;
-      const primaryWidth = primaryConfigs.reduce(
-        (sum, config) => sum + Math.min(180, Math.max(92, config.label.length * 12 + 54)),
-        0
-      );
-      const moreTriggerWidth = 124;
-      const remaining = Math.max(0, available - primaryWidth - moreTriggerWidth - 24);
-      let width = 0;
-      let count = 0;
-      for (const config of moreConfigs) {
-        width += Math.min(180, Math.max(92, config.label.length * 12 + 54));
-        if (width > remaining) break;
-        count += 1;
-      }
-      setVisibleMoreCount(count >= moreConfigs.length ? moreConfigs.length : count);
+      // 与 CSS 中 144px 的按钮宽度和 6px 间距保持一致；为更多与重置预留空间。
+      const available = toolbar.clientWidth - 8 - (hasActiveFilters ? 64 : 0);
+      const allFit = primaryConfigs.length * 150 <= available && moreConfigs.length === 0;
+      const count = Math.floor((available - (allFit ? 0 : 118)) / 150);
+      setVisiblePrimaryCount(Math.min(primaryConfigs.length, Math.max(0, count)));
     };
 
     measure();
@@ -923,13 +937,13 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
     const observer = new ResizeObserver(measure);
     observer.observe(toolbar);
     return () => observer.disconnect();
-  }, [moreConfigs, primaryConfigs]);
+  }, [moreConfigs, primaryConfigs, hasActiveFilters]);
 
-  const visibleMoreConfigs = moreConfigs.slice(0, visibleMoreCount);
-  const overflowMoreConfigs = moreConfigs.slice(visibleMoreCount);
+  const visiblePrimaryConfigs = primaryConfigs.slice(0, visiblePrimaryCount);
+  const overflowMoreConfigs = [...primaryConfigs.slice(visiblePrimaryCount), ...moreConfigs];
 
   // "更多"筛选器中是否有激活的
-  const hasActiveMoreFilters = moreConfigs.some((config) => {
+  const hasActiveMoreFilters = overflowMoreConfigs.some((config) => {
     const selected = getSelectedValues(config.fieldName);
     const total = allFilterValues[config.fieldName]?.length ?? 0;
     return selected.length > 0 && selected.length < total;
@@ -956,7 +970,7 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
 
   return (
     <div className="admob-filter-bar" ref={toolbarRef}>
-      {primaryConfigs.map((config) =>
+      {visiblePrimaryConfigs.map((config) =>
         config.type === 'date' ? (
           <DateRangeFilterChip
             key={config.fieldName}
@@ -976,30 +990,6 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
             dimensionHint={
               activeDimensionNames?.has(config.fieldName) ? `已作为维度使用` : undefined
             }
-            registrationCounts={registrationCountsMap.get(config.fieldName)}
-            sortByCount={appFilterActive && SORT_BY_REG_FIELDS.has(config.fieldName)}
-          />
-        )
-      )}
-
-      {visibleMoreConfigs.map((config) =>
-        config.type === 'date' ? (
-          <DateRangeFilterChip
-            key={config.fieldName}
-            icon={config.icon}
-            label={config.label}
-            allValues={allFilterValues[config.fieldName] || []}
-            selectedValues={getSelectedValues(config.fieldName)}
-            onSelectionChange={(values) => onFilterChange(config.fieldName, values)}
-          />
-        ) : (
-          <FilterChip
-            key={config.fieldName}
-            config={config}
-            allValues={allFilterValues[config.fieldName] || []}
-            selectedValues={getSelectedValues(config.fieldName)}
-            onSelectionChange={(values) => onFilterChange(config.fieldName, values)}
-            dimensionHint={activeDimensionNames?.has(config.fieldName) ? 'dimension' : undefined}
             registrationCounts={registrationCountsMap.get(config.fieldName)}
             sortByCount={appFilterActive && SORT_BY_REG_FIELDS.has(config.fieldName)}
           />

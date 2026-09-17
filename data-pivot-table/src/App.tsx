@@ -433,6 +433,7 @@ function App() {
           {data.length > 0 && (
             <AdMobFilterBar
               configs={ADMOB_FILTER_CONFIGS}
+              fields={fields}
               data={data}
               filterConfigs={filterConfigs}
               onFilterChange={handleFilterChange}
