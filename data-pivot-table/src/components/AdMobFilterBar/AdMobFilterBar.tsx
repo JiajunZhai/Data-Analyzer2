@@ -1,4 +1,12 @@
-import { BarChart3, Calendar, Globe, RotateCcw, SlidersHorizontal, Smartphone, X } from 'lucide-react';
+import {
+  BarChart3,
+  Calendar,
+  Globe,
+  RotateCcw,
+  SlidersHorizontal,
+  Smartphone,
+  X,
+} from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { DataRow, FilterConfig } from '../../types';
 import DateRangeFilterChip from './DateRangeFilterChip';
@@ -80,10 +88,13 @@ interface FilterChipConfig {
 
 function isDateLikeField(fieldName: string, values: string[]): boolean {
   if (fieldName.includes('日期') || fieldName.toLowerCase().includes('date')) return true;
-  return values.length > 0 && values.every((value) => {
-    const parsed = new Date(value);
-    return value.length >= 8 && !Number.isNaN(parsed.getTime());
-  });
+  return (
+    values.length > 0 &&
+    values.every((value) => {
+      const parsed = new Date(value);
+      return value.length >= 8 && !Number.isNaN(parsed.getTime());
+    })
+  );
 }
 
 function getDetectedIcon(fieldName: string, type: 'date' | 'default'): React.ReactNode {
@@ -758,7 +769,9 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
   const effectiveConfigs = useMemo(() => {
     const availableFields = new Set<string>();
     for (const row of data) {
-      Object.keys(row).forEach((fieldName) => availableFields.add(fieldName));
+      Object.keys(row).forEach((fieldName) => {
+        availableFields.add(fieldName);
+      });
     }
     const configuredNames = new Set(configs.map((config) => config.fieldName));
     const detectedConfigs: FilterChipConfig[] = [];
@@ -768,7 +781,8 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
         new Set(data.map((row) => normalizeFilterValue(row[fieldName])).filter(isUsableFilterValue))
       );
       if (values.length <= 1) continue;
-      const numericRatio = values.filter((value) => !Number.isNaN(Number(value))).length / values.length;
+      const numericRatio =
+        values.filter((value) => !Number.isNaN(Number(value))).length / values.length;
       if (numericRatio > 0.9 && values.length > Math.max(20, data.length * 0.5)) continue;
       const type = isDateLikeField(fieldName, values) ? 'date' : 'default';
       detectedConfigs.push({
@@ -793,14 +807,20 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
         }
         return config;
       })
-      .filter((config, index, list) => list.findIndex((item) => item.fieldName === config.fieldName) === index);
+      .filter(
+        (config, index, list) =>
+          list.findIndex((item) => item.fieldName === config.fieldName) === index
+      );
   }, [configs, data]);
 
   const dateFieldNames = useMemo(
     () => new Set(effectiveConfigs.filter((c) => c.type === 'date').map((c) => c.fieldName)),
     [effectiveConfigs]
   );
-  const filterFieldNames = useMemo(() => effectiveConfigs.map((config) => config.fieldName), [effectiveConfigs]);
+  const filterFieldNames = useMemo(
+    () => effectiveConfigs.map((config) => config.fieldName),
+    [effectiveConfigs]
+  );
   const rawFilterValues = useMemo(
     () => buildRawFilterValues(data, filterFieldNames),
     [data, filterFieldNames]
@@ -815,10 +835,23 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
 
   const allFilterValues = useMemo(() => {
     if (!hasLinkedNonDateFilters) return rawFilterValues;
-    return buildLinkedFilterValues(data, effectiveConfigs, filterConfigs, rawFilterValues, dateFieldNames);
+    return buildLinkedFilterValues(
+      data,
+      effectiveConfigs,
+      filterConfigs,
+      rawFilterValues,
+      dateFieldNames
+    );
 
     // 非日期筛选器：使用联动逻辑
-  }, [data, effectiveConfigs, filterConfigs, dateFieldNames, hasLinkedNonDateFilters, rawFilterValues]);
+  }, [
+    data,
+    effectiveConfigs,
+    filterConfigs,
+    dateFieldNames,
+    hasLinkedNonDateFilters,
+    rawFilterValues,
+  ]);
 
   const getSelectedValues = (fieldName: string): string[] => {
     const config = filterConfigs.find((f) => f.fieldName === fieldName);
@@ -831,21 +864,21 @@ const AdMobFilterBar: React.FC<AdMobFilterBarProps> = ({
       f.selectedValues.length < (allFilterValues[f.fieldName]?.length ?? 0)
   );
 
-const handleResetAll = () => {
-  if (onResetAll) {
-    onResetAll();
-    return;
-  }
-
-  // fallback: 逐个重置（兼容旧接口）
-  for (const f of filterConfigs) {
-    if (f.selectedValues.length > 0) {
-      // 确认业务需求是重置为“全选”还是“清空”
-      const resetValues = allFilterValues?.[f.fieldName] ?? [];
-      onFilterChange(f.fieldName, resetValues);
+  const handleResetAll = () => {
+    if (onResetAll) {
+      onResetAll();
+      return;
     }
-  }
-};
+
+    // fallback: 逐个重置（兼容旧接口）
+    for (const f of filterConfigs) {
+      if (f.selectedValues.length > 0) {
+        // 确认业务需求是重置为“全选”还是“清空”
+        const resetValues = allFilterValues?.[f.fieldName] ?? [];
+        onFilterChange(f.fieldName, resetValues);
+      }
+    }
+  };
 
   // 分离主要筛选器和"更多"筛选器
   const primaryConfigs = useMemo(
@@ -966,9 +999,7 @@ const handleResetAll = () => {
             allValues={allFilterValues[config.fieldName] || []}
             selectedValues={getSelectedValues(config.fieldName)}
             onSelectionChange={(values) => onFilterChange(config.fieldName, values)}
-            dimensionHint={
-              activeDimensionNames?.has(config.fieldName) ? 'dimension' : undefined
-            }
+            dimensionHint={activeDimensionNames?.has(config.fieldName) ? 'dimension' : undefined}
             registrationCounts={registrationCountsMap.get(config.fieldName)}
             sortByCount={appFilterActive && SORT_BY_REG_FIELDS.has(config.fieldName)}
           />

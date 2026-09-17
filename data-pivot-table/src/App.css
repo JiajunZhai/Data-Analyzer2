@@ -2504,6 +2504,10 @@ body {
   color: var(--text-primary);
 }
 
+.summary-toggle svg {
+  flex: 0 0 auto;
+}
+
 .app-header h1 svg {
   opacity: 0.8;
 }
@@ -3570,10 +3574,6 @@ th.sortable .sort-btn:focus,
     color 140ms ease,
     box-shadow 140ms ease,
     transform 120ms ease;
-}
-
-.summary-toggle svg {
-  flex: 0 0 auto;
 }
 
 .summary-toggle:hover {

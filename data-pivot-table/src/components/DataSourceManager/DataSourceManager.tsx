@@ -153,7 +153,11 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                       确定删除当前数据源吗？关联的已保存配置也会删除。
                     </div>
                     <div className="confirm-actions">
-                      <button type="button" className="btn-delete-confirm" onClick={handleDeleteConfirm}>
+                      <button
+                        type="button"
+                        className="btn-delete-confirm"
+                        onClick={handleDeleteConfirm}
+                      >
                         确定删除
                       </button>
                       <button type="button" className="btn-cancel" onClick={handleDeleteCancel}>
@@ -162,54 +166,54 @@ const DataSourceManager: React.FC<DataSourceManagerProps> = ({
                     </div>
                   </div>
                 ) : (
-                <>
-                <div className="dataset-info">
-                  <div className="dataset-active-badge">
-                    <span className="active-dot" />
-                    <span className="active-text">正在使用</span>
-                  </div>
-                  {editingId === currentDataset.id ? (
-                    <div className="dataset-rename">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameConfirm();
-                          if (e.key === 'Escape') handleRenameCancel();
-                        }}
-                        onBlur={handleRenameConfirm}
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <div className="dataset-name">{currentDataset.name}</div>
-                      <div className="dataset-meta">
-                        {currentDataset.rowCount.toLocaleString()} 行 ·{' '}
-                        {currentDataset.fieldCount.dimensions} 维度 ·{' '}
-                        {currentDataset.fieldCount.measures} 指标
+                  <>
+                    <div className="dataset-info">
+                      <div className="dataset-active-badge">
+                        <span className="active-dot" />
+                        <span className="active-text">正在使用</span>
                       </div>
-                    </>
-                  )}
-                </div>
-                <div className="dataset-actions">
-                  <button
-                    type="button"
-                    onClick={() => handleRenameStart(currentDataset)}
-                    title="重命名"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => handleDeleteClick(currentDataset.id, event)}
-                    title="删除当前数据源"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                </>
+                      {editingId === currentDataset.id ? (
+                        <div className="dataset-rename">
+                          <input
+                            ref={inputRef}
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameConfirm();
+                              if (e.key === 'Escape') handleRenameCancel();
+                            }}
+                            onBlur={handleRenameConfirm}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="dataset-name">{currentDataset.name}</div>
+                          <div className="dataset-meta">
+                            {currentDataset.rowCount.toLocaleString()} 行 ·{' '}
+                            {currentDataset.fieldCount.dimensions} 维度 ·{' '}
+                            {currentDataset.fieldCount.measures} 指标
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="dataset-actions">
+                      <button
+                        type="button"
+                        onClick={() => handleRenameStart(currentDataset)}
+                        title="重命名"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => handleDeleteClick(currentDataset.id, event)}
+                        title="删除当前数据源"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

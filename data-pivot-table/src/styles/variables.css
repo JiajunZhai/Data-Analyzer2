@@ -1,6 +1,8 @@
 :root {
   /* Typography */
-  --font-sans: Inter, "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-sans:
+    Inter, "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", "Segoe UI",
+    sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
   --text-xs: 11px;
   --text-sm: 12px;
