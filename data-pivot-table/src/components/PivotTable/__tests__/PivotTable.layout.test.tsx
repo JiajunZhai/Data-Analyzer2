@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PivotResult, PivotTreeNode } from '../../../types';
 import PivotTable from '../PivotTable';
@@ -128,9 +128,11 @@ describe('PivotTable layout structure', () => {
 
     vi.stubGlobal('ResizeObserver', ResizeObserverMock);
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -239,6 +241,9 @@ describe('PivotTable layout structure', () => {
 
     fireEvent.mouseOver(groupedHeader, { clientX: 120, clientY: 80 });
 
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(500));
+
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip).toHaveTextContent('VC001');
     expect(tooltip.parentElement).toBe(document.body);
@@ -261,6 +266,7 @@ describe('PivotTable layout structure', () => {
     }
 
     fireEvent.mouseOver(groupedHeader, { clientX: 120, clientY: 80 });
+    act(() => vi.advanceTimersByTime(500));
     expect(screen.getByRole('tooltip')).toHaveTextContent('VC001');
 
     fireEvent.mouseMove(dataCell, { clientX: 180, clientY: 140 });
@@ -281,6 +287,7 @@ describe('PivotTable layout structure', () => {
     }
 
     fireEvent.mouseOver(rowHeaderInner, { clientX: 80, clientY: 130 });
+    act(() => vi.advanceTimersByTime(500));
 
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip).toHaveTextContent('2026-06-26');

@@ -1948,67 +1948,9 @@ body {
   white-space: nowrap;
 }
 
-/* 冻结列 td：sticky 必须放在 td 上（内层 div 的 sticky 在滚动物理上不生效） */
+/* Full text is rendered by PivotFullTextTooltip after a delayed overflow check. */
 .pivot-table [data-full-text] {
   cursor: default;
-}
-
-.pivot-table th.col-header[data-full-text],
-.pivot-table th.total-header[data-full-text] {
-  position: relative;
-  overflow: visible;
-}
-
-.pivot-table .corner-cell[data-full-text],
-.pivot-table .row-header[data-full-text] {
-  overflow: visible;
-}
-
-.pivot-table .row-header[data-full-text]:hover,
-.pivot-table th[data-full-text]:hover {
-  z-index: 35;
-}
-
-.pivot-table .row-header[data-full-text]:hover .frozen-cell-inner,
-.pivot-table tbody tr:hover td.row-header .frozen-cell-inner {
-  background: var(--hover-bg);
-}
-
-.pivot-table .row-header[data-full-text]:hover::before,
-.pivot-table th[data-full-text]:hover::before {
-  content: attr(data-full-text);
-  position: absolute;
-  z-index: 60;
-  box-sizing: border-box;
-  max-width: min(420px, calc(100vw - 48px));
-  padding: 7px 10px;
-  border: 1px solid var(--primary-light);
-  border-radius: var(--radius-card);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-lg);
-  color: var(--text-color);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: 0;
-  min-width: min(220px, calc(100vw - 48px));
-  text-align: left;
-  text-transform: none;
-  white-space: normal;
-  word-break: break-word;
-  writing-mode: horizontal-tb;
-  pointer-events: none;
-}
-
-.pivot-table .row-header[data-full-text]:hover::before {
-  content: none;
-}
-
-.pivot-table th[data-full-text]:hover::before {
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  content: none;
 }
 
 .pivot-full-text-tooltip {
